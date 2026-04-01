@@ -24,12 +24,17 @@ To build the project locally, you will need:
 * **CMake**
 * A **C++17** compatible compiler
 
-**Steps:**
-1. Clone the repository or download the source code.
-2. Generate the build files using CMake.
-3. Build the project using your chosen build system.
+We have provided convenient scripts in the `scripts/` directory for both Windows and Linux to simplify the building, running, and testing process.
 
-The generated executable will be located in the `bin` folder. Run it from there to start the game!
+**For Linux (`.sh`):**
+1. **Build:** Run `./scripts/build.sh` to configure and compile the project (uses `Release` configuration by default).
+2. **Run:** Run `./scripts/run.sh` to launch the compiled executable.
+3. **Test:** Run `./scripts/test.sh` to execute the CMake test framework (`ctest`).
+
+**For Windows (`.bat`):**
+1. **Build:** Run `scripts\build.bat` to configure and compile the project.
+2. **Run:** Run `scripts\run.bat` to launch the compiled executable.
+3. **Test:** Run `scripts\test.bat` to execute the CMake test framework.
 
 ## ✨ Contributors  
 
