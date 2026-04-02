@@ -2,7 +2,6 @@
 build/
 bin/
 *.o
-*.obj
 *.exe
 *.dll
 *.so

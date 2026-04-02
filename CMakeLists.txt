@@ -110,6 +110,10 @@ target_sources(GAME_APPLICATION PRIVATE
         ${VENDOR_SOURCES}
 )
 
+set_source_files_properties(vendor/imgui/imgui_impl/imgui_impl_opengl3.cpp PROPERTIES
+        COMPILE_DEFINITIONS IMGUI_IMPL_OPENGL_LOADER_GLAD2
+)
+
 target_compile_features(GAME_APPLICATION PRIVATE cxx_std_17)
 set_target_properties(GAME_APPLICATION PROPERTIES
         CXX_EXTENSIONS OFF
