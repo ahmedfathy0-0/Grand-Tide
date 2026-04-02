@@ -269,7 +269,7 @@ int our::Application::run(int run_for_frames) {
         // we set it back to cover the whole window
         auto frame_buffer_size = getFrameBufferSize();
         glViewport(0, 0, frame_buffer_size.x, frame_buffer_size.y);
-        glClearColor(0.125f, 0.3125f, 0.4375f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Get the current time (the time at which we are starting the current frame).

@@ -11,6 +11,10 @@ out vec4 frag_color;
 uniform int size = 32;
 uniform vec3 colors[2];
 
+
 void main(){
-    frag_color = vec4(colors[0], 1.0);
+    int tileX = int(gl_FragCoord.x / size);
+    int tileY = int(gl_FragCoord.y / size);
+    int index =  (tileX + tileY) % 2;
+    frag_color = vec4(colors[index], 1.0);
 }
