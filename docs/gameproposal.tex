@@ -1,0 +1,384 @@
+\documentclass[12pt, a4paper]{article}
+
+% ─── Packages ────────────────────────────────────────────────────────────────
+\usepackage[top=2.5cm, bottom=2.5cm, left=2.8cm, right=2.8cm]{geometry}
+\usepackage{fontenc}
+\usepackage{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[explicit]{titlesec}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{colortbl}
+\usepackage{fancyhdr}
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta, shapes.geometric}
+\usepackage{mdframed}
+\usepackage{setspace}
+\usepackage{parskip}
+\usepackage{hyperref}
+\usepackage{fontawesome5}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins, breakable}
+
+% ─── Color Palette ───────────────────────────────────────────────────────────
+\definecolor{oceandeep}{HTML}{0A1628}
+\definecolor{oceanbright}{HTML}{006994}
+\definecolor{oceanlight}{HTML}{00A8CC}
+\definecolor{wavecrest}{HTML}{4FC3F7}
+\definecolor{foamwhite}{HTML}{E8F4F8}
+\definecolor{goldaccent}{HTML}{FFD700}
+\definecolor{fireaccent}{HTML}{FF6B35}
+\definecolor{textprimary}{HTML}{1A1A2E}
+\definecolor{textmuted}{HTML}{4A5568}
+\definecolor{successgreen}{HTML}{2D9E6B}
+\definecolor{rowalt}{HTML}{F0F8FF}
+
+% ─── Hyperref Setup ──────────────────────────────────────────────────────────
+\hypersetup{
+    colorlinks=true,
+    linkcolor=oceanbright,
+    urlcolor=oceanlight,
+    pdfauthor={Team CMP3060},
+    pdftitle={Ocean Adventure: Grand Tide — Game Proposal},
+}
+
+% ─── Section Styling ─────────────────────────────────────────────────────────
+\titleformat{\section}
+    {\color{oceandeep}\Large\bfseries}
+    {}
+    {0em}
+    {\colorbox{oceandeep}{\parbox{\dimexpr\textwidth-2\fboxsep}{\color{white}\hspace{6pt}#1\hspace{6pt}}}}
+    [\vspace{2pt}]
+
+\titleformat{\subsection}
+    {\color{oceanbright}\normalsize\bfseries}
+    {}
+    {0em}
+    {#1}
+    [{\color{wavecrest}\titlerule[0.6pt]}\vspace{2pt}]
+
+\titlespacing{\section}{0pt}{16pt}{8pt}
+\titlespacing{\subsection}{0pt}{10pt}{4pt}
+
+% ─── Header / Footer ─────────────────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{textmuted}\textbf{CMP3060} \textbar{} Game Proposal}
+\fancyhead[R]{\small\color{textmuted}April 2026}
+\fancyfoot[C]{\small\color{textmuted}\thepage}
+\fancyfoot[R]{\small\color{textmuted}\textit{Ocean Adventure: Grand Tide}}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.3pt}
+\renewcommand{\headrule}{\color{oceanbright}\hrule width\headwidth height\headrulewidth}
+\renewcommand{\footrule}{\color{wavecrest}\hrule width\headwidth height\footrulewidth}
+
+% ─── Custom Boxes ────────────────────────────────────────────────────────────
+\tcbset{
+    oceansection/.style={
+        colback=foamwhite,
+        colframe=oceanbright,
+        fonttitle=\bfseries\color{white},
+        coltitle=white,
+        colbacktitle=oceanbright,
+        arc=4pt,
+        boxrule=1pt,
+        left=8pt, right=8pt, top=6pt, bottom=6pt,
+        breakable
+    },
+    techrow/.style={
+        colback=oceandeep!5,
+        colframe=oceandeep!20,
+        arc=3pt,
+        boxrule=0.5pt,
+        left=6pt, right=6pt, top=4pt, bottom=4pt,
+    }
+}
+
+% ─── Document ────────────────────────────────────────────────────────────────
+\begin{document}
+
+% ╔══════════════════════════════════════════════════════════════════════════╗
+% ║  TITLE PAGE                                                              ║
+% ╚══════════════════════════════════════════════════════════════════════════╝
+\begin{titlepage}
+    \pagecolor{oceandeep}
+    \color{white}
+    \centering
+    \vspace*{1.5cm}
+
+    % Course badge
+    \begin{tcolorbox}[
+        colback=oceanbright, colframe=wavecrest,
+        arc=20pt, boxrule=1.5pt,
+        width=6cm, halign=center,
+        left=4pt, right=4pt, top=4pt, bottom=4pt
+    ]
+        \centering\small\bfseries\color{white}
+        CMP3060 — Computer Graphics
+    \end{tcolorbox}
+
+    \vspace{0.8cm}
+
+    % Game title
+    {\fontsize{38}{44}\selectfont\bfseries
+        \textcolor{wavecrest}{OCEAN}
+        \textcolor{goldaccent}{ADVENTURE}
+    }\\[4pt]
+    {\fontsize{22}{28}\selectfont\bfseries\color{foamwhite}
+        \textsc{Grand Tide}
+    }
+
+    \vspace{0.5cm}
+    \textcolor{wavecrest}{\rule{10cm}{1.5pt}}
+    \vspace{0.5cm}
+
+    {\large\color{foamwhite}\itshape
+        A 3D Survival Game — Defend Your Raft, Survive the Sea
+    }
+
+    \vspace{1.2cm}
+
+    % Game image placeholder / actual image
+    \fbox{%
+        \begin{minipage}{0.7\textwidth}
+            \centering
+            \IfFileExists{./grandtide.png}{%
+                \includegraphics[width=\linewidth, height=8cm, keepaspectratio]{./grandtide.png}%
+            }{%
+                \vspace{3cm}
+                \textcolor{wavecrest}{\Large\faWater}\\[6pt]
+                \textcolor{white}{\small\itshape [grandtide.png not found — place it beside this .tex file]}
+                \vspace{3cm}
+            }
+        \end{minipage}
+    }
+
+    \vspace{1.2cm}
+
+    % Team table
+    \begin{tcolorbox}[
+        colback=white!10!oceandeep,
+        colframe=wavecrest,
+        arc=6pt, boxrule=1pt,
+        width=0.85\textwidth
+    ]
+    \centering\color{white}
+    \begin{tabular}{@{}lll@{}}
+        \toprule
+        \rowcolor{oceanbright!60}
+        \textbf{Name} & \textbf{Section} & \textbf{Student ID} \\
+        \midrule
+        Ahmed Fathy     & 1 & 9230162 \\
+        Ahmed Gamal     & 1 & 9230132 \\
+        Mohamed Yasser  & 2 & 9230824 \\
+        Yousef Adel     & 2 & 9231019 \\
+        \bottomrule
+    \end{tabular}
+    \end{tcolorbox}
+
+    \vfill
+    {\small\color{textmuted} Game Proposal \textbar{} Deadline: Monday, 27 April 2026}
+\end{titlepage}
+
+% Restore page color
+\pagecolor{white}
+\color{textprimary}
+
+% ╔══════════════════════════════════════════════════════════════════════════╗
+% ║  PAGE 1 — OVERVIEW                                                       ║
+% ╚══════════════════════════════════════════════════════════════════════════╝
+\setcounter{page}{1}
+
+% ─── Game Description ────────────────────────────────────────────────────────
+\section{Game Overview}
+
+\begin{tcolorbox}[oceansection, title={\faGamepad\quad Game Description}]
+\textbf{Ocean Adventure: Grand Tide} is a fast-paced 3D survival game in which the player
+takes on the role of a castaway stranded on a drifting wooden raft in the middle of a vast,
+dangerous ocean.
+
+\vspace{6pt}
+
+The primary objective is to \textbf{survive as long as possible} by defending the raft against
+waves of dynamically spawning enemy marine ships and floating ocean hazards. The player wields
+a \textbf{magical fire-based combat system} — aiming and launching projectile attacks to destroy
+enemy vessels before they can ram into and destroy the raft.
+
+\vspace{6pt}
+
+As the player's survival score increases, enemy waves grow faster and more numerous, escalating
+the tension with every passing moment. The world is brought to life through a \textbf{full
+day-and-night cycle} illuminated by dynamic lights, fire-glow from projectiles, and explosion
+flares that cast real-time colour onto the surrounding water and raft geometry.
+
+\vspace{6pt}
+
+{\centering
+\begin{tabularx}{0.95\linewidth}{@{}l X l X@{}}
+    \textcolor{oceanbright}{\faFlag}\;\textbf{Genre:}      & 3D Survival / Arcade  &
+    \textcolor{oceanbright}{\faEye}\;\textbf{Camera:}      & Third-Person Dynamic  \\[4pt]
+    \textcolor{oceanbright}{\faClock}\;\textbf{Win Goal:}  & Max survival time     &
+    \textcolor{oceanbright}{\faBolt}\;\textbf{Core Loop:}  & Aim $\rightarrow$ Shoot $\rightarrow$ Survive \\
+\end{tabularx}
+\par}
+\end{tcolorbox}
+
+% ─── Game Image ──────────────────────────────────────────────────────────────
+\section{Concept Art / Mockup}
+
+\begin{center}
+\IfFileExists{./grandtide.png}{%
+    \includegraphics[width=0.88\textwidth, keepaspectratio]{./grandtide.png}
+    \par\vspace{4pt}
+    \small\textit{\textcolor{textmuted}{Figure 1 — Ocean Adventure: Grand Tide — Game Mockup}}
+}{%
+    \begin{tcolorbox}[
+        colback=foamwhite, colframe=wavecrest,
+        arc=6pt, halign=center,
+        height=7cm, valign=center
+    ]
+        \color{oceanbright}{\Huge\faWater}\\[8pt]
+        \color{textmuted}\itshape
+        Place \texttt{grandtide.png} in the same folder as this \texttt{.tex} file\\
+        and recompile to show the game image here.
+    \end{tcolorbox}
+}
+\end{center}
+
+\newpage
+
+% ╔══════════════════════════════════════════════════════════════════════════╗
+% ║  PAGE 2 — TECHNICAL ALIGNMENT                                            ║
+% ╚══════════════════════════════════════════════════════════════════════════╝
+\section{Technical Alignment with Requirements}
+
+The table below maps each required feature to our planned implementation.
+
+\renewcommand{\arraystretch}{1.5}
+\begin{tabularx}{\linewidth}{
+    >{\centering\arraybackslash}m{0.4cm}
+    >{\bfseries\color{oceanbright}}m{3.2cm}
+    X
+}
+\toprule
+\rowcolor{oceandeep}
+\multicolumn{1}{c}{\color{white}\textbf{\#}} &
+\multicolumn{1}{c}{\color{white}\textbf{Requirement}} &
+\multicolumn{1}{c}{\color{white}\textbf{Implementation Plan}} \\
+\midrule
+
+\rowcolor{rowalt}
+\textcolor{goldaccent}{\faCheckCircle} &
+3D Models \& Textures &
+Imported meshes for player character, wooden raft, enemy ships, floating barrels and ocean surface. All objects use \textbf{lit materials} with albedo, specular, and roughness texture maps. \\
+
+\textcolor{fireaccent}{\faCheckCircle} &
+Lighting &
+\textbf{Directional light} for sun / moon (day-night cycle). \textbf{Dynamic point lights} emitted by fire projectiles and ship explosions that illuminate nearby geometry and water in real time. \\
+
+\rowcolor{rowalt}
+\textcolor{goldaccent}{\faCheckCircle} &
+Dynamic Elements &
+Enemy ships \textbf{spawn dynamically} and navigate toward the player's raft. Floating barrel hazards drift across the scene. Every object reacts to player actions. \\
+
+\textcolor{fireaccent}{\faCheckCircle} &
+Interaction \& Game Logic &
+Core loop: \textit{aim} with the cursor, \textit{shoot} fire projectiles, \textit{score points} per destroyed ship. Difficulty scales with the survival timer. Clear win/lose conditions are defined. \\
+
+\rowcolor{rowalt}
+\textcolor{goldaccent}{\faCheckCircle} &
+Collision Detection &
+\textbf{3D bounding-box collision} for ship-raft impacts; \textbf{ray-sphere casting} for projectile-to-ship hit registration. \\
+
+\textcolor{fireaccent}{\faCheckCircle} &
+Camera Motion &
+\textbf{Third-person dynamic camera} follows the player, pans with aiming input, and smoothly adjusts height/distance during combat. \\
+
+\rowcolor{rowalt}
+\textcolor{goldaccent}{\faCheckCircle} &
+Sky Sphere &
+Full \textbf{sky sphere} with a seamless ocean-sky panoramic texture. Blends between day and night sky states as the in-game time progresses. \\
+
+\textcolor{fireaccent}{\faCheckCircle} &
+Post-Processing &
+Custom \textbf{screen-shake} + \textbf{red-vignette pulse} effect triggered on raft damage. Optionally, a \textbf{chromatic aberration} burst on explosions — both implemented via framebuffer post-processing. \\
+
+\rowcolor{rowalt}
+\textcolor{goldaccent}{\faCheckCircle} &
+Game States &
+\textbf{Menu State} (title screen, start/quit buttons) and \textbf{Play State} (active gameplay), with clean transitions. All scene data loaded from \texttt{.jsonc} config files — \textbf{no hard-coded scene data}. \\
+
+\bottomrule
+\end{tabularx}
+\renewcommand{\arraystretch}{1}
+
+\vspace{10pt}
+
+\newpage
+% ─── Gameplay Loop Diagram ───────────────────────────────────────────────────
+\subsection{Core Gameplay Loop}
+
+\begin{center}
+\resizebox{0.95\textwidth}{!}{
+\begin{tikzpicture}[
+    node distance=1.2cm and 1.5cm,
+    every node/.style={font=\small\bfseries},
+    box/.style={
+        rectangle, rounded corners=6pt,
+        minimum width=2.8cm, minimum height=1.0cm,
+        text centered, draw=oceanbright, line width=1pt,
+        fill=foamwhite, text=textprimary
+    },
+    arrow/.style={-Latex, thick, color=oceanbright, rounded corners=6pt}
+]
+    \node[box, fill=oceandeep, text=white] (start) {Game Starts};
+    \node[box, right=of start] (spawn) {Enemies Spawn};
+    \node[box, right=of spawn] (aim) {Player Aims};
+    \node[box, right=of aim] (shoot) {Fire Projectile};
+    
+    \node[box, below=1.5cm of shoot] (hit) {Hit Detection};
+    \node[box, left=of hit, fill=successgreen!10, draw=successgreen] (score) {Score +1};
+    \node[box, left=of score] (wave) {Wave Scales Up};
+    
+    \node[box, below=1.5cm of hit, fill=fireaccent!10, draw=fireaccent] (dmg) {Raft Takes Damage};
+    \node[box, left=of dmg, fill=oceandeep!20, draw=oceandeep!80] (over) {Game Over};
+
+    \draw[arrow] (start) -- (spawn);
+    \draw[arrow] (spawn) -- (aim);
+    \draw[arrow] (aim) -- (shoot);
+    \draw[arrow] (shoot) -- (hit);
+    
+    \draw[arrow] (hit) -- node[above, font=\footnotesize, color=successgreen]{Hit Enemy} (score);
+    \draw[arrow] (score) -- (wave);
+    \draw[arrow] (wave.north) -- (spawn.south) node[midway, left, font=\footnotesize, color=oceanbright]{Next Wave};
+    
+    \draw[arrow] (hit) -- node[right, font=\footnotesize, color=fireaccent]{Missed / Rammed} (dmg);
+    \draw[arrow] (dmg) -- (over);
+\end{tikzpicture}
+}
+\end{center}
+
+\vspace{8pt}
+
+% ─── Prototype Strategy ──────────────────────────────────────────────────────
+\subsection{Prototype-First Development Strategy}
+
+\begin{tcolorbox}[
+    colback=oceandeep!5, colframe=oceanbright!40,
+    arc=4pt, boxrule=0.8pt,
+    left=8pt, right=8pt, top=6pt, bottom=6pt
+]
+\begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Minimal Prototype:} Single raft mesh, one enemy ship that moves toward the player, basic fire projectile with ray-sphere hit detection. Verify all Phase~1 rendering systems work together.
+    \item \textbf{Core Mechanics:} Add spawn manager (waves), score counter, raft HP, and game-over condition.
+    \item \textbf{Polish:} Integrate lit materials, day-night directional light, dynamic point lights from fire/explosions, sky sphere, and post-processing effects.
+    \item \textbf{Content Expansion:} Full ocean environment, all 3D models, complete config-file scene descriptions, and menu state integration.
+\end{enumerate}
+\end{tcolorbox}
+
+\end{document}

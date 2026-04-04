@@ -30,11 +30,13 @@ We have provided convenient scripts in the `scripts/` directory for both Windows
 1. **Build:** Run `./scripts/build.sh` to configure and compile the project (uses `Release` configuration by default).
 2. **Run:** Run `./scripts/run.sh` to launch the compiled executable.
 3. **Test:** Run `./scripts/test.sh` to execute the CMake test framework (`ctest`).
+4. **Integration Tests:** Run `./scripts/run-all.sh` to automatically run all the assignment configurations locally and output screenshots. Then run `./scripts/compare-all.sh` to verify your screenshots against the expected images!
 
-**For Windows (`.bat`):**
+**For Windows (`.bat` and `.ps1`):**
 1. **Build:** Run `scripts\build.bat` to configure and compile the project.
 2. **Run:** Run `scripts\run.bat` to launch the compiled executable.
 3. **Test:** Run `scripts\test.bat` to execute the CMake test framework.
+4. **Integration Tests:** Run `scripts\run-all.ps1` to execute all configurations. Then run `scripts\compare-all.ps1` to run image comparisons.
 
 ## ✨ Contributors  
 
