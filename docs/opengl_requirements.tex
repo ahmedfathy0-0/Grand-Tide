@@ -1,0 +1,381 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\usepackage{listings}
+\usepackage{hyperref}
+
+\definecolor{openglblue}{RGB}{85,134,164}
+\definecolor{codegray}{RGB}{240,240,240}
+\definecolor{strgray}{RGB}{96,96,96}
+\definecolor{kwblue}{RGB}{34,113,179}
+
+\tcbuselibrary{skins, breakable}
+
+\newtcolorbox{functionbox}[2][]{
+    enhanced,
+    breakable,
+    colback=codegray,
+    colframe=openglblue,
+    title=\textbf{#2},
+    fonttitle=\sffamily,
+    attach boxed title to top left={yshift=-2mm, xshift=5mm},
+    boxed title style={colback=openglblue},
+    #1
+}
+
+\lstset{
+    backgroundcolor=\color{codegray},
+    commentstyle=\color{strgray}\itshape,
+    keywordstyle=\color{kwblue}\bfseries,
+    numberstyle=\tiny\color{strgray},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=4,
+    language=C++
+}
+
+\title{\textbf{Building a Mini Game Engine with OpenGL}\\ \large Complete Requirements \& Implementation Guide}
+\author{Beginner's Guide}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+\section*{The Big Picture}
+Before diving in: OpenGL is a \textbf{state machine API} that talks to your GPU. You write C++ code that sends data and instructions to the GPU driver, which compiles shaders and executes them on thousands of tiny parallel cores. The CPU sets everything up; the GPU does the actual pixel math.
+
+\vspace{1em}
+This document expands on all 11 requirements, explaining not just what they are, but \textbf{how to implement them} in C++ code using OpenGL.
+
+\section{Requirement 1: Shader Program}
+
+\subsection*{What it is}
+A shader is a small program that runs \textit{on the GPU}. The \textbf{vertex shader} runs once per vertex and decides \textit{where} the point lands on screen. The \textbf{fragment shader} runs once per pixel and decides \textit{what color} it gets.
+
+\subsection*{Implementation Details}
+To implement this, you read GLSL code (a C-like language) from a file, compile it, and link it into an active shader program.
+
+\begin{lstlisting}[language=C++]
+// 1. Upload source code to GPU
+GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+glShaderSource(vertexShader, 1, &vertexSourceString, NULL);
+
+// 2. Compile on the GPU
+glCompileShader(vertexShader);
+
+// 3. Link Vertex + Fragment into a Program
+GLuint shaderProgram = glCreateProgram();
+glAttachShader(shaderProgram, vertexShader);
+glAttachShader(shaderProgram, fragmentShader);
+glLinkProgram(shaderProgram);
+
+// 4. Activate it before drawing
+glUseProgram(shaderProgram);
+\end{lstlisting}
+
+
+\section{Requirement 2: Mesh}
+
+\subsection*{What it is}
+A mesh is the 3D geometry of an object—a collection of vertices (points in 3D space) and faces (triangles connecting those points).
+
+\subsection*{Implementation Details}
+You need to configure three GPU objects to successfully draw a mesh.
+\begin{itemize}
+    \item \textbf{VBO (Vertex Buffer Object):} A GPU array holding vertex data.
+    \item \textbf{EBO (Element Buffer Object):} A GPU array holding indices (which triangles connect which vertices).
+    \item \textbf{VAO (Vertex Array Object):} A config object that tells the shaders how to interpret the VBO bytes.
+\end{itemize}
+
+\begin{lstlisting}[language=C++]
+// Create the objects
+GLuint VAO, VBO, EBO;
+glGenVertexArrays(1, &VAO);
+glGenBuffers(1, &VBO);
+glGenBuffers(1, &EBO);
+
+// Bind VAO first, then upload data to VBO and EBO
+glBindVertexArray(VAO);
+
+glBindBuffer(GL_ARRAY_BUFFER, VBO);
+glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+// Tell the VAO how to read positions (e.g., 3 floats at location 0)
+glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+glEnableVertexAttribArray(0);
+
+// Later, to draw:
+glBindVertexArray(VAO);
+glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+\end{lstlisting}
+
+
+\section{Requirement 3: Transform}
+
+\subsection*{What it is}
+A Transform encodes an object's position, rotation, and scale into a single $4\times4$ matrix.
+
+\subsection*{Implementation Details}
+Using a math library like \texttt{GLM}, you calculate the $4\times4$ matrix locally on the CPU, and then send it to the GPU via a \textbf{uniform}.
+
+\begin{lstlisting}[language=C++]
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+// Create a transform matrix (Translation * Rotation * Scale)
+glm::mat4 model = glm::mat4(1.0f);
+model = glm::translate(model, glm::vec3(5.0f, 1.0f, -3.0f)); // Move
+model = glm::rotate(model, glm::radians(45.0f), glm::vec3(0,1,0)); // Rotate Y
+model = glm::scale(model, glm::vec3(0.5f)); // Scale to 50%
+
+// Upload Matrix to the Vertex Shader Uniform
+GLint transformLoc = glGetUniformLocation(shaderProgram, "transform");
+glUniformMatrix4fv(transformLoc, 1, GL_FALSE, &model[0][0]);
+\end{lstlisting}
+
+Inside the vertex shader, you then apply this: \lstinline!gl_Position = transform * vec4(position, 1.0);!
+
+
+\section{Requirement 4: Pipeline State}
+
+\subsection*{What it is}
+OpenGL needs you to flip specific state switches before drawing—such as depth testing (checking what objects are in front of others) and blending (glass transparency). 
+
+\subsection*{Implementation Details}
+You'll structure a class that encapsulates states so you can quickly toggle them before drawing.
+\begin{lstlisting}[language=C++]
+void PipelineState::setup() {
+    // Depth Testing (ensure geometry doesn't draw through walls)
+    if (depthTestEnabled) {
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS);
+    } else {
+        glDisable(GL_DEPTH_TEST);
+    }
+
+    // Blending (for glass/transparent objects)
+    if (blendingEnabled) {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    } else {
+        glDisable(GL_BLEND);
+    }
+
+    // Face Culling (skip drawing inside of models)
+    if (cullFaceEnabled) glEnable(GL_CULL_FACE);
+    else glDisable(GL_CULL_FACE);
+}
+\end{lstlisting}
+
+
+\section{Requirement 5: Texture}
+
+\subsection*{What it is}
+A texture is an image (PNG/JPG) uploaded to the GPU to give models detail (like bricks or wood). 
+
+\subsection*{Implementation Details}
+1. Load image via CPU (\texttt{stb\_image}). 2. Upload to GPU to a Texture ID.
+\begin{lstlisting}[language=C++]
+// 1. Generate texture ID
+GLuint texture;
+glGenTextures(1, &texture);
+glBindTexture(GL_TEXTURE_2D, texture);
+
+// 2. Load pixels using STB
+int width, height, channels;
+unsigned char *data = stbi_load("bricks.png", &width, &height, &channels, 0);
+
+// 3. Upload to GPU
+if (data) {
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, 
+                 GL_RGB, GL_UNSIGNED_BYTE, data);
+    stbi_image_free(data);
+}
+\end{lstlisting}
+
+
+\section{Requirement 6: Sampler}
+
+\subsection*{What it is}
+A sampler defines how a texture is filtered. When the image is stretched, does it get blurry (Linear) or blocky (Nearest/Pixelated)?
+
+\subsection*{Implementation Details}
+You set Sampler parameters directly on the \texttt{GL\_TEXTURE\_2D} object or via dedicated Sampler Objects.
+\begin{lstlisting}[language=C++]
+glBindTexture(GL_TEXTURE_2D, texture);
+
+// How to sample when stretching (MAG_FILTER) and shrinking (MIN_FILTER)
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+// How to handle UVs outside 0.0 - 1.0 (Wrap/Repeat)
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+// Generate Mipmaps (smaller versions of texture for objects far away)
+glGenerateMipmap(GL_TEXTURE_2D);
+\end{lstlisting}
+
+
+\section{Requirement 7: Material}
+
+\subsection*{What it is}
+A Material bundles a Shader, Pipeline State, and Textures into one object describing "how this should look."
+
+\subsection*{Implementation Details}
+You write a generic \texttt{Material} class with a \texttt{setup()} function called right before a draw call.
+\begin{lstlisting}[language=C++]
+class TexturedMaterial : public Material {
+public:
+    ShaderProgram* shader;
+    PipelineState pipeline;
+    Texture* diffuseTex;
+    
+    void setup() override {
+        // 1. Activate Material's Shader
+        shader->use();
+        
+        // 2. Setup States (Depth, Blend, etc.)
+        pipeline.setup();
+        
+        // 3. Bind Textures and Uniforms
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, diffuseTex->id);
+        shader->setInt("sampler", 0); // Tell shader texture is in slot 0
+    }
+};
+\end{lstlisting}
+
+
+\section{Requirement 8: Entities and Components (ECS)}
+
+\subsection*{What it is}
+An architectural pattern organizing your game world by composing objects from reusable data pieces, avoiding huge rigid class structures.
+
+\subsection*{Implementation Details}
+An \texttt{Entity} is just an ID. It holds components like a \texttt{TransformComponent} and a \texttt{MeshRendererComponent}.
+\begin{lstlisting}[language=C++]
+struct TransformComponent {
+    glm::vec3 position;
+    glm::vec3 rotation;
+    glm::vec3 scale;
+};
+
+struct MeshRendererComponent {
+    Mesh* mesh;
+    Material* material;
+};
+
+// In your world structure:
+class World {
+    std::vector<Entity*> entities;
+    // Systems loop over entities and draw them if they have 
+    // a mesh renderer and transform component.
+};
+\end{lstlisting}
+
+
+\section{Requirement 9: Forward Renderer}
+
+\subsection*{What it is}
+The system that loops through all entities and draws them in the correct order. Transparent objects MUST be drawn \textbf{after} opaque objects and sorted from back to front.
+
+\subsection*{Implementation Details}
+\begin{lstlisting}[language=C++]
+void renderScene(World& world) {
+    // 1. Reset Screen and Depth
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // 2. Draw Opaque (Solid) Objects
+    for (Entity* e : world.opaqueEntities) {
+        e->meshRenderer.material->setup();
+        uploadTransform(e->transform);
+        e->meshRenderer.mesh->draw(); // Calls glDrawElements
+    }
+
+    // 3. Sort Transparent Objects by distance to Camera 
+    sortByDistanceToCamera(world.transparentEntities);
+
+    // 4. Draw Transparent Objects (with blending enabled in material)
+    for (Entity* e : world.transparentEntities) {
+        e->meshRenderer.material->setup();
+        uploadTransform(e->transform);
+        e->meshRenderer.mesh->draw();
+    }
+}
+\end{lstlisting}
+
+
+\section{Requirement 10: Sky Rendering}
+
+\subsection*{What it is}
+Drawing a massive sky sphere texture that never gets closer or further away.
+
+\subsection*{Implementation Details}
+1. \textbf{In C++}: Strip translation (movement) from the Camera's View Matrix.
+\begin{lstlisting}[language=C++]
+// Convert View Mat4 -> Mat3 (Removes translation vector) -> back to Mat4
+glm::mat4 skyView = glm::mat4(glm::mat3(cameraViewMatrix));
+glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &skyView[0][0]);
+\end{lstlisting}
+
+2. \textbf{In Vertex Shader}: Force the Z value to exactly 1.0 (maximum depth).
+\begin{lstlisting}[language=C++]
+// GLSL Vertex Shader trick:
+vec4 pos = projection * view * vec4(position, 1.0);
+// Set Z (depth) equal to W so perspective division (Z/W) always equals 1.0
+gl_Position = pos.xyww; 
+\end{lstlisting}
+
+
+\section{Requirement 11: Post-Processing}
+
+\subsection*{What it is}
+Drawing to a custom hidden image (Framebuffer), then applying full-screen 2D effects (color grading, vignette) to it.
+
+\subsection*{Implementation Details}
+You use a Framebuffer Object (FBO).
+\begin{lstlisting}[language=C++]
+// SETUP: Create Framebuffer
+GLuint FBO, textureColorBuffer;
+glGenFramebuffers(1, &FBO);
+glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+
+// Attach a blank texture to FBO to act as our "Screen"
+glGenTextures(1, &textureColorBuffer);
+glBindTexture(GL_TEXTURE_2D, textureColorBuffer);
+// ...allocate texture space...
+glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, 
+                       GL_TEXTURE_2D, textureColorBuffer, 0);
+
+// RENDER LOOP:
+// 1. Render to Custom Buffer
+glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+renderScene(world); 
+
+// 2. Render Custom Buffer to Native Screen with Post-Process shader
+glBindFramebuffer(GL_FRAMEBUFFER, 0); 
+glClear(GL_COLOR_BUFFER_BIT);
+postProcessShader.use();
+glBindTexture(GL_TEXTURE_2D, textureColorBuffer);
+drawFullScreenQuad();
+\end{lstlisting}
+
+\end{document}
