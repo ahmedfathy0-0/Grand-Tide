@@ -1,384 +1,258 @@
 \documentclass[12pt, a4paper]{article}
 
-% ─── Packages ────────────────────────────────────────────────────────────────
-\usepackage[top=2.5cm, bottom=2.5cm, left=2.8cm, right=2.8cm]{geometry}
-\usepackage{fontenc}
-\usepackage{inputenc}
-\usepackage{lmodern}
-\usepackage{microtype}
-\usepackage{graphicx}
+% ─── Packages ───────────────────────────────────────────────────────────────
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\usepackage{titlesec}
+\usepackage{titling}
 \usepackage{xcolor}
-\usepackage[explicit]{titlesec}
 \usepackage{enumitem}
-\usepackage{booktabs}
-\usepackage{array}
-\usepackage{tabularx}
-\usepackage{colortbl}
-\usepackage{fancyhdr}
-\usepackage{tikz}
-\usetikzlibrary{positioning, arrows.meta, shapes.geometric}
-\usepackage{mdframed}
-\usepackage{setspace}
 \usepackage{parskip}
+\usepackage{microtype}
+\usepackage{lmodern}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{fancyhdr}
 \usepackage{hyperref}
-\usepackage{fontawesome5}
-\usepackage{tcolorbox}
-\tcbuselibrary{skins, breakable}
+\usepackage{graphicx}
 
-% ─── Color Palette ───────────────────────────────────────────────────────────
-\definecolor{oceandeep}{HTML}{0A1628}
-\definecolor{oceanbright}{HTML}{006994}
-\definecolor{oceanlight}{HTML}{00A8CC}
-\definecolor{wavecrest}{HTML}{4FC3F7}
-\definecolor{foamwhite}{HTML}{E8F4F8}
-\definecolor{goldaccent}{HTML}{FFD700}
-\definecolor{fireaccent}{HTML}{FF6B35}
-\definecolor{textprimary}{HTML}{1A1A2E}
-\definecolor{textmuted}{HTML}{4A5568}
-\definecolor{successgreen}{HTML}{2D9E6B}
-\definecolor{rowalt}{HTML}{F0F8FF}
-
-% ─── Hyperref Setup ──────────────────────────────────────────────────────────
-\hypersetup{
-    colorlinks=true,
-    linkcolor=oceanbright,
-    urlcolor=oceanlight,
-    pdfauthor={Team CMP3060},
-    pdftitle={Ocean Adventure: Grand Tide — Game Proposal},
+% ─── Page geometry ───────────────────────────────────────────────────────────
+\geometry{
+  top    = 2.5cm,
+  bottom = 2.5cm,
+  left   = 2.5cm,
+  right  = 2.5cm
 }
 
-% ─── Section Styling ─────────────────────────────────────────────────────────
+% ─── Colors ──────────────────────────────────────────────────────────────────
+\definecolor{oceanblue}{RGB}{0, 80, 140}
+\definecolor{seafoam}{RGB}{0, 140, 160}
+\definecolor{gold}{RGB}{200, 155, 30}
+\definecolor{darkgray}{RGB}{50, 50, 50}
+\definecolor{lightgray}{RGB}{240, 240, 240}
+\definecolor{bonuscolor}{RGB}{140, 30, 30}
+
+% ─── Section formatting ───────────────────────────────────────────────────────
 \titleformat{\section}
-    {\color{oceandeep}\Large\bfseries}
-    {}
-    {0em}
-    {\colorbox{oceandeep}{\parbox{\dimexpr\textwidth-2\fboxsep}{\color{white}\hspace{6pt}#1\hspace{6pt}}}}
-    [\vspace{2pt}]
+  {\large\bfseries\color{oceanblue}\scshape}
+  {}
+  {0em}
+  {}
+  [\vspace{-0.3em}\color{seafoam}\rule{\linewidth}{1.5pt}\vspace{0.3em}]
 
 \titleformat{\subsection}
-    {\color{oceanbright}\normalsize\bfseries}
-    {}
-    {0em}
-    {#1}
-    [{\color{wavecrest}\titlerule[0.6pt]}\vspace{2pt}]
-
-\titlespacing{\section}{0pt}{16pt}{8pt}
-\titlespacing{\subsection}{0pt}{10pt}{4pt}
+  {\normalsize\bfseries\color{darkgray}}
+  {}
+  {0em}
+  {}
 
 % ─── Header / Footer ─────────────────────────────────────────────────────────
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\small\color{textmuted}\textbf{CMP3060} \textbar{} Game Proposal}
-\fancyhead[R]{\small\color{textmuted}April 2026}
-\fancyfoot[C]{\small\color{textmuted}\thepage}
-\fancyfoot[R]{\small\color{textmuted}\textit{Ocean Adventure: Grand Tide}}
+\fancyhead[L]{\small\color{oceanblue}\textbf{Ocean Adventure: Grand Tide}}
+\fancyhead[R]{\small\color{darkgray}CMP3060 --- Graphics Programming}
+\fancyfoot[C]{\small\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
-\renewcommand{\footrulewidth}{0.3pt}
-\renewcommand{\headrule}{\color{oceanbright}\hrule width\headwidth height\headrulewidth}
-\renewcommand{\footrule}{\color{wavecrest}\hrule width\headwidth height\footrulewidth}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{seafoam}\leaders\hrule height \headrulewidth\hfill}}
 
-% ─── Custom Boxes ────────────────────────────────────────────────────────────
-\tcbset{
-    oceansection/.style={
-        colback=foamwhite,
-        colframe=oceanbright,
-        fonttitle=\bfseries\color{white},
-        coltitle=white,
-        colbacktitle=oceanbright,
-        arc=4pt,
-        boxrule=1pt,
-        left=8pt, right=8pt, top=6pt, bottom=6pt,
-        breakable
-    },
-    techrow/.style={
-        colback=oceandeep!5,
-        colframe=oceandeep!20,
-        arc=3pt,
-        boxrule=0.5pt,
-        left=6pt, right=6pt, top=4pt, bottom=4pt,
-    }
+% ─── Hyperref ────────────────────────────────────────────────────────────────
+\hypersetup{
+  colorlinks = true,
+  linkcolor  = oceanblue,
+  urlcolor   = seafoam
 }
 
-% ─── Document ────────────────────────────────────────────────────────────────
+% ═════════════════════════════════════════════════════════════════════════════
 \begin{document}
+% ═════════════════════════════════════════════════════════════════════════════
 
-% ╔══════════════════════════════════════════════════════════════════════════╗
-% ║  TITLE PAGE                                                              ║
-% ╚══════════════════════════════════════════════════════════════════════════╝
+% ─── Title Page ──────────────────────────────────────────────────────────────
 \begin{titlepage}
-    \pagecolor{oceandeep}
-    \color{white}
-    \centering
-    \vspace*{1.5cm}
+  \centering
+  \vspace*{2cm}
 
-    % Course badge
-    \begin{tcolorbox}[
-        colback=oceanbright, colframe=wavecrest,
-        arc=20pt, boxrule=1.5pt,
-        width=6cm, halign=center,
-        left=4pt, right=4pt, top=4pt, bottom=4pt
-    ]
-        \centering\small\bfseries\color{white}
-        CMP3060 — Computer Graphics
-    \end{tcolorbox}
+  {\huge\bfseries\color{oceanblue} OCEAN ADVENTURE}\\[0.4em]
+  {\LARGE\bfseries\color{seafoam} Grand Tide}\\[0.3em]
+  {\large\color{darkgray} Game Proposal}
 
-    \vspace{0.8cm}
+  \vspace{1cm}
+  \includegraphics[width=0.65\textwidth]{grandtide.png}
 
-    % Game title
-    {\fontsize{38}{44}\selectfont\bfseries
-        \textcolor{wavecrest}{OCEAN}
-        \textcolor{goldaccent}{ADVENTURE}
-    }\\[4pt]
-    {\fontsize{22}{28}\selectfont\bfseries\color{foamwhite}
-        \textsc{Grand Tide}
-    }
+  \vspace{1cm}
+  {\large\color{darkgray} CMP3060: Graphics Programming}
 
-    \vspace{0.5cm}
-    \textcolor{wavecrest}{\rule{10cm}{1.5pt}}
-    \vspace{0.5cm}
+  \vspace{1.2cm}
+  \begin{tabular}{ll}
+    \textbf{Mohamed Yasser} & 9230824 \\
+    \textbf{Ahmed Fathy}    & 9230162 \\
+    \textbf{Ahmed Gamal}    & 9230132 \\
+    \textbf{Yousef Adel}    & 9231019 \\
+  \end{tabular}
 
-    {\large\color{foamwhite}\itshape
-        A 3D Survival Game — Defend Your Raft, Survive the Sea
-    }
+  \vspace{1.2cm}
+  {\large Cairo University \(\cdot\) Spring 2025}
 
-    \vspace{1.2cm}
-
-    % Game image placeholder / actual image
-    \fbox{%
-        \begin{minipage}{0.7\textwidth}
-            \centering
-            \IfFileExists{./grandtide.png}{%
-                \includegraphics[width=\linewidth, height=8cm, keepaspectratio]{./grandtide.png}%
-            }{%
-                \vspace{3cm}
-                \textcolor{wavecrest}{\Large\faWater}\\[6pt]
-                \textcolor{white}{\small\itshape [grandtide.png not found — place it beside this .tex file]}
-                \vspace{3cm}
-            }
-        \end{minipage}
-    }
-
-    \vspace{1.2cm}
-
-    % Team table
-    \begin{tcolorbox}[
-        colback=white!10!oceandeep,
-        colframe=wavecrest,
-        arc=6pt, boxrule=1pt,
-        width=0.85\textwidth
-    ]
-    \centering\color{white}
-    \begin{tabular}{@{}lll@{}}
-        \toprule
-        \rowcolor{oceanbright!60}
-        \textbf{Name} & \textbf{Section} & \textbf{Student ID} \\
-        \midrule
-        Ahmed Fathy     & 1 & 9230162 \\
-        Ahmed Gamal     & 1 & 9230132 \\
-        Mohamed Yasser  & 2 & 9230824 \\
-        Yousef Adel     & 2 & 9231019 \\
-        \bottomrule
-    \end{tabular}
-    \end{tcolorbox}
-
-    \vfill
-    {\small\color{textmuted} Game Proposal \textbar{} Deadline: Monday, 27 April 2026}
+  \vfill
+  {\color{seafoam}\rule{0.6\linewidth}{1.5pt}}
 \end{titlepage}
 
-% Restore page color
-\pagecolor{white}
-\color{textprimary}
-
-% ╔══════════════════════════════════════════════════════════════════════════╗
-% ║  PAGE 1 — OVERVIEW                                                       ║
-% ╚══════════════════════════════════════════════════════════════════════════╝
-\setcounter{page}{1}
-
 % ─── Game Description ────────────────────────────────────────────────────────
-\section{Game Overview}
+\section{Game Description}
 
-\begin{tcolorbox}[oceansection, title={\faGamepad\quad Game Description}]
-\textbf{Ocean Adventure: Grand Tide} is a fast-paced 3D survival game in which the player
-takes on the role of a castaway stranded on a drifting wooden raft in the middle of a vast,
-dangerous ocean.
+The player is stranded alone on a small wooden raft drifting across an open sea in the One Piece universe.
+The goal is to survive, grow the raft, fight off threats from the ocean, and eventually reach a distant island to
+find the One Piece.
 
-\vspace{6pt}
+The core survival loop is borrowed from the indie game \textit{Raft}: materials float past on the water surface
+and must be hooked and pulled aboard, then used to expand the raft and craft tools. On top of that loop sits
+the One Piece setting --- the player is a Devil Fruit user, enemies are drawn from the series, allies can be
+rescued and join the crew, and the sea itself is rendered as a living, dangerous world.
 
-The primary objective is to \textbf{survive as long as possible} by defending the raft against
-waves of dynamically spawning enemy marine ships and floating ocean hazards. The player wields
-a \textbf{magical fire-based combat system} — aiming and launching projectile attacks to destroy
-enemy vessels before they can ram into and destroy the raft.
+% ─── Gameplay ────────────────────────────────────────────────────────────────
+\section{Gameplay}
 
-\vspace{6pt}
+\subsection{Fishing and Hunting}
+Fishing rods catch fish passively over time. The player can also actively hunt sharks that circle the raft.
+Kills drop meat, fins, and occasionally rare materials.
 
-As the player's survival score increases, enemy waves grow faster and more numerous, escalating
-the tension with every passing moment. The world is brought to life through a \textbf{full
-day-and-night cycle} illuminated by dynamic lights, fire-glow from projectiles, and explosion
-flares that cast real-time colour onto the surrounding water and raft geometry.
+\subsection{Devil Fruit Powers}
+Devil Fruit Fragments are rare glowing items found on debris or dropped by enemies. Collecting them fills
+the power gauge. The player then activates a powerful ability that clears nearby enemies. The gauge resets
+after each use.
 
-\vspace{6pt}
+\subsection{End Goal}
+After defeating the Sea King boss and a Marine fleet, the Destination Island appears. Reaching it and
+completing a final encounter wins the game --- the player finds the One Piece.
 
-{\centering
-\begin{tabularx}{0.95\linewidth}{@{}l X l X@{}}
-    \textcolor{oceanbright}{\faFlag}\;\textbf{Genre:}      & 3D Survival / Arcade  &
-    \textcolor{oceanbright}{\faEye}\;\textbf{Camera:}      & Third-Person Dynamic  \\[4pt]
-    \textcolor{oceanbright}{\faClock}\;\textbf{Win Goal:}  & Max survival time     &
-    \textcolor{oceanbright}{\faBolt}\;\textbf{Core Loop:}  & Aim $\rightarrow$ Shoot $\rightarrow$ Survive \\
-\end{tabularx}
-\par}
-\end{tcolorbox}
+% ─── Menus and UI ────────────────────────────────────────────────────────────
+\section{Menus and UI}
 
-% ─── Game Image ──────────────────────────────────────────────────────────────
-\section{Concept Art / Mockup}
+A main menu on launch offers options to start, adjust settings, or quit. A pause menu is accessible at any time
+during play with options to resume, restart, or return to the main menu.
 
-\begin{center}
-\IfFileExists{./grandtide.png}{%
-    \includegraphics[width=0.88\textwidth, keepaspectratio]{./grandtide.png}
-    \par\vspace{4pt}
-    \small\textit{\textcolor{textmuted}{Figure 1 — Ocean Adventure: Grand Tide — Game Mockup}}
-}{%
-    \begin{tcolorbox}[
-        colback=foamwhite, colframe=wavecrest,
-        arc=6pt, halign=center,
-        height=7cm, valign=center
-    ]
-        \color{oceanbright}{\Huge\faWater}\\[8pt]
-        \color{textmuted}\itshape
-        Place \texttt{grandtide.png} in the same folder as this \texttt{.tex} file\\
-        and recompile to show the game image here.
-    \end{tcolorbox}
-}
-\end{center}
+The in-game HUD shows the player's health bar, hunger and thirst meters, the Devil Fruit power gauge, a
+material counter for common resources, and a small crew panel listing rescued allies and their roles.
 
-\newpage
+% ─── Technical Features ──────────────────────────────────────────────────────
+\section{Technical Features}
 
-% ╔══════════════════════════════════════════════════════════════════════════╗
-% ║  PAGE 2 — TECHNICAL ALIGNMENT                                            ║
-% ╚══════════════════════════════════════════════════════════════════════════╝
-\section{Technical Alignment with Requirements}
+\subsection{Water Shader}
+The ocean is rendered with a custom GLSL shader. The vertex stage displaces surface positions using summed
+sine waves to create rolling wave motion. The fragment stage applies a Fresnel reflection, a cubemap skybox
+reflected on the water surface, refraction beneath the water plane using a framebuffer texture, and
+procedural foam near the raft edges.
 
-The table below maps each required feature to our planned implementation.
+\subsection{3D Assets}
+Every character, enemy, and prop uses an imported low-poly mesh loaded via Assimp. No primitive shapes
+are used as final art.
 
-\renewcommand{\arraystretch}{1.5}
-\begin{tabularx}{\linewidth}{
-    >{\centering\arraybackslash}m{0.4cm}
-    >{\bfseries\color{oceanbright}}m{3.2cm}
-    X
-}
-\toprule
-\rowcolor{oceandeep}
-\multicolumn{1}{c}{\color{white}\textbf{\#}} &
-\multicolumn{1}{c}{\color{white}\textbf{Requirement}} &
-\multicolumn{1}{c}{\color{white}\textbf{Implementation Plan}} \\
-\midrule
+\subsection{Entity-Component-System}
+Game logic is built on a lightweight ECS framework. Spawn positions of enemies and materials, tile layout,
+and crew events are randomly generated at runtime.
 
-\rowcolor{rowalt}
-\textcolor{goldaccent}{\faCheckCircle} &
-3D Models \& Textures &
-Imported meshes for player character, wooden raft, enemy ships, floating barrels and ocean surface. All objects use \textbf{lit materials} with albedo, specular, and roughness texture maps. \\
+\subsection{Physics and Combat}
+Entities move in 3D space with bounding-box collision detection. Player attacks use ray-casting to check hits
+against enemy hitboxes. Sharks target the nearest foundation tile. Marine soldiers pathfind to the player once
+aboard the raft.
 
-\textcolor{fireaccent}{\faCheckCircle} &
-Lighting &
-\textbf{Directional light} for sun / moon (day-night cycle). \textbf{Dynamic point lights} emitted by fire projectiles and ship explosions that illuminate nearby geometry and water in real time. \\
+\subsection{Lighting}
+A directional light handles main world illumination using a Phong shading model. Devil Fruit Fragments carry
+a local point light so they glow against the water. The sky is rendered as a cubemap skybox.
 
-\rowcolor{rowalt}
-\textcolor{goldaccent}{\faCheckCircle} &
-Dynamic Elements &
-Enemy ships \textbf{spawn dynamically} and navigate toward the player's raft. Floating barrel hazards drift across the scene. Every object reacts to player actions. \\
+% ─── Enemies ─────────────────────────────────────────────────────────────────
+\section{Enemies}
 
-\textcolor{fireaccent}{\faCheckCircle} &
-Interaction \& Game Logic &
-Core loop: \textit{aim} with the cursor, \textit{shoot} fire projectiles, \textit{score points} per destroyed ship. Difficulty scales with the survival timer. Clear win/lose conditions are defined. \\
+\subsection{Shark}
+The most common threat. Sharks circle the raft and bite foundation tiles, dealing structural damage over time.
+Killed with melee weapons or Devil Fruit. Drops meat and scales.
 
-\rowcolor{rowalt}
-\textcolor{goldaccent}{\faCheckCircle} &
-Collision Detection &
-\textbf{3D bounding-box collision} for ship-raft impacts; \textbf{ray-sphere casting} for projectile-to-ship hit registration. \\
+\subsection{Giant Octopus}
+Rises from below mid-game. Tentacles slam the deck and destroy structures while the body stays submerged.
+Requires ranged attacks or Devil Fruit to damage. Drops tentacle meat and devil fragments.
 
-\textcolor{fireaccent}{\faCheckCircle} &
-Camera Motion &
-\textbf{Third-person dynamic camera} follows the player, pans with aiming input, and smoothly adjusts height/distance during combat. \\
+\subsection{Marine Ships}
+Warships approach from the horizon as the raft grows. They open with cannon fire that destroys tiles in an
+area. Ship size escalates from a patrol sloop early on to a full warship late in the game.
 
-\rowcolor{rowalt}
-\textcolor{goldaccent}{\faCheckCircle} &
-Sky Sphere &
-Full \textbf{sky sphere} with a seamless ocean-sky panoramic texture. Blends between day and night sky states as the in-game time progresses. \\
+\subsection{Sea King (Boss)}
+A massive sea serpent that acts as the gate to the final island. Multi-phase boss fight. Defeating it unlocks
+the route to the Destination Island.
 
-\textcolor{fireaccent}{\faCheckCircle} &
-Post-Processing &
-Custom \textbf{screen-shake} + \textbf{red-vignette pulse} effect triggered on raft damage. Optionally, a \textbf{chromatic aberration} burst on explosions — both implemented via framebuffer post-processing. \\
+% ─── Devil Fruit System ──────────────────────────────────────────────────────
+\section{Devil Fruit System}
 
-\rowcolor{rowalt}
-\textcolor{goldaccent}{\faCheckCircle} &
-Game States &
-\textbf{Menu State} (title screen, start/quit buttons) and \textbf{Play State} (active gameplay), with clean transitions. All scene data loaded from \texttt{.jsonc} config files — \textbf{no hard-coded scene data}. \\
+The Devil Fruit is selected at the start of the game. Its power is unavailable until five fragments are
+collected, filling the gauge. Activating it unleashes a special ability and empties the gauge.
 
-\bottomrule
-\end{tabularx}
-\renewcommand{\arraystretch}{1}
+The following fruits may be implemented (2 planned):
 
-\vspace{10pt}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Mera Mera no Mi} (Fire --- Ace) --- AOE fire burst around the player.
+  \item \textbf{Gura Gura no Mi} (Quake --- Whitebeard) --- Shockwave that pushes enemies back and damages ships.
+  \item \textbf{Ope Ope no Mi} (Op-Op --- Law) --- ROOM dome that slows enemies inside.
+  \item \textbf{Hie Hie no Mi} (Ice --- Aokiji) --- Freezes a patch of sea, trapping nearby sharks.
+  \item \textbf{Gomu Gomu no Mi} (Rubber --- Luffy) --- Reflects cannon balls and extends melee reach.
+\end{itemize}
 
-\newpage
-% ─── Gameplay Loop Diagram ───────────────────────────────────────────────────
-\subsection{Core Gameplay Loop}
+% ─── Crew System ─────────────────────────────────────────────────────────────
+\section{Crew System}
+
+Survivors in life jackets appear in the sea once the raft is large enough. The player rescues them and assigns
+each one a role:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Fisher} --- catches fish passively over time.
+  \item \textbf{Guard} --- attacks nearby sharks and small enemies automatically.
+  \item \textbf{Builder} --- speeds up crafting and slowly repairs damaged tiles.
+  \item \textbf{Navigator} --- gives early warning when Marine ships approach.
+  \item \textbf{Medic} --- slowly regenerates player health when out of combat.
+\end{itemize}
+
+Crew characters are based on the Straw Hat crew (Zoro, Nami, Usopp, Chopper, Robin).
+
+% ─── Game Previews ───────────────────────────────────────────────────────────
+\section{Game Previews}
+
+Here are some previews from inside the game:
 
 \begin{center}
-\resizebox{0.95\textwidth}{!}{
-\begin{tikzpicture}[
-    node distance=1.2cm and 1.5cm,
-    every node/.style={font=\small\bfseries},
-    box/.style={
-        rectangle, rounded corners=6pt,
-        minimum width=2.8cm, minimum height=1.0cm,
-        text centered, draw=oceanbright, line width=1pt,
-        fill=foamwhite, text=textprimary
-    },
-    arrow/.style={-Latex, thick, color=oceanbright, rounded corners=6pt}
-]
-    \node[box, fill=oceandeep, text=white] (start) {Game Starts};
-    \node[box, right=of start] (spawn) {Enemies Spawn};
-    \node[box, right=of spawn] (aim) {Player Aims};
-    \node[box, right=of aim] (shoot) {Fire Projectile};
-    
-    \node[box, below=1.5cm of shoot] (hit) {Hit Detection};
-    \node[box, left=of hit, fill=successgreen!10, draw=successgreen] (score) {Score +1};
-    \node[box, left=of score] (wave) {Wave Scales Up};
-    
-    \node[box, below=1.5cm of hit, fill=fireaccent!10, draw=fireaccent] (dmg) {Raft Takes Damage};
-    \node[box, left=of dmg, fill=oceandeep!20, draw=oceandeep!80] (over) {Game Over};
-
-    \draw[arrow] (start) -- (spawn);
-    \draw[arrow] (spawn) -- (aim);
-    \draw[arrow] (aim) -- (shoot);
-    \draw[arrow] (shoot) -- (hit);
-    
-    \draw[arrow] (hit) -- node[above, font=\footnotesize, color=successgreen]{Hit Enemy} (score);
-    \draw[arrow] (score) -- (wave);
-    \draw[arrow] (wave.north) -- (spawn.south) node[midway, left, font=\footnotesize, color=oceanbright]{Next Wave};
-    
-    \draw[arrow] (hit) -- node[right, font=\footnotesize, color=fireaccent]{Missed / Rammed} (dmg);
-    \draw[arrow] (dmg) -- (over);
-\end{tikzpicture}
-}
+  \includegraphics[width=0.7\linewidth]{I1.png}
 \end{center}
 
-\vspace{8pt}
+\begin{center}
+  \includegraphics[width=0.7\linewidth]{I2.png}
+\end{center}
 
-% ─── Prototype Strategy ──────────────────────────────────────────────────────
-\subsection{Prototype-First Development Strategy}
+\begin{center}
+  \includegraphics[width=0.7\linewidth]{I3.png}
+\end{center}
 
-\begin{tcolorbox}[
-    colback=oceandeep!5, colframe=oceanbright!40,
-    arc=4pt, boxrule=0.8pt,
-    left=8pt, right=8pt, top=6pt, bottom=6pt
-]
-\begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
-    \item \textbf{Minimal Prototype:} Single raft mesh, one enemy ship that moves toward the player, basic fire projectile with ray-sphere hit detection. Verify all Phase~1 rendering systems work together.
-    \item \textbf{Core Mechanics:} Add spawn manager (waves), score counter, raft HP, and game-over condition.
-    \item \textbf{Polish:} Integrate lit materials, day-night directional light, dynamic point lights from fire/explosions, sky sphere, and post-processing effects.
-    \item \textbf{Content Expansion:} Full ocean environment, all 3D models, complete config-file scene descriptions, and menu state integration.
-\end{enumerate}
-\end{tcolorbox}
+% ─── Bonus Section ───────────────────────────────────────────────────────────
+\newpage
+\titleformat{\section}
+  {\large\bfseries\color{bonuscolor}\scshape}
+  {}
+  {0em}
+  {}
+  [\vspace{-0.3em}\color{bonuscolor}\rule{\linewidth}{1.5pt}\vspace{0.3em}]
 
+\section{Bonus Features}
+
+The following gameplay systems are planned as bonus additions, to be implemented if time permits beyond the
+core requirements.
+
+\subsection{Collecting Materials}
+Materials spawn on the sea surface and drift past the raft. The player uses a hook to grab and reel them in.
+Items may include wood planks, rope, barrels, cloth, scrap metal, food, and rare Devil Fruit Fragments.
+
+\subsection{Building and Crafting}
+Materials are used to expand the raft floor one tile at a time and to craft structures: a water purifier, a
+cooking grill, storage crates, and fishing rod stands.
+
+\subsection{Rescuing Allies}
+Once the raft reaches a certain size, survivors in life jackets appear in the sea. The player can rescue them
+and assign them roles on the raft such as fishing, guarding, building, or navigating.
+
+% ═════════════════════════════════════════════════════════════════════════════
 \end{document}
