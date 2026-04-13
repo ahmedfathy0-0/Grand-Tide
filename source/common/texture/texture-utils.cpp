@@ -16,6 +16,7 @@ our::Texture2D* our::texture_utils::empty(GLenum format, glm::ivec2 size){
         type = GL_UNSIGNED_INT;
     }
     glTexImage2D(GL_TEXTURE_2D, 0, format, size.x, size.y, 0, baseFormat, type, nullptr);
+    texture->unbind();
     return texture;
 }
 
@@ -36,7 +37,7 @@ our::Texture2D* our::texture_utils::loadImage(const std::string& filename, bool 
     unsigned char* pixels = stbi_load(filename.c_str(), &size.x, &size.y, &channels, 4);
     if(pixels == nullptr){
         std::cerr << "Failed to load image: " << filename << std::endl;
-        return nullptr;
+        return nullptr; 
     }
     // Create a texture
     our::Texture2D* texture = new our::Texture2D();
@@ -47,5 +48,6 @@ our::Texture2D* our::texture_utils::loadImage(const std::string& filename, bool 
     if (generate_mipmap)
      glGenerateMipmap(GL_TEXTURE_2D);
     stbi_image_free(pixels); //Free image data after uploading to GPU
+    texture->unbind();
     return texture;
 }

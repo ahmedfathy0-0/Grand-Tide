@@ -49,6 +49,8 @@ class TextureTestState: public our::State {
         // Then we send 0 (the index of the texture unit we used above) to the "tex" uniform
         shader->set("tex", 0);
         mesh->draw();
+        // Then we unbind the texture
+        our::Texture2D::unbind();
     }
 
     void onDestroy() override {

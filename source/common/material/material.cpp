@@ -52,6 +52,13 @@ namespace our {
         shader->set("tex", 0);
     }
 
+    // This function should unbind the texture and sampler from the texture unit
+    void TexturedMaterial::teardown() const {
+        //TODO: (Req 7) Write this function
+        Sampler::unbind(0);
+        Texture2D::unbind();
+    }
+
     // This function read the material data from a json object
     void TexturedMaterial::deserialize(const nlohmann::json& data){
         TintedMaterial::deserialize(data);

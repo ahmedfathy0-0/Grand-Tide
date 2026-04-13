@@ -193,6 +193,7 @@ namespace our {
             command.material->setup();
             command.material->shader->set("transform", VP * command.localToWorld);
             command.mesh->draw();
+            command.material->teardown();
         }
         
         // If there is a sky material, draw the sky
@@ -219,7 +220,7 @@ namespace our {
             
             //TODO: (Req 10) draw the sky sphere
             skySphere->draw();
-            
+            skyMaterial->teardown();
         }
         //TODO: (Req 9) Draw all the transparent commands
         // Don't forget to set the "transform" uniform to be equal the model-view-projection matrix for each render command
@@ -227,6 +228,7 @@ namespace our {
             command.material->setup();
             command.material->shader->set("transform", VP * command.localToWorld);
             command.mesh->draw();
+            command.material->teardown();
         }
         
 
@@ -240,7 +242,7 @@ namespace our {
             glBindVertexArray(postProcessVertexArray);
             glDrawArrays(GL_TRIANGLES, 0, 3);
             glBindVertexArray(0);
-            
+            postprocessMaterial->teardown();
         }
     }
 

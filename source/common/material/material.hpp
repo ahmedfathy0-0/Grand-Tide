@@ -24,6 +24,8 @@ namespace our {
         
         // This function does 2 things: setup the pipeline state and set the shader program to be used
         virtual void setup() const;
+        // This function should be called after drawing to cleanup any state set during setup
+        virtual void teardown() const {}
         // This function read a material from a json object
         virtual void deserialize(const nlohmann::json& data);
     };
@@ -50,6 +52,7 @@ namespace our {
         float alphaThreshold;
 
         void setup() const override;
+        void teardown() const override;
         void deserialize(const nlohmann::json& data) override;
     };
 
