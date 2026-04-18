@@ -247,6 +247,8 @@ vec3 spc(float n,float bright){
 }
 float spec = 0.13;
 
+uniform vec3 camera_position;
+
 void main() {
     float iTime = u_time;
     // We already have the ray direction directly since it's mapped to a sphere!
@@ -255,7 +257,7 @@ void main() {
     // Virtual camera position to trace the infinite plane correctly.
     // If we use actual camera position here, the sea moves with the camera. 
     // We'll simulate a steady camera or slightly moving if needed.
-    vec3 ro = vec3(0,2.25,-3)*1.1; // + vec3(0,0,u_time*2.0); // could add movement
+    vec3 ro = camera_position; // Use the actual camera position so it moves with the player!
 
     vec3 col = vec3(0);
     
@@ -264,7 +266,7 @@ void main() {
     float d = 0.;
     vec3 p = ro;
 
-    float tPln = -(ro.y-1.86)/rd.y; // intersect with Y=1.86 plane
+    float tPln = -(ro.y - 0.0) / rd.y; // intersect with the actual sea surface at Y=0.0
     
     // Only trace if pointing downwards towards the plane!
     if(tPln>0.){
