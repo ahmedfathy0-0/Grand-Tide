@@ -333,8 +333,8 @@ namespace our {
                 // Draw slots using the special shader
                 tbMat->setup();
                 drawToolbarSlot(20, tbY, 60, (playerInventory->activeSlot == 1), darkGlass);
-                drawToolbarSlot(100, tbY, 60, (playerInventory->activeSlot == 2), darkGlass);
-                drawToolbarSlot(180, tbY, 60, (playerInventory->activeSlot == 3), darkGlass);
+                drawToolbarSlot(120, tbY, 60, (playerInventory->activeSlot == 2), darkGlass);
+                drawToolbarSlot(220, tbY, 60, (playerInventory->activeSlot == 3), darkGlass);
                 tbMat->teardown();
 
                 auto drawIcon = [&](float x, float y, float size, TexturedMaterial* mat) {
@@ -348,17 +348,17 @@ namespace our {
                     mat->teardown();
                 };
 
-                drawIcon(25, tbY + 5, 50, iconHammerMat);
-                drawIcon(105, tbY + 5, 50, iconNetMat);
-                drawIcon(185, tbY + 5, 50, iconSpearMat);
+                drawIcon(30, tbY + 10, 40, iconHammerMat);
+                drawIcon(130, tbY + 10, 40, iconNetMat);
+                drawIcon(230, tbY + 10, 40, iconSpearMat);
 
                 uiMat->setup();
                 // Draw indicators for resources (small squares)
                 if (playerInventory->woodCount > 0) {
-                    drawQuad(260, tbY, 20, 20, glm::vec4(0.5, 0.3, 0.1, 1)); // Brown for Wood
+                    drawQuad(300, tbY, 20, 20, glm::vec4(0.5, 0.3, 0.1, 1)); // Brown for Wood
                 }
                 if (playerInventory->fishCount > 0) {
-                    drawQuad(260, tbY + 30, 20, 20, glm::vec4(0.2, 0.6, 1.0, 1)); // Blue for Fish
+                    drawQuad(300, tbY + 30, 20, 20, glm::vec4(0.2, 0.6, 1.0, 1)); // Blue for Fish
                 }
                 uiMat->teardown();
             }
