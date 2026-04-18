@@ -4,7 +4,7 @@
 
 #include <ecs/world.hpp>
 #include <systems/forward-renderer.hpp>
-#include <systems/free-camera-controller.hpp>
+#include <systems/player-controller-system.hpp>
 #include <systems/movement.hpp>
 #include <asset-loader.hpp>
 
@@ -13,7 +13,7 @@ class Playstate: public our::State {
 
     our::World world;
     our::ForwardRenderer renderer;
-    our::FreeCameraControllerSystem cameraController;
+    our::PlayerControllerSystem cameraController; // Now utilizing Player Controller explicitly
     our::MovementSystem movementSystem;
 
     void onInitialize() override {
