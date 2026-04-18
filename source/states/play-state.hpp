@@ -56,7 +56,7 @@ class Playstate: public our::State {
                 
                 ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
                 if (inv->woodCount > 0) {
-                    ImGui::SetNextWindowPos(ImVec2(48, tbY - 51));
+                    ImGui::SetNextWindowPos(ImVec2(58, tbY - 51));
                     ImGui::SetNextWindowBgAlpha(0.0f);
                     ImGui::Begin("WoodCounter", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize);
                     ImGui::Text("%d", inv->woodCount);
@@ -64,7 +64,7 @@ class Playstate: public our::State {
                 }
                 
                 if (inv->fishCount > 0) {
-                    ImGui::SetNextWindowPos(ImVec2(118, tbY - 51));
+                    ImGui::SetNextWindowPos(ImVec2(148, tbY - 51));
                     ImGui::SetNextWindowBgAlpha(0.0f);
                     ImGui::Begin("FishCounter", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize);
                     ImGui::Text("%d", inv->fishCount);

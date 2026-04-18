@@ -336,15 +336,15 @@ namespace our {
                 
                 // Draw slots using the special shader
                 tbMat->setup();
-                drawToolbarSlot(20, tbY, 40, (playerInventory->activeSlot == 1), whiteGlass);
-                drawToolbarSlot(90, tbY, 40, (playerInventory->activeSlot == 2), whiteGlass);
-                drawToolbarSlot(160, tbY, 40, (playerInventory->activeSlot == 3), whiteGlass);
+                drawToolbarSlot(30, tbY, 40, (playerInventory->activeSlot == 1), whiteGlass);
+                drawToolbarSlot(120, tbY, 40, (playerInventory->activeSlot == 2), whiteGlass);
+                drawToolbarSlot(210, tbY, 40, (playerInventory->activeSlot == 3), whiteGlass);
                 // Draw resource slots using the special shader
                 if (playerInventory->woodCount > 0) {
-                    drawToolbarSlot(20, tbY - 55, 24, false, whiteGlass);
+                    drawToolbarSlot(30, tbY - 55, 24, false, whiteGlass);
                 }
                 if (playerInventory->fishCount > 0) {
-                    drawToolbarSlot(90, tbY - 55, 24, false, whiteGlass);
+                    drawToolbarSlot(120, tbY - 55, 24, false, whiteGlass);
                 }
                 tbMat->teardown();
 
@@ -359,15 +359,15 @@ namespace our {
                     mat->teardown();
                 };
 
-                drawIcon(28, tbY + 8, 24, iconHammerMat);
-                drawIcon(98, tbY + 8, 24, iconNetMat);
-                drawIcon(168, tbY + 8, 24, iconSpearMat);
+                drawIcon(38, tbY + 8, 24, iconHammerMat);
+                drawIcon(128, tbY + 8, 24, iconNetMat);
+                drawIcon(218, tbY + 8, 24, iconSpearMat);
 
                 if (playerInventory->woodCount > 0) {
-                    drawIcon(24, tbY - 51, 16, iconWoodMat);
+                    drawIcon(34, tbY - 51, 16, iconWoodMat);
                 }
                 if (playerInventory->fishCount > 0) {
-                    drawIcon(94, tbY - 51, 16, iconFishMat);
+                    drawIcon(124, tbY - 51, 16, iconFishMat);
                 }
 
                 // Text is handled in Playstate::onImmediateGui() due to ImGui lifecycle
