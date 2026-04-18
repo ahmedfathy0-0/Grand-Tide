@@ -61,6 +61,8 @@ set(COMMON_SOURCES
         source/common/material/pipeline-state.cpp
         source/common/material/material.hpp
         source/common/material/material.cpp
+        source/common/material/lit-material.hpp
+        source/common/material/lit-material.cpp
 
         source/common/ecs/component.hpp
         source/common/ecs/transform.hpp
@@ -70,6 +72,8 @@ set(COMMON_SOURCES
         source/common/ecs/world.hpp
         source/common/ecs/world.cpp
 
+        source/common/components/light.hpp
+        source/common/components/light.cpp
         source/common/components/camera.hpp
         source/common/components/camera.cpp
         source/common/components/mesh-renderer.hpp
@@ -78,6 +82,8 @@ set(COMMON_SOURCES
         source/common/components/free-camera-controller.cpp
         source/common/components/movement.hpp
         source/common/components/movement.cpp
+        source/common/components/player-controller.hpp
+        source/common/components/player-controller.cpp
         source/common/components/health.hpp
         source/common/components/health.cpp
         source/common/components/inventory.hpp
@@ -92,6 +98,8 @@ set(COMMON_SOURCES
         source/common/systems/forward-renderer.hpp
         source/common/systems/forward-renderer.cpp
         source/common/systems/free-camera-controller.hpp
+        source/common/systems/player-controller-system.hpp
+
         source/common/systems/movement.hpp
         source/common/systems/survival-system.hpp
         source/common/systems/survival-system.cpp

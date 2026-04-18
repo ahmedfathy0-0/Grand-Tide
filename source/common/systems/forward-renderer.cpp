@@ -1,6 +1,8 @@
 #include "forward-renderer.hpp"
 #include "../mesh/mesh-utils.hpp"
 #include "../texture/texture-utils.hpp"
+#include "../components/light.hpp"
+#include "../material/lit-material.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 #include "../components/health.hpp"
 #include "../components/inventory.hpp"
@@ -19,10 +21,15 @@ namespace our {
             // First, we create a sphere which will be used to draw the sky
             this->skySphere = mesh_utils::sphere(glm::ivec2(16, 16));
             
-            // We can draw the sky using the same shader used to draw textured objects
+            // We can draw the sky using the same shader used to draw textured objects (or our procedural one)
             ShaderProgram* skyShader = new ShaderProgram();
-            skyShader->attach("assets/shaders/textured.vert", GL_VERTEX_SHADER);
-            skyShader->attach("assets/shaders/textured.frag", GL_FRAGMENT_SHADER);
+            if (config.value<std::string>("sky", "") == "procedural") {
+                skyShader->attach("assets/shaders/procedural_sky.vert", GL_VERTEX_SHADER);
+                skyShader->attach("assets/shaders/procedural_sky.frag", GL_FRAGMENT_SHADER);
+            } else {
+                skyShader->attach("assets/shaders/textured.vert", GL_VERTEX_SHADER);
+                skyShader->attach("assets/shaders/textured.frag", GL_FRAGMENT_SHADER);
+            }
             skyShader->link();
             
             //TODO: (Req 10) Pick the correct pipeline state to draw the sky
@@ -37,24 +44,33 @@ namespace our {
             
             // Load the sky texture (note that we don't need mipmaps since we want to avoid any unnecessary blurring while rendering the sky)
             std::string skyTextureFile = config.value<std::string>("sky", "");
-            Texture2D* skyTexture = texture_utils::loadImage(skyTextureFile, false);
+            
+            if (skyTextureFile == "procedural" || skyTextureFile.empty()) {
+                this->skyMaterial = new Material();
+                this->skyMaterial->shader = skyShader;
+                this->skyMaterial->pipelineState = skyPipelineState;
+                this->skyMaterial->transparent = false;
+            } else {
+                Texture2D* skyTexture = texture_utils::loadImage(skyTextureFile, false);
 
-            // Setup a sampler for the sky 
-            Sampler* skySampler = new Sampler();
-            skySampler->set(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            skySampler->set(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            skySampler->set(GL_TEXTURE_WRAP_S, GL_REPEAT);
-            skySampler->set(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                // Setup a sampler for the sky 
+                Sampler* skySampler = new Sampler();
+                skySampler->set(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                skySampler->set(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                skySampler->set(GL_TEXTURE_WRAP_S, GL_REPEAT);
+                skySampler->set(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-            // Combine all the aforementioned objects (except the mesh) into a material 
-            this->skyMaterial = new TexturedMaterial();
-            this->skyMaterial->shader = skyShader;
-            this->skyMaterial->texture = skyTexture;
-            this->skyMaterial->sampler = skySampler;
-            this->skyMaterial->pipelineState = skyPipelineState;
-            this->skyMaterial->tint = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-            this->skyMaterial->alphaThreshold = 1.0f;
-            this->skyMaterial->transparent = false;
+                // Combine all the aforementioned objects (except the mesh) into a material 
+                TexturedMaterial* texMat = new TexturedMaterial();
+                texMat->shader = skyShader;
+                texMat->texture = skyTexture;
+                texMat->sampler = skySampler;
+                texMat->pipelineState = skyPipelineState;
+                texMat->tint = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+                texMat->alphaThreshold = 1.0f;
+                texMat->transparent = false;
+                this->skyMaterial = texMat;
+            }
         }
 
         // Then we check if there is a postprocessing shader in the configuration
@@ -106,8 +122,10 @@ namespace our {
         if(skyMaterial){
             delete skySphere;
             delete skyMaterial->shader;
-            delete skyMaterial->texture;
-            delete skyMaterial->sampler;
+            if (auto texMat = dynamic_cast<TexturedMaterial*>(skyMaterial); texMat) {
+                delete texMat->texture;
+                delete texMat->sampler;
+            }
             delete skyMaterial;
         }
         // Delete all objects related to post processing
@@ -147,9 +165,14 @@ namespace our {
                 }
             }
         }
-
-        // If there is no camera, we return (we cannot render without a camera)
-        if(camera == nullptr) return;
+        
+        // Gather all light components
+        std::vector<std::pair<LightComponent*, glm::mat4>> lights;
+        for(auto entity : world->getEntities()){
+            if(auto light = entity->getComponent<LightComponent>(); light){
+                lights.push_back({light, entity->getLocalToWorldMatrix()});
+            }
+        }
 
         glm::mat4 cameraLocalToWorld = camera->getOwner()->getLocalToWorldMatrix();
         glm::vec3 cameraPosition = glm::vec3(cameraLocalToWorld * glm::vec4(0, 0, 0, 1));
@@ -196,6 +219,62 @@ namespace our {
         // Don't forget to set the "transform" uniform to be equal the model-view-projection matrix for each render command
         for(const auto& command : opaqueCommands){
             command.material->setup();
+            
+            // Set lighting uniforms if applicable
+            if (auto lit_material = dynamic_cast<LitMaterial*>(command.material); lit_material != nullptr) {
+                // Determine camera position from the 'camera' component's view matrix directly as it might be easier
+                glm::mat4 V = camera->getViewMatrix();
+                glm::vec3 eye = glm::vec3(glm::inverse(V)[3]);
+
+                float u_time = (float)glfwGetTime();
+                
+                // Keep the exact same day/night speed and vector as the shader
+                float dayNightSpeed = 0.05f;
+                float skyTime = u_time * dayNightSpeed;
+                
+                // Sun rotates
+                glm::vec3 sun_dir = glm::normalize(glm::vec3(0.0f, std::sin(skyTime), -std::cos(skyTime)));
+                
+                // Color fades when going below the horizon
+                float height = std::max(sun_dir.y, 0.0f);
+                glm::vec3 sun_col_day = glm::vec3(1.0f, 0.9f, 0.8f);
+                glm::vec3 sun_col_sunset = glm::vec3(1.0f, 0.4f, 0.2f);
+                glm::vec3 sun_color = glm::mix(sun_col_sunset, sun_col_day, height);
+                // Ramp intensity down gently at the horizon
+                float intensity = 3.0f * glm::smoothstep(-0.1f, 0.1f, sun_dir.y);
+
+                lit_material->shader->set("camera_position", eye);
+                lit_material->shader->set("light_count", (int)lights.size() + 1);
+                
+                // Add the sun as the first light
+                lit_material->shader->set("lights[0].type", 0);
+                lit_material->shader->set("lights[0].color", sun_color);
+                lit_material->shader->set("lights[0].intensity", intensity); 
+                lit_material->shader->set("lights[0].position", -sun_dir);
+
+                for(size_t i = 0; i < lights.size(); ++i) {
+                    auto* light = lights[i].first;
+                    glm::mat4 lightTrans = lights[i].second;
+                    std::string lightStr = "lights[" + std::to_string(i + 1) + "]";
+                    
+                    lit_material->shader->set(lightStr + ".type", light->type == LightType::POINT ? 1 : 0);
+                    lit_material->shader->set(lightStr + ".color", light->color);
+                    lit_material->shader->set(lightStr + ".intensity", light->intensity);
+                    
+                    if (light->type == LightType::POINT) {
+                        lit_material->shader->set(lightStr + ".position", glm::vec3(lightTrans[3]));
+                    } else { 
+                        // For directional lights, position acts as the direction vector
+                        glm::vec3 direction = glm::normalize(glm::vec3(lightTrans * glm::vec4(0, 0, -1, 0)));
+                        lit_material->shader->set(lightStr + ".position", direction);
+                    }
+                }
+                
+                lit_material->shader->set("M", command.localToWorld);
+                lit_material->shader->set("M_IT", glm::transpose(glm::inverse(command.localToWorld)));
+                lit_material->shader->set("VP", VP);
+            }
+            
             command.material->shader->set("transform", VP * command.localToWorld);
             command.mesh->draw();
             command.material->teardown();
@@ -222,6 +301,8 @@ namespace our {
             );
             //TODO: (Req 10) set the "transform" uniform
             skyMaterial->shader->set("transform", alwaysBehindTransform * VP * skyModel);
+            skyMaterial->shader->set("camera_position", cameraPosition);
+            skyMaterial->shader->set("u_time", (float)glfwGetTime());
             
             //TODO: (Req 10) draw the sky sphere
             skySphere->draw();
@@ -231,6 +312,59 @@ namespace our {
         // Don't forget to set the "transform" uniform to be equal the model-view-projection matrix for each render command
         for(const auto& command : transparentCommands){
             command.material->setup();
+            
+            if (auto lit_material = dynamic_cast<LitMaterial*>(command.material); lit_material != nullptr) {
+                glm::mat4 V = camera->getViewMatrix();
+                glm::vec3 eye = glm::vec3(glm::inverse(V)[3]);
+
+                float u_time = (float)glfwGetTime();
+                
+                // Keep the exact same day/night speed and vector as the shader
+                float dayNightSpeed = 0.05f;
+                float skyTime = u_time * dayNightSpeed;
+                
+                // Sun rotates
+                glm::vec3 sun_dir = glm::normalize(glm::vec3(0.0f, std::sin(skyTime), -std::cos(skyTime)));
+                
+                // Color fades when going below the horizon
+                float height = std::max(sun_dir.y, 0.0f);
+                glm::vec3 sun_col_day = glm::vec3(1.0f, 0.9f, 0.8f);
+                glm::vec3 sun_col_sunset = glm::vec3(1.0f, 0.4f, 0.2f);
+                glm::vec3 sun_color = glm::mix(sun_col_sunset, sun_col_day, height);
+                // Ramp intensity down gently at the horizon
+                float intensity = 3.0f * glm::smoothstep(-0.1f, 0.1f, sun_dir.y);
+
+                lit_material->shader->set("camera_position", eye);
+                lit_material->shader->set("light_count", (int)lights.size() + 1);
+                
+                // Add the sun as the first light
+                lit_material->shader->set("lights[0].type", 0);
+                lit_material->shader->set("lights[0].color", sun_color);
+                lit_material->shader->set("lights[0].intensity", intensity); 
+                lit_material->shader->set("lights[0].position", -sun_dir);
+
+                for(size_t i = 0; i < lights.size(); ++i) {
+                    auto* light = lights[i].first;
+                    glm::mat4 lightTrans = lights[i].second;
+                    std::string lightStr = "lights[" + std::to_string(i + 1) + "]";
+                    
+                    lit_material->shader->set(lightStr + ".type", light->type == LightType::POINT ? 1 : 0);
+                    lit_material->shader->set(lightStr + ".color", light->color);
+                    lit_material->shader->set(lightStr + ".intensity", light->intensity);
+                    
+                    if (light->type == LightType::POINT) {
+                        lit_material->shader->set(lightStr + ".position", glm::vec3(lightTrans[3]));
+                    } else {
+                        glm::vec3 direction = glm::normalize(glm::vec3(lightTrans * glm::vec4(0, 0, -1, 0)));
+                        lit_material->shader->set(lightStr + ".position", direction);
+                    }
+                }
+                
+                lit_material->shader->set("M", command.localToWorld);
+                lit_material->shader->set("M_IT", glm::transpose(glm::inverse(command.localToWorld)));
+                lit_material->shader->set("VP", VP);
+            }
+            
             command.material->shader->set("transform", VP * command.localToWorld);
             command.mesh->draw();
             command.material->teardown();
