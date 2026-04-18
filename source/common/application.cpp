@@ -181,6 +181,19 @@ int our::Application::run(int run_for_frames) {
         glfwTerminate();
         return -1;
     }
+
+    if (!win_config.isFullscreen) {
+        GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
+        if (primaryMonitor) {
+            const GLFWvidmode* mode = glfwGetVideoMode(primaryMonitor);
+            if (mode) {
+                int xpos = (mode->width - win_config.size.x) / 2;
+                int ypos = (mode->height - win_config.size.y) / 2;
+                glfwSetWindowPos(window, xpos, ypos);
+            }
+        }
+    }
+
     glfwMakeContextCurrent(window);         // Tell GLFW to make the context of our window the main context on the current thread.
 
     gladLoadGL(glfwGetProcAddress);         // Load the OpenGL functions from the driver

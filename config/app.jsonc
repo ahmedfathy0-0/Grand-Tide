@@ -7,7 +7,7 @@
             "width":1280,
             "height":720
         },
-        "fullscreen": false
+        "fullscreen": true
     },
     "scene": {
         "renderer":{
@@ -91,7 +91,13 @@
                         "type": "Camera"
                     },
                     {
-                        "type": "Free Camera Controller"
+                        "type": "PlayerController",
+                        "speed": 5.0,
+                        "speedupFactor": 2.0,
+                        "jumpVelocity": 5.0,
+                        "gravity": 15.0,
+                        "surfaceHeight": 0.0,
+                        "rotationSensitivity": 0.01
                     }
                 ]
             },
