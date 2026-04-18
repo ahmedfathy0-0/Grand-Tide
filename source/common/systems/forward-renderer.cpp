@@ -341,10 +341,10 @@ namespace our {
                 drawToolbarSlot(160, tbY, 40, (playerInventory->activeSlot == 3), whiteGlass);
                 // Draw resource slots using the special shader
                 if (playerInventory->woodCount > 0) {
-                    drawToolbarSlot(20, tbY - 40, 24, false, whiteGlass);
+                    drawToolbarSlot(20, tbY - 55, 24, false, whiteGlass);
                 }
                 if (playerInventory->fishCount > 0) {
-                    drawToolbarSlot(90, tbY - 40, 24, false, whiteGlass);
+                    drawToolbarSlot(90, tbY - 55, 24, false, whiteGlass);
                 }
                 tbMat->teardown();
 
@@ -364,10 +364,10 @@ namespace our {
                 drawIcon(168, tbY + 8, 24, iconSpearMat);
 
                 if (playerInventory->woodCount > 0) {
-                    drawIcon(24, tbY - 36, 16, iconWoodMat);
+                    drawIcon(24, tbY - 51, 16, iconWoodMat);
                 }
                 if (playerInventory->fishCount > 0) {
-                    drawIcon(94, tbY - 36, 16, iconFishMat);
+                    drawIcon(94, tbY - 51, 16, iconFishMat);
                 }
 
                 // Text is handled in Playstate::onImmediateGui() due to ImGui lifecycle
