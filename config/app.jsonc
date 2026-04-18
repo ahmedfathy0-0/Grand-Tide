@@ -23,6 +23,10 @@
           "vs": "assets/shaders/textured.vert",
           "fs": "assets/shaders/textured.frag",
         },
+        "health-bar": {
+          "vs": "assets/shaders/textured.vert",
+          "fs": "assets/shaders/health-bar.frag",
+        },
       },
       "textures": {
         "moon": "assets/textures/moon.jpg",
@@ -44,6 +48,12 @@
         },
       },
       "materials": {
+        "health-bar": {
+          "type": "tinted",
+          "shader": "health-bar",
+          "pipelineState": { "faceCulling": { "enabled": false }, "depthTesting": { "enabled": false }, "blending": { "enabled": true, "sourceFactor": "GL_SRC_ALPHA", "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA" }, "depthMask": false },
+          "tint": [1, 1, 1, 1]
+        },
         "tinted": {
           "type": "tinted",
           "shader": "tinted",
@@ -176,7 +186,7 @@
           {
             "type": "Health",
             "maxHealth": 100,
-            "currentHealth": 100
+            "currentHealth": 50
           },
           {
             "type": "Inventory"
