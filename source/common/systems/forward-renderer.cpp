@@ -5,6 +5,8 @@
 #include "../components/health.hpp"
 #include "../components/inventory.hpp"
 #include <GLFW/glfw3.h>
+#include <imgui.h>
+#include <string>
 
 namespace our {
 
@@ -260,6 +262,8 @@ namespace our {
         TexturedMaterial* iconHammerMat = dynamic_cast<TexturedMaterial*>(AssetLoader<Material>::get("icon_hammer"));
         TexturedMaterial* iconNetMat = dynamic_cast<TexturedMaterial*>(AssetLoader<Material>::get("icon_net"));
         TexturedMaterial* iconSpearMat = dynamic_cast<TexturedMaterial*>(AssetLoader<Material>::get("icon_spear"));
+        TexturedMaterial* iconWoodMat = dynamic_cast<TexturedMaterial*>(AssetLoader<Material>::get("icon_wood"));
+        TexturedMaterial* iconFishMat = dynamic_cast<TexturedMaterial*>(AssetLoader<Material>::get("icon_fish"));
         Mesh* uiMesh = AssetLoader<Mesh>::get("plane");
         
         if (uiMat && uiMesh && hbMat && tbMat) {
@@ -328,13 +332,20 @@ namespace our {
             // Inventory
             if (playerInventory) {
                 float tbY = windowSize.y - 80.0f; // Bottom left
-                glm::vec3 darkGlass(0.2f, 0.2f, 0.2f);
+                glm::vec3 whiteGlass(0.5f, 0.5f, 0.5f);
                 
                 // Draw slots using the special shader
                 tbMat->setup();
-                drawToolbarSlot(20, tbY, 60, (playerInventory->activeSlot == 1), darkGlass);
-                drawToolbarSlot(120, tbY, 60, (playerInventory->activeSlot == 2), darkGlass);
-                drawToolbarSlot(220, tbY, 60, (playerInventory->activeSlot == 3), darkGlass);
+                drawToolbarSlot(20, tbY, 40, (playerInventory->activeSlot == 1), whiteGlass);
+                drawToolbarSlot(90, tbY, 40, (playerInventory->activeSlot == 2), whiteGlass);
+                drawToolbarSlot(160, tbY, 40, (playerInventory->activeSlot == 3), whiteGlass);
+                // Draw resource slots using the special shader
+                if (playerInventory->woodCount > 0) {
+                    drawToolbarSlot(20, tbY - 40, 24, false, whiteGlass);
+                }
+                if (playerInventory->fishCount > 0) {
+                    drawToolbarSlot(90, tbY - 40, 24, false, whiteGlass);
+                }
                 tbMat->teardown();
 
                 auto drawIcon = [&](float x, float y, float size, TexturedMaterial* mat) {
@@ -348,19 +359,18 @@ namespace our {
                     mat->teardown();
                 };
 
-                drawIcon(30, tbY + 10, 40, iconHammerMat);
-                drawIcon(130, tbY + 10, 40, iconNetMat);
-                drawIcon(230, tbY + 10, 40, iconSpearMat);
+                drawIcon(28, tbY + 8, 24, iconHammerMat);
+                drawIcon(98, tbY + 8, 24, iconNetMat);
+                drawIcon(168, tbY + 8, 24, iconSpearMat);
 
-                uiMat->setup();
-                // Draw indicators for resources (small squares)
                 if (playerInventory->woodCount > 0) {
-                    drawQuad(300, tbY, 20, 20, glm::vec4(0.5, 0.3, 0.1, 1)); // Brown for Wood
+                    drawIcon(24, tbY - 36, 16, iconWoodMat);
                 }
                 if (playerInventory->fishCount > 0) {
-                    drawQuad(300, tbY + 30, 20, 20, glm::vec4(0.2, 0.6, 1.0, 1)); // Blue for Fish
+                    drawIcon(94, tbY - 36, 16, iconFishMat);
                 }
-                uiMat->teardown();
+
+                // Text is handled in Playstate::onImmediateGui() due to ImGui lifecycle
             }
         }
     }

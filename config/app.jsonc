@@ -40,7 +40,9 @@
         "monkey": "assets/textures/monkey.png",
         "hammer_icon": "assets/icons/hammer.png",
         "net_icon": "assets/icons/net.png",
-        "spear_icon": "assets/icons/spear.png"
+        "spear_icon": "assets/icons/spear.png",
+        "fish_icon": "assets/icons/fish.png",
+        "wood_icon": "assets/icons/wood.png"
       },
       "meshes": {
         "cube": "assets/models/cube.obj",
@@ -92,6 +94,24 @@
           "transparent": true,
           "tint": [1, 1, 1, 1],
           "texture": "spear_icon",
+          "sampler": "default"
+        },
+        "icon_fish": {
+          "type": "textured",
+          "shader": "textured",
+          "pipelineState": { "faceCulling": { "enabled": false }, "depthTesting": { "enabled": false }, "blending": { "enabled": true, "sourceFactor": "GL_SRC_ALPHA", "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA" }, "depthMask": false },
+          "transparent": true,
+          "tint": [1, 1, 1, 1],
+          "texture": "fish_icon",
+          "sampler": "default"
+        },
+        "icon_wood": {
+          "type": "textured",
+          "shader": "textured",
+          "pipelineState": { "faceCulling": { "enabled": false }, "depthTesting": { "enabled": false }, "blending": { "enabled": true, "sourceFactor": "GL_SRC_ALPHA", "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA" }, "depthMask": false },
+          "transparent": true,
+          "tint": [1, 1, 1, 1],
+          "texture": "wood_icon",
           "sampler": "default"
         },
         "tinted": {

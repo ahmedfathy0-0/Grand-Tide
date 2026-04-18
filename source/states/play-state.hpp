@@ -44,6 +44,37 @@ class Playstate: public our::State {
         survivalSystem.setup(&world, getApp(), player, boat);
     }
 
+    void onImmediateGui() override {
+        our::Entity* player = nullptr;
+        for (auto entity : world.getEntities()) {
+            if (entity->name == "player") { player = entity; break; }
+        }
+        if (player) {
+            if (auto inv = player->getComponent<our::InventoryComponent>()) {
+                auto size = getApp()->getFrameBufferSize();
+                float tbY = size.y - 80.0f;
+                
+                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
+                if (inv->woodCount > 0) {
+                    ImGui::SetNextWindowPos(ImVec2(48, tbY - 36));
+                    ImGui::SetNextWindowBgAlpha(0.0f);
+                    ImGui::Begin("WoodCounter", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize);
+                    ImGui::Text("%d", inv->woodCount);
+                    ImGui::End();
+                }
+                
+                if (inv->fishCount > 0) {
+                    ImGui::SetNextWindowPos(ImVec2(118, tbY - 36));
+                    ImGui::SetNextWindowBgAlpha(0.0f);
+                    ImGui::Begin("FishCounter", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize);
+                    ImGui::Text("%d", inv->fishCount);
+                    ImGui::End();
+                }
+                ImGui::PopStyleColor();
+            }
+        }
+    }
+
     void onDraw(double deltaTime) override {
         // Here, we just run a bunch of systems to control the world logic
         movementSystem.update(&world, (float)deltaTime);
