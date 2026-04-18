@@ -61,6 +61,8 @@ set(COMMON_SOURCES
         source/common/material/pipeline-state.cpp
         source/common/material/material.hpp
         source/common/material/material.cpp
+        source/common/material/lit-material.hpp
+        source/common/material/lit-material.cpp
 
         source/common/ecs/component.hpp
         source/common/ecs/transform.hpp
@@ -70,6 +72,8 @@ set(COMMON_SOURCES
         source/common/ecs/world.hpp
         source/common/ecs/world.cpp
 
+        source/common/components/light.hpp
+        source/common/components/light.cpp
         source/common/components/camera.hpp
         source/common/components/camera.cpp
         source/common/components/mesh-renderer.hpp

@@ -11,7 +11,7 @@
     },
     "scene": {
         "renderer":{
-            "sky": "procedural",
+            "sky": "assets/textures/sky.jpg",
             "postprocess": "assets/shaders/postprocess/vignette.frag"
         },
         "assets":{
@@ -48,7 +48,6 @@
                 }
             },
             "materials":{
-               
                 "lit_monkey":{
                     "type": "lit",
                     "shader": "lit",
@@ -91,7 +90,19 @@
                         "type": "Camera"
                     },
                     {
-                        "type": "Free Camera Controller"
+                        "type": "FreeCameraController"
+                    }
+                ]
+            },
+            {
+                "position": [0, 2, 0],
+                "rotation": [45, 45, 0],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "directional",
+                        "color": [1, 1, 1],
+                        "intensity": 1.0
                     }
                 ]
             },
@@ -99,7 +110,7 @@
                 "position": [0, 0, 0],
                 "components": [
                     {
-                        "type": "Mesh Renderer",
+                        "type": "MeshRenderer",
                         "mesh": "monkey",
                         "material": "lit_monkey"
                     },
@@ -108,8 +119,18 @@
                         "angularVelocity": [0, 90, 0]
                     }
                 ]
+            },
+            {
+                "position": [0, -2, 0],
+                "scale": [10, 1, 10],
+                "components": [
+                    {
+                        "type": "MeshRenderer",
+                        "mesh": "plane",
+                        "material": "lit_plane"
+                    }
+                ]
             }
-            
         ]
     }
 }

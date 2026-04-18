@@ -1,10 +1,24 @@
 #include "material.hpp"
+#include "lit-material.hpp"
 
 #include "../asset-loader.hpp"
 #include "deserialize-utils.hpp"
 #include <glad/gl.h>
 
 namespace our {
+
+    // This function returns a new material instance based on the given type
+    Material* createMaterialFromType(const std::string& type){
+        if(type == "tinted"){
+            return new TintedMaterial();
+        } else if(type == "textured"){
+            return new TexturedMaterial();
+        } else if(type == "lit"){
+            return new LitMaterial();
+        } else {
+            return new Material();
+        }
+    }
 
     // This function should setup the pipeline state and set the shader to be used
     void Material::setup() const {

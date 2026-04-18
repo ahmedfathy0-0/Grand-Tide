@@ -35,7 +35,7 @@ namespace our
         std::vector<RenderCommand> transparentCommands;
         // Objects used for rendering a skybox
         Mesh* skySphere;
-        TexturedMaterial* skyMaterial;
+        Material* skyMaterial;
         // Objects used for Postprocessing
         GLuint postprocessFrameBuffer, postProcessVertexArray;
         Texture2D *colorTarget, *depthTarget;
