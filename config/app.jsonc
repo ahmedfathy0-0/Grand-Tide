@@ -7,7 +7,7 @@
             "width":1280,
             "height":720
         },
-        "fullscreen": true
+        "fullscreen": false
     },
     "scene": {
         "renderer":{
@@ -32,7 +32,10 @@
             "textures":{
                 "moon": "assets/textures/moon.jpg",
                 "glass": "assets/textures/glass-panels.png",
-                "monkey": "assets/textures/monkey.png"
+                "monkey": "assets/textures/monkey.png",
+                "wood_albedo": "assets/textures/wood_planks_12_2k/wood_planks_12_color_2k.png",
+                "wood_roughness": "assets/textures/wood_planks_12_2k/wood_planks_12_roughness_2k.png",
+                "wood_specular": "assets/textures/wood_planks_12_2k/wood_planks_12_ambient_occlusion_2k.png"
             },
             "meshes":{
                 "cube": "assets/models/cube.obj",
@@ -80,12 +83,31 @@
                     "albedo": "glass",
                     "albedo_tint": [0.5, 0.5, 1.0],
                     "sampler": "default"
+                },
+                "raft_mat": {
+                    "type": "lit",
+                    "shader": "lit",
+                    "pipelineState": {
+                        "faceCulling":{
+                            "enabled": false
+                        },
+                        "depthTesting":{
+                            "enabled": true
+                        }
+                    },
+                    "albedo": "wood_albedo",
+                    "specular": "wood_specular",
+                    "roughness": "wood_roughness",
+                    "albedo_tint": [1, 1, 1],
+                    "specular_tint": [0.05, 0.05, 0.05],
+                    "roughness_multiplier": 1.0,
+                    "sampler": "default"
                 }
             }
         },
         "world":[
             {
-                "position": [0, 0, 10],
+                "position": [0, 2.0, 10],
                 "components": [
                     {
                         "type": "Camera"
@@ -96,26 +118,25 @@
                         "speedupFactor": 2.0,
                         "jumpVelocity": 5.0,
                         "gravity": 15.0,
-                        "surfaceHeight": 0.0,
+                        "surfaceHeight": 1.5,
+                        "surfaceCenter": [0, 10],
+                        "surfaceExtents": [10, 10],
                         "rotationSensitivity": 0.01
                     }
                 ]
             },
             {
-                "position": [0, 0, 0],
+                "name": "raft",
+                "position": [0, -0.2, 10],
+                "scale": [10, 0.4, 10],
                 "components": [
                     {
                         "type": "Mesh Renderer",
-                        "mesh": "monkey",
-                        "material": "lit_monkey"
-                    },
-                    {
-                        "type": "Movement",
-                        "angularVelocity": [0, 90, 0]
+                        "mesh": "cube",
+                        "material": "raft_mat"
                     }
                 ]
             }
-            
         ]
     }
 }
