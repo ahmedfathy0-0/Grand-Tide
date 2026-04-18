@@ -5,6 +5,9 @@
 #include "mesh-renderer.hpp"
 #include "free-camera-controller.hpp"
 #include "movement.hpp"
+#include "health.hpp"
+#include "inventory.hpp"
+#include "resource.hpp"
 #include "light.hpp"
 #include "player-controller.hpp"
 
@@ -26,6 +29,12 @@ namespace our {
             component = entity->addComponent<MovementComponent>();
         } else if (type == MeshRendererComponent::getID()) {
             component = entity->addComponent<MeshRendererComponent>();
+        } else if (type == HealthComponent::getID()) {
+            component = entity->addComponent<HealthComponent>();
+        } else if (type == InventoryComponent::getID()) {
+            component = entity->addComponent<InventoryComponent>();
+        } else if (type == ResourceComponent::getID()) {
+            component = entity->addComponent<ResourceComponent>();
         } else if (type == LightComponent::getID()) {
             component = entity->addComponent<LightComponent>();
         }

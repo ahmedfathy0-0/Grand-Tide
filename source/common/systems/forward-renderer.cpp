@@ -4,7 +4,11 @@
 #include "../components/light.hpp"
 #include "../material/lit-material.hpp"
 #include <glm/gtc/matrix_transform.hpp>
+#include "../components/health.hpp"
+#include "../components/inventory.hpp"
 #include <GLFW/glfw3.h>
+#include <imgui.h>
+#include <string>
 
 namespace our {
 
@@ -378,6 +382,130 @@ namespace our {
             glDrawArrays(GL_TRIANGLES, 0, 3);
             glBindVertexArray(0);
             postprocessMaterial->teardown();
+        }
+
+        // Phase 2 UI Pass
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_CULL_FACE);
+
+        glm::mat4 uiProj = glm::ortho(0.0f, (float)windowSize.x, (float)windowSize.y, 0.0f, -1.0f, 1.0f);
+        
+        TintedMaterial* uiMat = dynamic_cast<TintedMaterial*>(AssetLoader<Material>::get("tinted"));
+        TintedMaterial* hbMat = dynamic_cast<TintedMaterial*>(AssetLoader<Material>::get("health-bar"));
+        TintedMaterial* tbMat = dynamic_cast<TintedMaterial*>(AssetLoader<Material>::get("toolbar"));
+        TexturedMaterial* iconHammerMat = dynamic_cast<TexturedMaterial*>(AssetLoader<Material>::get("icon_hammer"));
+        TexturedMaterial* iconNetMat = dynamic_cast<TexturedMaterial*>(AssetLoader<Material>::get("icon_net"));
+        TexturedMaterial* iconSpearMat = dynamic_cast<TexturedMaterial*>(AssetLoader<Material>::get("icon_spear"));
+        TexturedMaterial* iconWoodMat = dynamic_cast<TexturedMaterial*>(AssetLoader<Material>::get("icon_wood"));
+        TexturedMaterial* iconFishMat = dynamic_cast<TexturedMaterial*>(AssetLoader<Material>::get("icon_fish"));
+        Mesh* uiMesh = AssetLoader<Mesh>::get("plane");
+        
+        if (uiMat && uiMesh && hbMat && tbMat) {
+            HealthComponent* playerHealth = nullptr;
+            InventoryComponent* playerInventory = nullptr;
+            HealthComponent* boatHealth = nullptr;
+            
+            for (auto entity : world->getEntities()) {
+                if (auto hp = entity->getComponent<HealthComponent>()) {
+                    if (entity->getComponent<InventoryComponent>()) {
+                        playerHealth = hp;
+                        playerInventory = entity->getComponent<InventoryComponent>();
+                    } else if (entity->name == "boat") {
+                        boatHealth = hp;
+                    }
+                }
+            }
+
+            auto drawQuad = [&](float x, float y, float w, float h, glm::vec4 color) {
+                uiMat->tint = color;
+                uiMat->shader->set("tint", color);
+                glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(x + w/2.0f, y + h/2.0f, 0.0f));
+                model = glm::scale(model, glm::vec3(w, h, 1.0f));
+                uiMat->shader->set("transform", uiProj * model);
+                uiMesh->draw();
+            };
+
+            auto drawHealthBarShader = [&](float x, float y, float r, float hp, glm::vec3 water_color) {
+                hbMat->shader->set("time", (float)glfwGetTime());
+                hbMat->shader->set("hp_percent", hp);
+                hbMat->shader->set("water_color", water_color);
+                
+                glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(x + r, y + r, 0.0f));
+                model = glm::scale(model, glm::vec3(r * 2.0f, r * 2.0f, 1.0f));
+                hbMat->shader->set("transform", uiProj * model);
+                uiMesh->draw();
+            };
+
+            auto drawToolbarSlot = [&](float x, float y, float size, bool isSelected, glm::vec3 baseCol) {
+                tbMat->shader->set("time", (float)glfwGetTime());
+                tbMat->shader->set("isSelected", isSelected ? 1 : 0);
+                tbMat->shader->set("baseColor", baseCol);
+                
+                glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(x + size/2.0f, y + size/2.0f, 0.0f));
+                model = glm::scale(model, glm::vec3(size, size, 1.0f));
+                tbMat->shader->set("transform", uiProj * model);
+                uiMesh->draw();
+            };
+
+            // Player Health Bar
+            if (playerHealth) {
+                float hpPercent = playerHealth->currentHealth / playerHealth->maxHealth;
+                hbMat->setup();
+                drawHealthBarShader(20, 20, 40, hpPercent, glm::vec3(0.8, 0.1, 0.1));
+                hbMat->teardown();
+            }
+            
+            // Boat Health Bar
+            if (boatHealth) {
+                float hpPercent = boatHealth->currentHealth / boatHealth->maxHealth;
+                hbMat->setup();
+                drawHealthBarShader(110, 20, 40, hpPercent, glm::vec3(0.5, 0.3, 0.1));
+                hbMat->teardown();
+            }
+
+            // Inventory
+            if (playerInventory) {
+                float tbY = windowSize.y - 80.0f; // Bottom left
+                glm::vec3 whiteGlass(0.5f, 0.5f, 0.5f);
+                
+                // Draw slots using the special shader
+                tbMat->setup();
+                drawToolbarSlot(30, tbY, 40, (playerInventory->activeSlot == 1), whiteGlass);
+                drawToolbarSlot(120, tbY, 40, (playerInventory->activeSlot == 2), whiteGlass);
+                drawToolbarSlot(210, tbY, 40, (playerInventory->activeSlot == 3), whiteGlass);
+                // Draw resource slots using the special shader
+                if (playerInventory->woodCount > 0) {
+                    drawToolbarSlot(30, tbY - 55, 24, false, whiteGlass);
+                }
+                if (playerInventory->fishCount > 0) {
+                    drawToolbarSlot(120, tbY - 55, 24, false, whiteGlass);
+                }
+                tbMat->teardown();
+
+                auto drawIcon = [&](float x, float y, float size, TexturedMaterial* mat) {
+                    if(!mat) return;
+                    mat->setup();
+                    mat->shader->set("tint", glm::vec4(1.0f));
+                    glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(x + size/2.0f, y + size/2.0f, 0.0f));
+                    model = glm::scale(model, glm::vec3(size, size, 1.0f));
+                    mat->shader->set("transform", uiProj * model);
+                    uiMesh->draw();
+                    mat->teardown();
+                };
+
+                drawIcon(38, tbY + 8, 24, iconHammerMat);
+                drawIcon(128, tbY + 8, 24, iconNetMat);
+                drawIcon(218, tbY + 8, 24, iconSpearMat);
+
+                if (playerInventory->woodCount > 0) {
+                    drawIcon(34, tbY - 51, 16, iconWoodMat);
+                }
+                if (playerInventory->fishCount > 0) {
+                    drawIcon(124, tbY - 51, 16, iconFishMat);
+                }
+
+                // Text is handled in Playstate::onImmediateGui() due to ImGui lifecycle
+            }
         }
     }
 

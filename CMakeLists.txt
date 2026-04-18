@@ -84,8 +84,16 @@ set(COMMON_SOURCES
         source/common/components/movement.cpp
         source/common/components/player-controller.hpp
         source/common/components/player-controller.cpp
-
+        source/common/components/health.hpp
+        source/common/components/health.cpp
+        source/common/components/inventory.hpp
+        source/common/components/inventory.cpp
+        source/common/components/resource.hpp
+        source/common/components/resource.cpp
         source/common/components/component-deserializer.hpp
+
+        source/common/ecs/event-manager.hpp
+        source/common/ecs/event-manager.cpp
 
         source/common/systems/forward-renderer.hpp
         source/common/systems/forward-renderer.cpp
@@ -93,6 +101,8 @@ set(COMMON_SOURCES
         source/common/systems/player-controller-system.hpp
 
         source/common/systems/movement.hpp
+        source/common/systems/survival-system.hpp
+        source/common/systems/survival-system.cpp
 )
 
 set(STATES_SOURCES

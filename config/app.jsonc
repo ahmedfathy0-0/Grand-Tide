@@ -2,7 +2,7 @@
     "start-scene": "play",
     "window":
     {
-        "title":"Raft",
+        "title":"Raft (Task 1: The Ocean)",
         "size":{
             "width":1280,
             "height":720
@@ -27,6 +27,14 @@
                 "lit":{
                     "vs":"assets/shaders/lit.vert",
                     "fs":"assets/shaders/lit.frag"
+                },
+                "health-bar":{
+                    "vs":"assets/shaders/textured.vert",
+                    "fs":"assets/shaders/health-bar.frag"
+                },
+                "toolbar":{
+                    "vs":"assets/shaders/textured.vert",
+                    "fs":"assets/shaders/toolbar.frag"
                 }
             },
             "textures":{
@@ -35,7 +43,12 @@
                 "monkey": "assets/textures/monkey.png",
                 "wood_albedo": "assets/textures/wood_planks_12_2k/wood_planks_12_color_2k.png",
                 "wood_roughness": "assets/textures/wood_planks_12_2k/wood_planks_12_roughness_2k.png",
-                "wood_specular": "assets/textures/wood_planks_12_2k/wood_planks_12_ambient_occlusion_2k.png"
+                "wood_specular": "assets/textures/wood_planks_12_2k/wood_planks_12_ambient_occlusion_2k.png",
+                "hammer_icon": "assets/icons/hammer.png",
+                "net_icon": "assets/icons/net.png",
+                "spear_icon": "assets/icons/spear.png",
+                "fish_icon": "assets/icons/fish.png",
+                "wood_icon": "assets/icons/wood.png"
             },
             "meshes":{
                 "cube": "assets/models/cube.obj",
@@ -51,17 +64,12 @@
                 }
             },
             "materials":{
-               
                 "lit_monkey":{
                     "type": "lit",
                     "shader": "lit",
                     "pipelineState": {
-                        "faceCulling":{
-                            "enabled": false
-                        },
-                        "depthTesting":{
-                            "enabled": true
-                        }
+                        "faceCulling":{ "enabled": false },
+                        "depthTesting":{ "enabled": true }
                     },
                     "albedo": "monkey",
                     "albedo_tint": [1, 1, 1],
@@ -73,12 +81,8 @@
                     "type": "lit",
                     "shader": "lit",
                     "pipelineState": {
-                        "faceCulling":{
-                            "enabled": false
-                        },
-                        "depthTesting":{
-                            "enabled": true
-                        }
+                        "faceCulling":{ "enabled": false },
+                        "depthTesting":{ "enabled": true }
                     },
                     "albedo": "glass",
                     "albedo_tint": [0.5, 0.5, 1.0],
@@ -88,12 +92,8 @@
                     "type": "lit",
                     "shader": "lit",
                     "pipelineState": {
-                        "faceCulling":{
-                            "enabled": false
-                        },
-                        "depthTesting":{
-                            "enabled": true
-                        }
+                        "faceCulling":{ "enabled": false },
+                        "depthTesting":{ "enabled": true }
                     },
                     "albedo": "wood_albedo",
                     "specular": "wood_specular",
@@ -102,11 +102,122 @@
                     "specular_tint": [0.05, 0.05, 0.05],
                     "roughness_multiplier": 1.0,
                     "sampler": "default"
+                },
+                "health-bar":{
+                    "type": "tinted",
+                    "shader": "health-bar",
+                    "pipelineState": {
+                        "faceCulling": { "enabled": false },
+                        "depthTesting": { "enabled": false },
+                        "blending": { "enabled": true, "sourceFactor": "GL_SRC_ALPHA", "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA" },
+                        "depthMask": false
+                    },
+                    "tint": [1, 1, 1, 1]
+                },
+                "toolbar":{
+                    "type": "tinted",
+                    "shader": "toolbar",
+                    "pipelineState": {
+                        "faceCulling": { "enabled": false },
+                        "depthTesting": { "enabled": false },
+                        "blending": { "enabled": true, "sourceFactor": "GL_SRC_ALPHA", "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA" },
+                        "depthMask": false
+                    },
+                    "tint": [1, 1, 1, 1]
+                },
+                "tinted":{
+                    "type": "tinted",
+                    "shader": "tinted",
+                    "pipelineState": {
+                        "faceCulling": { "enabled": false },
+                        "depthTesting": { "enabled": true }
+                    },
+                    "tint": [1, 1, 1, 1]
+                },
+                "icon_hammer":{
+                    "type": "textured",
+                    "shader": "textured",
+                    "pipelineState": {
+                        "faceCulling": { "enabled": false },
+                        "depthTesting": { "enabled": false },
+                        "blending": { "enabled": true, "sourceFactor": "GL_SRC_ALPHA", "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA" },
+                        "depthMask": false
+                    },
+                    "transparent": true,
+                    "tint": [1, 1, 1, 1],
+                    "texture": "hammer_icon",
+                    "sampler": "default"
+                },
+                "icon_net":{
+                    "type": "textured",
+                    "shader": "textured",
+                    "pipelineState": {
+                        "faceCulling": { "enabled": false },
+                        "depthTesting": { "enabled": false },
+                        "blending": { "enabled": true, "sourceFactor": "GL_SRC_ALPHA", "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA" },
+                        "depthMask": false
+                    },
+                    "transparent": true,
+                    "tint": [1, 1, 1, 1],
+                    "texture": "net_icon",
+                    "sampler": "default"
+                },
+                "icon_spear":{
+                    "type": "textured",
+                    "shader": "textured",
+                    "pipelineState": {
+                        "faceCulling": { "enabled": false },
+                        "depthTesting": { "enabled": false },
+                        "blending": { "enabled": true, "sourceFactor": "GL_SRC_ALPHA", "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA" },
+                        "depthMask": false
+                    },
+                    "transparent": true,
+                    "tint": [1, 1, 1, 1],
+                    "texture": "spear_icon",
+                    "sampler": "default"
+                },
+                "icon_fish":{
+                    "type": "textured",
+                    "shader": "textured",
+                    "pipelineState": {
+                        "faceCulling": { "enabled": false },
+                        "depthTesting": { "enabled": false },
+                        "blending": { "enabled": true, "sourceFactor": "GL_SRC_ALPHA", "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA" },
+                        "depthMask": false
+                    },
+                    "transparent": true,
+                    "tint": [1, 1, 1, 1],
+                    "texture": "fish_icon",
+                    "sampler": "default"
+                },
+                "icon_wood":{
+                    "type": "textured",
+                    "shader": "textured",
+                    "pipelineState": {
+                        "faceCulling": { "enabled": false },
+                        "depthTesting": { "enabled": false },
+                        "blending": { "enabled": true, "sourceFactor": "GL_SRC_ALPHA", "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA" },
+                        "depthMask": false
+                    },
+                    "transparent": true,
+                    "tint": [1, 1, 1, 1],
+                    "texture": "wood_icon",
+                    "sampler": "default"
+                },
+                "metal":{
+                    "type": "tinted",
+                    "shader": "tinted",
+                    "pipelineState": {
+                        "faceCulling": { "enabled": false },
+                        "depthTesting": { "enabled": true }
+                    },
+                    "tint": [0.45, 0.4, 0.5, 1]
                 }
             }
         },
         "world":[
             {
+                "name": "player",
                 "position": [0, 2.0, 10],
                 "components": [
                     {
@@ -118,10 +229,33 @@
                         "speedupFactor": 2.0,
                         "jumpVelocity": 5.0,
                         "gravity": 15.0,
-                        "surfaceHeight": 1.5,
+                        "surfaceHeight": 2.5,
                         "surfaceCenter": [0, 10],
                         "surfaceExtents": [10, 10],
                         "rotationSensitivity": 0.01
+                    },
+                    {
+                        "type": "Health",
+                        "maxHealth": 100,
+                        "currentHealth": 100
+                    },
+                    {
+                        "type": "Inventory"
+                    }
+                ],
+                "children": [
+                    {
+                        "name": "weapon",
+                        "position": [1, -1, -1],
+                        "rotation": [45, 45, 0],
+                        "scale": [0.1, 0.1, 1.0],
+                        "components": [
+                            {
+                                "type": "Mesh Renderer",
+                                "mesh": "cube",
+                                "material": "metal"
+                            }
+                        ]
                     }
                 ]
             },
