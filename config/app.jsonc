@@ -27,6 +27,10 @@
           "vs": "assets/shaders/textured.vert",
           "fs": "assets/shaders/health-bar.frag",
         },
+        "toolbar": {
+          "vs": "assets/shaders/textured.vert",
+          "fs": "assets/shaders/toolbar.frag",
+        },
       },
       "textures": {
         "moon": "assets/textures/moon.jpg",
@@ -34,6 +38,9 @@
         "wood": "assets/textures/wood.jpg",
         "glass": "assets/textures/glass-panels.png",
         "monkey": "assets/textures/monkey.png",
+        "hammer_icon": "assets/icons/hammer.png",
+        "net_icon": "assets/icons/net.png",
+        "spear_icon": "assets/icons/spear.png"
       },
       "meshes": {
         "cube": "assets/models/cube.obj",
@@ -53,6 +60,39 @@
           "shader": "health-bar",
           "pipelineState": { "faceCulling": { "enabled": false }, "depthTesting": { "enabled": false }, "blending": { "enabled": true, "sourceFactor": "GL_SRC_ALPHA", "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA" }, "depthMask": false },
           "tint": [1, 1, 1, 1]
+        },
+        "toolbar": {
+          "type": "tinted",
+          "shader": "toolbar",
+          "pipelineState": { "faceCulling": { "enabled": false }, "depthTesting": { "enabled": false }, "blending": { "enabled": true, "sourceFactor": "GL_SRC_ALPHA", "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA" }, "depthMask": false },
+          "tint": [1, 1, 1, 1]
+        },
+        "icon_hammer": {
+          "type": "textured",
+          "shader": "textured",
+          "pipelineState": { "faceCulling": { "enabled": false }, "depthTesting": { "enabled": false }, "blending": { "enabled": true, "sourceFactor": "GL_SRC_ALPHA", "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA" }, "depthMask": false },
+          "transparent": true,
+          "tint": [1, 1, 1, 1],
+          "texture": "hammer_icon",
+          "sampler": "default"
+        },
+        "icon_net": {
+          "type": "textured",
+          "shader": "textured",
+          "pipelineState": { "faceCulling": { "enabled": false }, "depthTesting": { "enabled": false }, "blending": { "enabled": true, "sourceFactor": "GL_SRC_ALPHA", "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA" }, "depthMask": false },
+          "transparent": true,
+          "tint": [1, 1, 1, 1],
+          "texture": "net_icon",
+          "sampler": "default"
+        },
+        "icon_spear": {
+          "type": "textured",
+          "shader": "textured",
+          "pipelineState": { "faceCulling": { "enabled": false }, "depthTesting": { "enabled": false }, "blending": { "enabled": true, "sourceFactor": "GL_SRC_ALPHA", "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA" }, "depthMask": false },
+          "transparent": true,
+          "tint": [1, 1, 1, 1],
+          "texture": "spear_icon",
+          "sampler": "default"
         },
         "tinted": {
           "type": "tinted",

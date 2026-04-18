@@ -256,9 +256,13 @@ namespace our {
         
         TintedMaterial* uiMat = dynamic_cast<TintedMaterial*>(AssetLoader<Material>::get("tinted"));
         TintedMaterial* hbMat = dynamic_cast<TintedMaterial*>(AssetLoader<Material>::get("health-bar"));
+        TintedMaterial* tbMat = dynamic_cast<TintedMaterial*>(AssetLoader<Material>::get("toolbar"));
+        TexturedMaterial* iconHammerMat = dynamic_cast<TexturedMaterial*>(AssetLoader<Material>::get("icon_hammer"));
+        TexturedMaterial* iconNetMat = dynamic_cast<TexturedMaterial*>(AssetLoader<Material>::get("icon_net"));
+        TexturedMaterial* iconSpearMat = dynamic_cast<TexturedMaterial*>(AssetLoader<Material>::get("icon_spear"));
         Mesh* uiMesh = AssetLoader<Mesh>::get("plane");
         
-        if (uiMat && uiMesh && hbMat) {
+        if (uiMat && uiMesh && hbMat && tbMat) {
             HealthComponent* playerHealth = nullptr;
             InventoryComponent* playerInventory = nullptr;
             HealthComponent* boatHealth = nullptr;
@@ -294,6 +298,17 @@ namespace our {
                 uiMesh->draw();
             };
 
+            auto drawToolbarSlot = [&](float x, float y, float size, bool isSelected, glm::vec3 baseCol) {
+                tbMat->shader->set("time", (float)glfwGetTime());
+                tbMat->shader->set("isSelected", isSelected ? 1 : 0);
+                tbMat->shader->set("baseColor", baseCol);
+                
+                glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(x + size/2.0f, y + size/2.0f, 0.0f));
+                model = glm::scale(model, glm::vec3(size, size, 1.0f));
+                tbMat->shader->set("transform", uiProj * model);
+                uiMesh->draw();
+            };
+
             // Player Health Bar
             if (playerHealth) {
                 float hpPercent = playerHealth->currentHealth / playerHealth->maxHealth;
@@ -306,33 +321,47 @@ namespace our {
             if (boatHealth) {
                 float hpPercent = boatHealth->currentHealth / boatHealth->maxHealth;
                 hbMat->setup();
-                drawHealthBarShader(20, 110, 40, hpPercent, glm::vec3(0.1, 0.4, 0.8));
+                drawHealthBarShader(110, 20, 40, hpPercent, glm::vec3(0.5, 0.3, 0.1));
                 hbMat->teardown();
             }
 
-            uiMat->setup();
             // Inventory
             if (playerInventory) {
-                // UI colors for slots
-                glm::vec4 c1 = (playerInventory->activeSlot == 1) ? glm::vec4(1, 0.8, 0.2, 1) : glm::vec4(0.4, 0.4, 0.4, 1);
-                glm::vec4 c2 = (playerInventory->activeSlot == 2) ? glm::vec4(1, 0.8, 0.2, 1) : glm::vec4(0.4, 0.4, 0.4, 1);
-                glm::vec4 c3 = (playerInventory->activeSlot == 3) ? glm::vec4(1, 0.8, 0.2, 1) : glm::vec4(0.4, 0.4, 0.4, 1);
+                float tbY = windowSize.y - 80.0f; // Bottom left
+                glm::vec3 darkGlass(0.2f, 0.2f, 0.2f);
+                
+                // Draw slots using the special shader
+                tbMat->setup();
+                drawToolbarSlot(20, tbY, 60, (playerInventory->activeSlot == 1), darkGlass);
+                drawToolbarSlot(100, tbY, 60, (playerInventory->activeSlot == 2), darkGlass);
+                drawToolbarSlot(180, tbY, 60, (playerInventory->activeSlot == 3), darkGlass);
+                tbMat->teardown();
 
-                // Draw slots
-                drawQuad(20, 200, 40, 40, c1);
-                drawQuad(70, 200, 40, 40, c2);
-                drawQuad(120, 200, 40, 40, c3);
+                auto drawIcon = [&](float x, float y, float size, TexturedMaterial* mat) {
+                    if(!mat) return;
+                    mat->setup();
+                    mat->shader->set("tint", glm::vec4(1.0f));
+                    glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(x + size/2.0f, y + size/2.0f, 0.0f));
+                    model = glm::scale(model, glm::vec3(size, size, 1.0f));
+                    mat->shader->set("transform", uiProj * model);
+                    uiMesh->draw();
+                    mat->teardown();
+                };
 
+                drawIcon(25, tbY + 5, 50, iconHammerMat);
+                drawIcon(105, tbY + 5, 50, iconNetMat);
+                drawIcon(185, tbY + 5, 50, iconSpearMat);
+
+                uiMat->setup();
                 // Draw indicators for resources (small squares)
                 if (playerInventory->woodCount > 0) {
-                    drawQuad(200, 200, 10, 10, glm::vec4(0.5, 0.3, 0.1, 1)); // Brown for Wood
+                    drawQuad(260, tbY, 20, 20, glm::vec4(0.5, 0.3, 0.1, 1)); // Brown for Wood
                 }
                 if (playerInventory->fishCount > 0) {
-                    drawQuad(200, 220, 10, 10, glm::vec4(0.2, 0.6, 1.0, 1)); // Blue for Fish
+                    drawQuad(260, tbY + 30, 20, 20, glm::vec4(0.2, 0.6, 1.0, 1)); // Blue for Fish
                 }
+                uiMat->teardown();
             }
-
-            uiMat->teardown();
         }
     }
 
