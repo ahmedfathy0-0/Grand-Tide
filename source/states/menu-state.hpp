@@ -57,6 +57,7 @@ class Menustate: public our::State {
         menuMaterial->shader->link();
         // Then we load the menu texture
         menuMaterial->texture = our::texture_utils::loadImage("assets/textures/menu.png");
+        menuMaterial->sampler = new our::Sampler();
         // Initially, the menu material will be black, then it will fade in
         menuMaterial->tint = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
 
@@ -173,6 +174,7 @@ class Menustate: public our::State {
         // Delete all the allocated resources
         delete rectangle;
         delete menuMaterial->texture;
+        delete menuMaterial->sampler;
         delete menuMaterial->shader;
         delete menuMaterial;
         delete highlightMaterial->shader;
