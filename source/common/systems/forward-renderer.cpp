@@ -2,6 +2,8 @@
 #include "../mesh/mesh-utils.hpp"
 #include "../texture/texture-utils.hpp"
 #include <glm/gtc/matrix_transform.hpp>
+#include "../components/health.hpp"
+#include "../components/inventory.hpp"
 
 namespace our {
 
@@ -243,6 +245,82 @@ namespace our {
             glDrawArrays(GL_TRIANGLES, 0, 3);
             glBindVertexArray(0);
             postprocessMaterial->teardown();
+        }
+
+        // Phase 2 UI Pass
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_CULL_FACE);
+
+        glm::mat4 uiProj = glm::ortho(0.0f, (float)windowSize.x, (float)windowSize.y, 0.0f, -1.0f, 1.0f);
+        
+        TintedMaterial* uiMat = dynamic_cast<TintedMaterial*>(AssetLoader<Material>::get("tinted"));
+        Mesh* uiMesh = AssetLoader<Mesh>::get("plane");
+        
+        if (uiMat && uiMesh) {
+            HealthComponent* playerHealth = nullptr;
+            InventoryComponent* playerInventory = nullptr;
+            HealthComponent* boatHealth = nullptr;
+            
+            for (auto entity : world->getEntities()) {
+                if (auto hp = entity->getComponent<HealthComponent>()) {
+                    if (entity->getComponent<InventoryComponent>()) {
+                        playerHealth = hp;
+                        playerInventory = entity->getComponent<InventoryComponent>();
+                    } else if (entity->name == "boat") {
+                        boatHealth = hp;
+                    }
+                }
+            }
+
+            uiMat->setup();
+            
+            auto drawQuad = [&](float x, float y, float w, float h, glm::vec4 color) {
+                uiMat->tint = color;
+                uiMat->shader->set("tint", color);
+                // "plane" is usually 1x1 centered around origin or 0 to 1? 
+                // Let's assume it spans [-0.5, 0.5]. 
+                glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(x + w/2.0f, y + h/2.0f, 0.0f));
+                model = glm::scale(model, glm::vec3(w, h, 1.0f));
+                uiMat->shader->set("transform", uiProj * model);
+                uiMesh->draw();
+            };
+
+            // Player Health Bar
+            if (playerHealth) {
+                float hpPercent = playerHealth->currentHealth / playerHealth->maxHealth;
+                drawQuad(20, 20, 200, 20, glm::vec4(0.2, 0.2, 0.2, 1));
+                drawQuad(20, 20, 200 * hpPercent, 20, glm::vec4(0.8, 0.1, 0.1, 1));
+            }
+            
+            // Boat Health Bar
+            if (boatHealth) {
+                float hpPercent = boatHealth->currentHealth / boatHealth->maxHealth;
+                drawQuad(20, 50, 200, 20, glm::vec4(0.2, 0.2, 0.2, 1));
+                drawQuad(20, 50, 200 * hpPercent, 20, glm::vec4(0.1, 0.4, 0.8, 1));
+            }
+
+            // Inventory
+            if (playerInventory) {
+                // UI colors for slots
+                glm::vec4 c1 = (playerInventory->activeSlot == 1) ? glm::vec4(1, 0.8, 0.2, 1) : glm::vec4(0.4, 0.4, 0.4, 1);
+                glm::vec4 c2 = (playerInventory->activeSlot == 2) ? glm::vec4(1, 0.8, 0.2, 1) : glm::vec4(0.4, 0.4, 0.4, 1);
+                glm::vec4 c3 = (playerInventory->activeSlot == 3) ? glm::vec4(1, 0.8, 0.2, 1) : glm::vec4(0.4, 0.4, 0.4, 1);
+
+                // Draw slots
+                drawQuad(20, 90, 40, 40, c1);
+                drawQuad(70, 90, 40, 40, c2);
+                drawQuad(120, 90, 40, 40, c3);
+
+                // Draw indicators for resources (small squares)
+                if (playerInventory->woodCount > 0) {
+                    drawQuad(200, 90, 10, 10, glm::vec4(0.5, 0.3, 0.1, 1)); // Brown for Wood
+                }
+                if (playerInventory->fishCount > 0) {
+                    drawQuad(200, 110, 10, 10, glm::vec4(0.2, 0.6, 1.0, 1)); // Blue for Fish
+                }
+            }
+
+            uiMat->teardown();
         }
     }
 

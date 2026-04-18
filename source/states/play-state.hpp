@@ -6,6 +6,7 @@
 #include <systems/forward-renderer.hpp>
 #include <systems/free-camera-controller.hpp>
 #include <systems/movement.hpp>
+#include <systems/survival-system.hpp>
 #include <asset-loader.hpp>
 
 // This state shows how to use the ECS framework and deserialization.
@@ -15,6 +16,7 @@ class Playstate: public our::State {
     our::ForwardRenderer renderer;
     our::FreeCameraControllerSystem cameraController;
     our::MovementSystem movementSystem;
+    our::SurvivalSystem survivalSystem;
 
     void onInitialize() override {
         // First of all, we get the scene configuration from the app config
@@ -32,12 +34,24 @@ class Playstate: public our::State {
         // Then we initialize the renderer
         auto size = getApp()->getFrameBufferSize();
         renderer.initialize(size, config["renderer"]);
+
+        our::Entity* player = nullptr;
+        our::Entity* boat = nullptr;
+        for (auto entity : world.getEntities()) {
+            if (entity->name == "player") player = entity;
+            if (entity->name == "boat") boat = entity;
+        }
+        survivalSystem.setup(&world, getApp(), player, boat);
     }
 
     void onDraw(double deltaTime) override {
         // Here, we just run a bunch of systems to control the world logic
         movementSystem.update(&world, (float)deltaTime);
         cameraController.update(&world, (float)deltaTime);
+        survivalSystem.update();
+        
+        world.deleteMarkedEntities();
+        
         // And finally we use the renderer system to draw the scene
         renderer.render(&world);
 

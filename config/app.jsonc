@@ -44,6 +44,42 @@
         },
       },
       "materials": {
+        "tinted": {
+          "type": "tinted",
+          "shader": "tinted",
+          "pipelineState": { "faceCulling": { "enabled": false }, "depthTesting": { "enabled": true } },
+          "tint": [1, 1, 1, 1]
+        },
+        "brown": { 
+          "type": "tinted", "shader": "tinted", 
+          "pipelineState": { "faceCulling": { "enabled": false }, "depthTesting": { "enabled": true } }, 
+          "tint": [0.6, 0.4, 0.2, 1.0] 
+        },
+        "green": { 
+          "type": "tinted", "shader": "tinted", 
+          "pipelineState": { "faceCulling": { "enabled": false }, "depthTesting": { "enabled": true } }, 
+          "tint": [0.2, 0.8, 0.2, 1.0] 
+        },
+        "silver": { 
+          "type": "tinted", "shader": "tinted", 
+          "pipelineState": { "faceCulling": { "enabled": false }, "depthTesting": { "enabled": true } }, 
+          "tint": [0.8, 0.8, 0.8, 1.0] 
+        },
+        "red_glass": { 
+          "type": "tinted", "shader": "tinted", 
+          "pipelineState": { "faceCulling": { "enabled": false }, "depthTesting": { "enabled": true }, "blending": { "enabled": true, "sourceFactor": "GL_SRC_ALPHA", "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA" }, "depthMask": false }, 
+          "tint": [1.0, 0.2, 0.2, 0.8] 
+        },
+        "dark_broken": { 
+          "type": "tinted", "shader": "tinted", 
+          "pipelineState": { "faceCulling": { "enabled": false }, "depthTesting": { "enabled": true } }, 
+          "tint": [0.2, 0.2, 0.2, 1.0] 
+        },
+        "blue": { 
+          "type": "tinted", "shader": "tinted", 
+          "pipelineState": { "faceCulling": { "enabled": false }, "depthTesting": { "enabled": true } }, 
+          "tint": [0.2, 0.2, 0.8, 1.0] 
+        },
         "metal": {
           "type": "tinted",
           "shader": "tinted",
@@ -128,6 +164,7 @@
     },
     "world": [
       {
+        "name": "player",
         "position": [0, 0, 10],
         "components": [
           {
@@ -136,9 +173,18 @@
           {
             "type": "Free Camera Controller",
           },
+          {
+            "type": "Health",
+            "maxHealth": 100,
+            "currentHealth": 100
+          },
+          {
+            "type": "Inventory"
+          }
         ],
         "children": [
           {
+            "name": "weapon",
             "position": [1, -1, -1],
             "rotation": [45, 45, 0],
             "scale": [0.1, 0.1, 1.0],
@@ -180,15 +226,21 @@
         ],
       },
       {
+        "name": "boat",
         "position": [0, 1, 2],
         "rotation": [0, 0, 0],
         "scale": [2, 2, 2],
         "components": [
           {
             "type": "Mesh Renderer",
-            "mesh": "plane",
-            "material": "glass",
+            "mesh": "cube",
+            "material": "red_glass",
           },
+          {
+            "type": "Health",
+            "maxHealth": 1000,
+            "currentHealth": 500
+          }
         ],
       },
       {
@@ -238,6 +290,38 @@
             "material": "glass",
           },
         ],
+      },
+      {
+        "position": [2, 0.5, 8],
+        "scale": [0.5, 0.5, 0.5],
+        "components": [
+          { "type": "Mesh Renderer", "mesh": "cube", "material": "brown" },
+          { "type": "Resource", "Resource": { "type": "wood", "amount": 1 } }
+        ]
+      },
+      {
+        "position": [-2, 0.5, 8],
+        "scale": [0.5, 0.5, 0.5],
+        "components": [
+          { "type": "Mesh Renderer", "mesh": "cube", "material": "brown" },
+          { "type": "Resource", "Resource": { "type": "wood", "amount": 1 } }
+        ]
+      },
+      {
+        "position": [0, 0.5, 6],
+        "scale": [0.5, 0.5, 0.5],
+        "components": [
+          { "type": "Mesh Renderer", "mesh": "cube", "material": "blue" },
+          { "type": "Resource", "Resource": { "type": "fish", "amount": 1 } }
+        ]
+      },
+      {
+        "position": [1, 0.5, 7],
+        "scale": [0.5, 0.5, 0.5],
+        "components": [
+          { "type": "Mesh Renderer", "mesh": "cube", "material": "blue" },
+          { "type": "Resource", "Resource": { "type": "fish", "amount": 1 } }
+        ]
       },
       {
         "position": [0, 10, 0],
