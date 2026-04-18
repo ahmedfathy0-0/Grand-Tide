@@ -229,7 +229,7 @@
                         "speedupFactor": 2.0,
                         "jumpVelocity": 5.0,
                         "gravity": 15.0,
-                        "surfaceHeight": 1.5,
+                        "surfaceHeight": 2.5,
                         "surfaceCenter": [0, 10],
                         "surfaceExtents": [10, 10],
                         "rotationSensitivity": 0.01
