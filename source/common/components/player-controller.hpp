@@ -15,6 +15,11 @@ namespace our {
         float yVelocity = 0.0f; 
         float gravity = 15.0f;
         float surfaceHeight = 0.0f; // Height of the raft to walk on
+        
+        // Define bounding box of the raft so player falls off
+        glm::vec2 surfaceCenter = {0.0f, 10.0f}; // X/Z
+        glm::vec2 surfaceExtents = {5.0f, 5.0f}; // X/Z half-sizes
+
         bool isGrounded = true;
         
         float rotationSensitivity = 0.01f;

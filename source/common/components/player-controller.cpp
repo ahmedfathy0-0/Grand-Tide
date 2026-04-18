@@ -9,6 +9,8 @@ namespace our {
         yVelocity = data.value("yVelocity", yVelocity);
         gravity = data.value("gravity", gravity);
         surfaceHeight = data.value("surfaceHeight", surfaceHeight);
+        if(data.contains("surfaceCenter")) surfaceCenter = data.value("surfaceCenter", surfaceCenter);
+        if(data.contains("surfaceExtents")) surfaceExtents = data.value("surfaceExtents", surfaceExtents);
         isGrounded = data.value("isGrounded", isGrounded);
         rotationSensitivity = data.value("rotationSensitivity", rotationSensitivity);
         speedupFactor = data.value("speedupFactor", speedupFactor);

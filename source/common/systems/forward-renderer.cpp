@@ -297,6 +297,7 @@ namespace our {
             );
             //TODO: (Req 10) set the "transform" uniform
             skyMaterial->shader->set("transform", alwaysBehindTransform * VP * skyModel);
+            skyMaterial->shader->set("camera_position", cameraPosition);
             skyMaterial->shader->set("u_time", (float)glfwGetTime());
             
             //TODO: (Req 10) draw the sky sphere
