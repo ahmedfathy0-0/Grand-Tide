@@ -2,7 +2,7 @@
     "start-scene": "play",
     "window":
     {
-        "title":"Raft (Task 1: The Ocean)",
+        "title":"Raft",
         "size":{
             "width":1280,
             "height":720
