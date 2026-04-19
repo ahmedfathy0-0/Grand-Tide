@@ -27,6 +27,10 @@
                     "vs": "assets/shaders/lit.vert",
                     "fs": "assets/shaders/lit.frag"
                 },
+                "shark": {
+                    "vs": "assets/shaders/lit.vert",
+                    "fs": "assets/shaders/shark.frag"
+                },
                 "health-bar": {
                     "vs": "assets/shaders/textured.vert",
                     "fs": "assets/shaders/health-bar.frag"
@@ -115,7 +119,7 @@
                 },
                 "lit_shark": {
                     "type": "lit",
-                    "shader": "lit",
+                    "shader": "shark",
                     "pipelineState": {
                         "faceCulling": {
                             "enabled": false
@@ -572,9 +576,9 @@
             {
                 "name": "shark",
                 "position": [
-                    -5,
-                    -1,
-                    -5
+                    200,
+                    -10,
+                    5
                 ],
                 "scale": [
                     0.05,
@@ -596,7 +600,7 @@
                         "type": "Shark",
                         "modelName": "shark",
                         "health": 100,
-                        "state": "CIRCLING",
+                        "state": "APPROACHING",
                         "currentAnimIndex": 0
                     },
                     {

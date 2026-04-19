@@ -28,6 +28,9 @@ namespace our {
                         aiAnimation* animation = model->getScene()->mAnimations[animIndex];
                         float ticksPerSecond = animation->mTicksPerSecond != 0 ? animation->mTicksPerSecond : 25.0f;
                         float timeInTicks = deltaTime * ticksPerSecond;
+                        if (animIndex == 4) {
+                            timeInTicks *= 3.0f; // swim animation a little faster
+                        }
                         shark->currentAnimationTime += timeInTicks;
                         shark->currentAnimationTime = fmod(shark->currentAnimationTime, animation->mDuration);
                     }
