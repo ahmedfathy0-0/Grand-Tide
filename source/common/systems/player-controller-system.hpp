@@ -115,6 +115,7 @@ namespace our
 
         static constexpr float JumpBufferDuration = 0.12f;
         static constexpr float CoyoteDuration = 0.10f;
+        bool isDrivingBoat = false; // Tracks if the player has taken control of the boat
 
     public:
         // Sets the application environment when traversing state
@@ -126,11 +127,15 @@ namespace our
             PlayerControllerComponent* player = nullptr;
             Entity* playerEntity = nullptr;
             Entity* raftEntity = nullptr;
+            Entity* boatEntity = nullptr;
             
             // Search for the entity that has the PlayerControllerComponent and the raft
             for(auto entity : world->getEntities()){
                 if(entity->name == "raft") {
                     raftEntity = entity;
+                }
+                if(entity->name == "boat") {
+                    boatEntity = entity;
                 }
                 auto p = entity->getComponent<PlayerControllerComponent>();
                 if(p) {
@@ -158,6 +163,24 @@ namespace our
                 // Set dynamicSurfaceHeight so the player feet roughly match the raft
                 dynamicSurfaceHeight = raftEntity->localTransform.position.y + player->surfaceHeight;
                 waveHeight = raftEntity->localTransform.position.y;
+            }
+
+            float dynamicBoatSurfaceHeight = 0.0f;
+            if(boatEntity) {
+                float bX = boatEntity->localTransform.position.x;
+                float bZ = boatEntity->localTransform.position.z;
+                
+                // 1. REALISTIC HEIGHT (Bobbing) using the engine's wave function 
+                // We add an offset (e.g. -0.8f) so that the boat sits deeper in the water and portions of it clip slightly under the waves.
+                float realisticHeight = getWaveHeight(bX, bZ, time) - 0.8f;
+                boatEntity->localTransform.position.y = realisticHeight;
+
+                // 2. REALISTIC TILTING (Pitch & Roll) using the wave slope derivative
+                glm::vec2 slope = getWaveDx(bX, bZ, time);
+                boatEntity->localTransform.rotation.x = glm::radians(-90.0f) + (std::atan(slope.y) * 0.25f);  
+                boatEntity->localTransform.rotation.z = -std::atan(slope.x) * 0.25f; // Roll
+                
+                dynamicBoatSurfaceHeight = realisticHeight + player->surfaceHeight; // Approximate foot height on boat
             }
 
             // Find the referenced camera entity
@@ -194,26 +217,28 @@ namespace our
             
             glm::vec2 delta = app->getMouse().getMouseDelta();
             
-            // Yaw applies to the player body (left/right)
-            playerRot.y -= delta.x * player->rotationSensitivity; 
-                
-            // Pitch applies to the camera (up/down)
-            // If there's a separate camera entity referenced, pitch that. Otherwise, pitch the player itself.
-            if(cameraEntity) {
-                glm::vec3& camRot = cameraEntity->localTransform.rotation;
-                camRot.x -= delta.y * player->rotationSensitivity;
+            if (!isDrivingBoat) {
+                // Yaw applies to the player body (left/right)
+                playerRot.y -= delta.x * player->rotationSensitivity; 
+                    
+                // Pitch applies to the camera (up/down)
+                // If there's a separate camera entity referenced, pitch that. Otherwise, pitch the player itself.
+                if(cameraEntity) {
+                    glm::vec3& camRot = cameraEntity->localTransform.rotation;
+                    camRot.x -= delta.y * player->rotationSensitivity;
 
-                // Clamping pitch for camera to prevent tumbling logic
-                if(camRot.x < -glm::half_pi<float>() * 0.99f) camRot.x = -glm::half_pi<float>() * 0.99f;
-                if(camRot.x >  glm::half_pi<float>() * 0.99f) camRot.x  = glm::half_pi<float>() * 0.99f;
-            } else {
-                playerRot.x -= delta.y * player->rotationSensitivity;
+                    // Clamping pitch for camera to prevent tumbling logic
+                    if(camRot.x < -glm::half_pi<float>() * 0.99f) camRot.x = -glm::half_pi<float>() * 0.99f;
+                    if(camRot.x >  glm::half_pi<float>() * 0.99f) camRot.x  = glm::half_pi<float>() * 0.99f;
+                } else {
+                    playerRot.x -= delta.y * player->rotationSensitivity;
 
-                if(playerRot.x < -glm::half_pi<float>() * 0.99f) playerRot.x = -glm::half_pi<float>() * 0.99f;
-                if(playerRot.x >  glm::half_pi<float>() * 0.99f) playerRot.x  = glm::half_pi<float>() * 0.99f;
+                    if(playerRot.x < -glm::half_pi<float>() * 0.99f) playerRot.x = -glm::half_pi<float>() * 0.99f;
+                    if(playerRot.x >  glm::half_pi<float>() * 0.99f) playerRot.x  = glm::half_pi<float>() * 0.99f;
+                }
+
+                playerRot.y = glm::wrapAngle(playerRot.y);
             }
-
-            playerRot.y = glm::wrapAngle(playerRot.y);
 
             // Compute the X/Z oriented front and right vectors so that player only moves horizontally
             glm::mat4 matrix = playerEntity->localTransform.toMat4();
@@ -232,18 +257,162 @@ namespace our
 
             float ds = current_speed * deltaTime;
 
-            // X/Z Keyboard Movement updates linearly
-            if(app->getKeyboard().isPressed(GLFW_KEY_W)) playerPos += front * ds;
-            if(app->getKeyboard().isPressed(GLFW_KEY_S)) playerPos -= front * ds;
-            if(app->getKeyboard().isPressed(GLFW_KEY_D)) playerPos += right * ds;
-            if(app->getKeyboard().isPressed(GLFW_KEY_A)) playerPos -= right * ds;
+            // Check if player is directly above the boat surface bounds for interaction (accounting for rotation)
+            bool overBoat = false;
+            if (boatEntity) {
+                float dx = playerPos.x - boatEntity->localTransform.position.x;
+                float dz = playerPos.z - boatEntity->localTransform.position.z;
+                float yaw = boatEntity->localTransform.rotation.y;
+                
+                // Inverse rotate the offset to boat's local space
+                float localX = dx * std::cos(-yaw) - dz * std::sin(-yaw);
+                float localZ = dx * std::sin(-yaw) + dz * std::cos(-yaw);
+                
+                overBoat = (std::abs(localX) <= 6.5f) && (std::abs(localZ) <= 3.0f);
+            }
 
-            // Buffered jump logic makes jumping tolerant to frame/input timing jitter.
-            if(jumpBufferTimer > 0.0f && coyoteTimer > 0.0f){
-                player->yVelocity = player->jumpVelocity;
-                player->isGrounded = false;
-                jumpBufferTimer = 0.0f;
-                coyoteTimer = 0.0f;
+            if (app->getKeyboard().justPressed(GLFW_KEY_F)) {
+                if (isDrivingBoat) {
+                    isDrivingBoat = false;
+                    // Stop driving but remain at the center of the boat
+                    if (boatEntity) {
+                        playerPos.x = boatEntity->localTransform.position.x;
+                        playerPos.z = boatEntity->localTransform.position.z;
+                    }
+                } else if (overBoat) {
+                    isDrivingBoat = true;
+                    // Center the camera pitch to look forward
+                    if (cameraEntity) {
+                        cameraEntity->localTransform.rotation.x = 0.0f;
+                    } else {
+                        playerRot.x = 0.0f;
+                    }
+                }
+            }
+
+            if (isDrivingBoat && boatEntity) {
+                bool isMovingForward = app->getKeyboard().isPressed(GLFW_KEY_W);
+                bool isMovingBackward = app->getKeyboard().isPressed(GLFW_KEY_S);
+
+                // Move boat forward and backward instead of player
+                if(isMovingForward) boatEntity->localTransform.position += front * ds * 1.5f;
+                if(isMovingBackward) boatEntity->localTransform.position -= front * ds * 0.75f;
+
+                // Steer the boat left and right (rotate) only when moving
+                if (isMovingForward || isMovingBackward) {
+                    float steer_speed = 0.8f * deltaTime;
+                    float steer_dir = isMovingBackward && !isMovingForward ? -1.0f : 1.0f; // reverse turning when backing up
+
+                    if(app->getKeyboard().isPressed(GLFW_KEY_A)) playerRot.y += steer_speed * steer_dir;
+                    if(app->getKeyboard().isPressed(GLFW_KEY_D)) playerRot.y -= steer_speed * steer_dir;
+                }
+
+                // Precise OBB collision check with MTV (Minimum Translation Vector) to allow sliding
+                if (raftEntity) {
+                    float rX = raftEntity->localTransform.position.x;
+                    float rZ = raftEntity->localTransform.position.z;
+                    // Raft bounds
+                    float rxExt = player->surfaceExtents.x;
+                    float rzExt = player->surfaceExtents.y;
+                    
+                    float yaw = boatEntity->localTransform.rotation.y;
+                    
+                    glm::vec2 finalPush(0.0f);
+
+                    // 1. Push boat out if its sample points are inside the raft AABB
+                    auto toWorld = [&](float lx, float lz) {
+                        return glm::vec2(
+                            boatEntity->localTransform.position.x + lx * std::cos(yaw) - lz * std::sin(yaw),
+                            boatEntity->localTransform.position.z + lx * std::sin(yaw) + lz * std::cos(yaw)
+                        );
+                    };
+
+                    for(int i = -1; i <= 1; i++) {
+                        for(int j = -1; j <= 1; j++) {
+                            glm::vec2 pt = toWorld(i * 6.5f, j * 3.0f);
+                            float dx = pt.x - rX;
+                            float dz = pt.y - rZ; // pt.y is actually the Z coord here
+                            
+                            float penX = rxExt - std::abs(dx);
+                            float penZ = rzExt - std::abs(dz);
+                            
+                            // Apply push if penetrating more than tolerance
+                            if (penX > 0.05f && penZ > 0.05f) {
+                                glm::vec2 push(0.0f);
+                                if (penX < penZ) push.x = (dx > 0) ? penX : -penX;
+                                else             push.y = (dz > 0) ? penZ : -penZ;
+                                
+                                if (std::abs(push.x) > std::abs(finalPush.x)) finalPush.x = push.x;
+                                if (std::abs(push.y) > std::abs(finalPush.y)) finalPush.y = push.y;
+                            }
+                        }
+                    }
+
+                    // 2. Push boat out if raft corners are inside the boat OBB
+                    auto getRaftCornerPush = [&](float wx, float wz) {
+                        float dx = wx - boatEntity->localTransform.position.x;
+                        float dz = wz - boatEntity->localTransform.position.z;
+                        
+                        float localX = dx * std::cos(-yaw) - dz * std::sin(-yaw);
+                        float localZ = dx * std::sin(-yaw) + dz * std::cos(-yaw);
+                        
+                        float penX = 6.5f - std::abs(localX);
+                        float penZ = 3.0f - std::abs(localZ);
+                        
+                        if (penX > 0.05f && penZ > 0.05f) {
+                            glm::vec2 localPush(0.0f);
+                            if (penX < penZ) localPush.x = (localX > 0) ? -penX : penX;
+                            else             localPush.y = (localZ > 0) ? -penZ : penZ;
+                            
+                            return glm::vec2(
+                                localPush.x * std::cos(yaw) - localPush.y * std::sin(yaw),
+                                localPush.x * std::sin(yaw) + localPush.y * std::cos(yaw)
+                            );
+                        }
+                        return glm::vec2(0.0f);
+                    };
+
+                    glm::vec2 corners[4] = {
+                        getRaftCornerPush(rX + rxExt, rZ + rzExt),
+                        getRaftCornerPush(rX + rxExt, rZ - rzExt),
+                        getRaftCornerPush(rX - rxExt, rZ + rzExt),
+                        getRaftCornerPush(rX - rxExt, rZ - rzExt)
+                    };
+
+                    for (const auto& cp : corners) {
+                        if (std::abs(cp.x) > std::abs(finalPush.x)) finalPush.x = cp.x;
+                        if (std::abs(cp.y) > std::abs(finalPush.y)) finalPush.y = cp.y;
+                    }
+
+                    // Apply the minimum translation vector to smoothly slide the boat out
+                    if (std::abs(finalPush.x) > 0.0f || std::abs(finalPush.y) > 0.0f) {
+                        boatEntity->localTransform.position.x += finalPush.x;
+                        boatEntity->localTransform.position.z += finalPush.y;
+                    }
+                }
+                
+                // Align boat to where the player looks. 
+                // The boat model is oriented sideways by roughly 90 degrees based on its initial pitch setup offset
+                boatEntity->localTransform.rotation.y = playerRot.y + glm::radians(90.0f);
+                
+                // Lock player position to boat center
+                playerPos.x = boatEntity->localTransform.position.x;
+                playerPos.z = boatEntity->localTransform.position.z;
+                player->yVelocity = 0.0f; // Prevent jumping
+            } else {
+                // X/Z Keyboard Movement updates linearly
+                if(app->getKeyboard().isPressed(GLFW_KEY_W)) playerPos += front * ds;
+                if(app->getKeyboard().isPressed(GLFW_KEY_S)) playerPos -= front * ds;
+                if(app->getKeyboard().isPressed(GLFW_KEY_D)) playerPos += right * ds;
+                if(app->getKeyboard().isPressed(GLFW_KEY_A)) playerPos -= right * ds;
+            }
+
+            // Apply jumping with Mock Gravity System
+            if(player->isGrounded && app->getKeyboard().justPressed(GLFW_KEY_SPACE)){
+                if (!isDrivingBoat) { // Can't jump while driving
+                    player->yVelocity = player->jumpVelocity;
+                    player->isGrounded = false;
+                }
             }
 
             if(!player->isGrounded) {
@@ -256,12 +425,37 @@ namespace our
             bool overRaft = (std::abs(playerPos.x - player->surfaceCenter.x) <= player->surfaceExtents.x) &&
                             (std::abs(playerPos.z - player->surfaceCenter.y) <= player->surfaceExtents.y);
 
-            // Boundary clamping constraint on Y axis (Walk onto the raft!)
-            if(overRaft && playerPos.y <= dynamicSurfaceHeight){
-                playerPos.y = dynamicSurfaceHeight;
+            // Ensure overBoat is up-to-date with new player positions
+            overBoat = false;
+            if (boatEntity) {
+                float dx = playerPos.x - boatEntity->localTransform.position.x;
+                float dz = playerPos.z - boatEntity->localTransform.position.z;
+                float yaw = boatEntity->localTransform.rotation.y;
+                
+                // Inverse rotate the offset to boat's local space
+                float localX = dx * std::cos(-yaw) - dz * std::sin(-yaw);
+                float localZ = dx * std::sin(-yaw) + dz * std::cos(-yaw);
+                
+                overBoat = (std::abs(localX) <= 6.5f) && (std::abs(localZ) <= 3.0f);
+            }
+
+            bool onStandableSurface = false;
+            float targetSurfaceHeight = -100.0f;
+
+            if(overRaft && playerPos.y <= dynamicSurfaceHeight + 0.1f) {
+                targetSurfaceHeight = dynamicSurfaceHeight;
+                onStandableSurface = true;
+            } else if(overBoat && playerPos.y <= dynamicBoatSurfaceHeight + 0.1f) {
+                targetSurfaceHeight = dynamicBoatSurfaceHeight;
+                onStandableSurface = true;
+            }
+
+            // Boundary clamping constraint on Y axis (Walk onto the surfaces!)
+            if(onStandableSurface && playerPos.y <= targetSurfaceHeight) {
+                playerPos.y = targetSurfaceHeight;
                 player->yVelocity = 0.0f;
                 player->isGrounded = true;
-            } else if (!overRaft && playerPos.y <= waveHeight - 1.5f) { // Fall into water and submerge
+            } else if (!overRaft && !overBoat && playerPos.y <= waveHeight - 1.5f) { // Fall into water and submerge
                 // Reset position to center of the raft
                 playerPos.x = player->surfaceCenter.x;
                 playerPos.y = dynamicSurfaceHeight + 2.0f; // Drop them back from the sky slightly

@@ -52,6 +52,7 @@
             },
             "meshes":{
                 "cube": "assets/models/cube.obj",
+                "boat": "assets/models/boat.obj",
                 "monkey": "assets/models/monkey.obj",
                 "plane": "assets/models/plane.obj",
                 "sphere": "assets/models/sphere.obj"
@@ -331,6 +332,18 @@
                 "components": [
                     { "type": "Mesh Renderer", "mesh": "cube", "material": "blue" },
                     { "type": "Resource", "Resource": { "type": "fish", "amount": 1 } }
+                ]
+            },
+            {
+                "name": "boat",
+                "position": [0, 0, 24],
+                "scale": [0.03, 0.03, 0.03],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "boat",
+                        "material": "raft_mat"
+                    }
                 ]
             }
         ]
