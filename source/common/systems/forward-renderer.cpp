@@ -524,7 +524,7 @@ namespace our {
                     
                     // Draw in bottom right corner
                     float radarRadius = 50.0f;
-                    float padding = 25.0f;
+                    float padding = 50.0f;
                     float minX = windowSize.x - (radarRadius * 2.0f) - padding;
                     float minY = windowSize.y - (radarRadius * 2.0f) - padding;
                     
