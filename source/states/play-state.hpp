@@ -7,6 +7,8 @@
 #include <systems/player-controller-system.hpp>
 #include <systems/movement.hpp>
 #include <systems/survival-system.hpp>
+#include <systems/animation-system.hpp>
+#include <systems/shark-system.hpp>
 #include <asset-loader.hpp>
 
 // This state shows how to use the ECS framework and deserialization.
@@ -17,6 +19,8 @@ class Playstate: public our::State {
     our::PlayerControllerSystem cameraController; // Now utilizing Player Controller explicitly
     our::MovementSystem movementSystem;
     our::SurvivalSystem survivalSystem;
+    our::AnimationSystem animationSystem;
+    our::SharkSystem sharkSystem;
 
     void onInitialize() override {
         // First of all, we get the scene configuration from the app config
@@ -80,6 +84,8 @@ class Playstate: public our::State {
         movementSystem.update(&world, (float)deltaTime);
         cameraController.update(&world, (float)deltaTime);
         survivalSystem.update();
+        animationSystem.update(&world, (float)deltaTime);
+        sharkSystem.update(&world, (float)deltaTime);
         
         world.deleteMarkedEntities();
         
@@ -106,3 +112,5 @@ class Playstate: public our::State {
         our::clearAllAssets();
     }
 };
+
+// Force build 2

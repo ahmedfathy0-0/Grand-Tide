@@ -15,6 +15,15 @@ set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)           # Don't build Installation I
 set(GLFW_USE_HYBRID_HPG ON CACHE BOOL "" FORCE)     # Add variables to use High Performance Graphics Card if available
 add_subdirectory(vendor/glfw)                       # Build the GLFW project to use later as a library
 
+# Assimp build configuration
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
+set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+set(INJECT_DEBUG_POSTFIX OFF CACHE BOOL "" FORCE) # Prevent Assimp from adding 'd' to the lib name in debug mode
+set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "" FORCE)
+add_subdirectory(vendor/assimp)
+
 # A variable with all the source files of GLAD
 set(GLAD_SOURCE vendor/glad/src/gl.c)
 # A variables with all the source files of Dear ImGui
@@ -48,6 +57,8 @@ set(COMMON_SOURCES
         source/common/mesh/mesh.hpp
         source/common/mesh/mesh-utils.hpp
         source/common/mesh/mesh-utils.cpp
+        source/common/mesh/model.hpp
+        source/common/mesh/model.cpp
 
         source/common/texture/sampler.hpp
         source/common/texture/sampler.cpp
@@ -90,6 +101,8 @@ set(COMMON_SOURCES
         source/common/components/inventory.cpp
         source/common/components/resource.hpp
         source/common/components/resource.cpp
+        source/common/components/shark-component.hpp
+        source/common/components/shark-component.cpp
         source/common/components/component-deserializer.hpp
 
         source/common/ecs/event-manager.hpp
@@ -103,6 +116,10 @@ set(COMMON_SOURCES
         source/common/systems/movement.hpp
         source/common/systems/survival-system.hpp
         source/common/systems/survival-system.cpp
+        source/common/systems/animation-system.hpp
+        source/common/systems/animation-system.cpp
+        source/common/systems/shark-system.hpp
+        source/common/systems/shark-system.cpp
 )
 
 set(STATES_SOURCES
@@ -148,9 +165,10 @@ target_include_directories(GAME_APPLICATION PRIVATE
         vendor/glm
         vendor/imgui
         vendor/utils
+        vendor/assimp/include
 )
 
-target_link_libraries(GAME_APPLICATION PRIVATE glfw)
+target_link_libraries(GAME_APPLICATION PRIVATE glfw assimp)
 
 if(UNIX AND NOT APPLE)
         target_link_libraries(GAME_APPLICATION PRIVATE OpenGL::GL)

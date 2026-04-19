@@ -1,5 +1,6 @@
 #include "survival-system.hpp"
 #include "../asset-loader.hpp"
+#include "../components/shark-component.hpp"
 
 namespace our {
 
@@ -85,12 +86,42 @@ namespace our {
     }
 
     void SurvivalSystem::handleAttackAction() {
-        if(!playerEntity) return;
+        if(!world || !playerEntity) return;
         auto inventory = playerEntity->getComponent<InventoryComponent>();
         if(!inventory || inventory->activeSlot != 3) return;
 
         std::cout << "[Combat] Attacked with Spear!\n";
         EventManager::emit("PLAYER_ATTACKED", 25);
+        
+        const glm::vec3 playerPos = glm::vec3(playerEntity->getLocalToWorldMatrix()[3]);
+
+        for(auto entity : world->getEntities()) {
+            auto shark = entity->getComponent<SharkComponent>();
+            auto health = entity->getComponent<HealthComponent>();
+            if(!shark || !health || health->isDead()) continue;
+
+            glm::vec3 targetPos = glm::vec3(entity->getLocalToWorldMatrix()[3]);
+            
+            // Player's look direction (forward is -Z in local space)
+            glm::vec3 playerForward = glm::normalize(glm::vec3(playerEntity->getLocalToWorldMatrix() * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
+            
+            // Target bounding radius (Shark is very long, so we give it a large bounding bubble to cover snout to tail)
+            float targetRadius = shark ? 10.0f : 2.0f; 
+            float spearReach = 10.0f; // Spear thrust distance
+            
+            // Find the closest point along the spear's line segment to the target's core
+            glm::vec3 diff = targetPos - playerPos;
+            float t = glm::clamp(glm::dot(diff, playerForward), 0.0f, spearReach);
+            glm::vec3 closestSpearPoint = playerPos + playerForward * t;
+            
+            float distToTarget = glm::distance(closestSpearPoint, targetPos);
+            
+            if(distToTarget <= targetRadius) {
+                health->takeDamage(25.0f);
+                if (shark) shark->damageFlashTimer = 0.5f; // Flash red for 0.5 seconds
+                std::cout << "[Combat] Hit entity for 25 damage! Health left: " << health->currentHealth << "\n";
+            }
+        }
     }
 
     void SurvivalSystem::update() {
