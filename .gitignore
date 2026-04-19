@@ -42,6 +42,6 @@ Thumbs.db
 
 screenshots/
 errors/
-assimp
+vendor/assimp
 
 Phase1/
