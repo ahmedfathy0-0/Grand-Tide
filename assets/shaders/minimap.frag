@@ -8,7 +8,8 @@ in Varyings {
 out vec4 fragColor;
 
 uniform float time;
-uniform vec2 raft_relative_pos;
+uniform vec2 entities_pos[32]; // Max 32 entities on radar for now
+uniform int num_entities;
 
 #define s(v) smoothstep(0.01, 0.005, abs(x-v))
 #define l(x,y) length(c - vec2(x,y))
@@ -30,19 +31,18 @@ void main()
     
     // Targets (blips)
     // The player is at the center, we draw a small dot for the player
-    float player_blip = l(0.0, 0.0);
+    float b = l(0.0, 0.0);
     
-    // The raft is at raft_relative_pos
-    // Clamp the raft position so it doesn't go completely off-screen, or let it disappear
-    // We'll just draw it where it is
-    float raft_blip = length(c - raft_relative_pos);
+    for (int i = 0; i < num_entities && i < 32; ++i) {
+        float blip = length(c - entities_pos[i]);
+        b = min(b, blip);
+    }
     
-    // Combine targets: player (center) and raft
-    float b = min(player_blip, raft_blip) + 0.06 - y * 0.04;
+    b = b + 0.06 - y * 0.04;
 
     vec4 O = vec4(
         // R channel: targets (red blips)
-        y < 1.5 && b < 0.08 ? b * (18.0 - 13.0 * y) : 0.1,
+        y < 4.5 && b < 0.08 ? b * (18.0 - 4.0 * y) : 0.1,
         
         // G channel: radar background & sweep
         (x < 0.9 ? 

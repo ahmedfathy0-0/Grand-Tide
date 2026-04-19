@@ -510,17 +510,28 @@ namespace our {
                 }
 
                 // --- MINIMAP RENDERING ---
-                if (minimapMat && playerEntity && raftEntity) {
+                if (minimapMat && playerEntity) {
                     minimapMat->setup();
                     minimapMat->shader->set("time", (float)glfwGetTime());
                     
                     // Get positions
                     glm::vec3 pPos = playerEntity->localTransform.position;
-                    glm::vec3 rPos = raftEntity->localTransform.position;
                     
-                    // Calculate relative vector in XZ plane (scaled down so things fit on radar)
-                    glm::vec2 relativePos = glm::vec2(rPos.x - pPos.x, rPos.z - pPos.z) * 0.05f; 
-                    minimapMat->shader->set("raft_relative_pos", relativePos);
+                    int entityCount = 0;
+                    for (auto entity : world->getEntities()) {
+                        if (entity == playerEntity) continue;
+                        if (entity->name == "ocean" || entity->name == "water" || entity->name == "sky" || entity->name == "moon" || entity->name.empty()) continue;
+                        
+                        glm::vec3 ePos = entity->localTransform.position;
+                        glm::vec2 relativePos = glm::vec2(ePos.x - pPos.x, ePos.z - pPos.z) * 0.05f;
+                        
+                        if (glm::length(relativePos) < 1.0f) {
+                            minimapMat->shader->set("entities_pos[" + std::to_string(entityCount) + "]", relativePos);
+                            entityCount++;
+                            if (entityCount >= 32) break;
+                        }
+                    }
+                    minimapMat->shader->set("num_entities", entityCount);
                     
                     // Draw in bottom right corner
                     float radarRadius = 50.0f;
