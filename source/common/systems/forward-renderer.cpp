@@ -421,6 +421,7 @@ namespace our {
         
         TintedMaterial* uiMat = dynamic_cast<TintedMaterial*>(AssetLoader<Material>::get("tinted"));
         TintedMaterial* hbMat = dynamic_cast<TintedMaterial*>(AssetLoader<Material>::get("health-bar"));
+        TintedMaterial* minimapMat = dynamic_cast<TintedMaterial*>(AssetLoader<Material>::get("minimap"));
         TintedMaterial* tbMat = dynamic_cast<TintedMaterial*>(AssetLoader<Material>::get("toolbar"));
         TexturedMaterial* iconHammerMat = dynamic_cast<TexturedMaterial*>(AssetLoader<Material>::get("icon_hammer"));
         TexturedMaterial* iconNetMat = dynamic_cast<TexturedMaterial*>(AssetLoader<Material>::get("icon_net"));
@@ -430,6 +431,8 @@ namespace our {
         Mesh* uiMesh = AssetLoader<Mesh>::get("plane");
         
         if (uiMat && uiMesh && hbMat && tbMat) {
+            Entity* playerEntity = nullptr;
+            Entity* raftEntity = nullptr;
             HealthComponent* playerHealth = nullptr;
             InventoryComponent* playerInventory = nullptr;
             HealthComponent* boatHealth = nullptr;
@@ -438,9 +441,11 @@ namespace our {
                 if (auto hp = entity->getComponent<HealthComponent>()) {
                     if (entity->getComponent<InventoryComponent>()) {
                         playerHealth = hp;
+                        playerEntity = entity;
                         playerInventory = entity->getComponent<InventoryComponent>();
                     } else if (entity->name == "raft") {
                         boatHealth = hp;
+                        raftEntity = entity;
                     }
                 }
             }
@@ -531,6 +536,44 @@ namespace our {
                 }
                 if (playerInventory->fishCount > 0) {
                     drawIcon(124, tbY - 51, 16, iconFishMat);
+                }
+
+                // --- MINIMAP RENDERING ---
+                if (minimapMat && playerEntity) {
+                    minimapMat->setup();
+                    minimapMat->shader->set("time", (float)glfwGetTime());
+                    
+                    // Get positions
+                    glm::vec3 pPos = playerEntity->localTransform.position;
+                    
+                    int entityCount = 0;
+                    for (auto entity : world->getEntities()) {
+                        if (entity == playerEntity) continue;
+                        if (entity->name == "ocean" || entity->name == "water" || entity->name == "sky" || entity->name == "moon" || entity->name.empty()) continue;
+                        
+                        glm::vec3 ePos = entity->localTransform.position;
+                        glm::vec2 relativePos = glm::vec2(ePos.x - pPos.x, ePos.z - pPos.z) * 0.05f;
+                        
+                        if (glm::length(relativePos) < 1.0f) {
+                            minimapMat->shader->set("entities_pos[" + std::to_string(entityCount) + "]", relativePos);
+                            entityCount++;
+                            if (entityCount >= 32) break;
+                        }
+                    }
+                    minimapMat->shader->set("num_entities", entityCount);
+                    
+                    // Draw in bottom right corner
+                    float radarRadius = 50.0f;
+                    float padding = 50.0f;
+                    float minX = windowSize.x - (radarRadius * 2.0f) - padding;
+                    float minY = windowSize.y - (radarRadius * 2.0f) - padding;
+                    
+                    glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(minX + radarRadius, minY + radarRadius, 0.0f));
+                    model = glm::scale(model, glm::vec3(radarRadius * 2.0f, radarRadius * 2.0f, 1.0f));
+                    
+                    minimapMat->shader->set("transform", uiProj * model);
+                    uiMesh->draw();
+                    minimapMat->teardown();
                 }
 
                 // Text is handled in Playstate::onImmediateGui() due to ImGui lifecycle
