@@ -3,6 +3,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/hash.hpp>
 
+#define MAX_BONE_INFLUENCE 4
+
 namespace our {
 
     // Since we may want to store colors in bytes instead of floats for efficiency,
@@ -14,13 +16,20 @@ namespace our {
         Color color;            // The vertex color
         glm::vec2 tex_coord;    // The texture coordinates (the vertex position in the texture space)
         glm::vec3 normal;       // The surface normal at the vertex (This will be used for lighting in the final phase)
+        
+        // Bone indexes which will influence this vertex
+        glm::ivec4 boneIDs = glm::ivec4(-1); // Automatically initialized to -1 (invalid ID)
+        // Weights from each bone
+        glm::vec4 boneWeights = glm::vec4(0.0f);
 
         // We plan to use this as a key for a map so we need to define the equality operator
         bool operator==(const Vertex& other) const {
             return position == other.position &&
                    color == other.color &&
                    tex_coord == other.tex_coord &&
-                   normal == other.normal;
+                   normal == other.normal &&
+                   boneIDs == other.boneIDs &&
+                   boneWeights == other.boneWeights;
         }
     };
 
@@ -38,6 +47,8 @@ namespace std {
             combined = hash_combine(combined, hash<our::Color>()(vertex.color));
             combined = hash_combine(combined, hash<glm::vec2>()(vertex.tex_coord));
             combined = hash_combine(combined, hash<glm::vec3>()(vertex.normal));
+            combined = hash_combine(combined, hash<glm::ivec4>()(vertex.boneIDs));
+            combined = hash_combine(combined, hash<glm::vec4>()(vertex.boneWeights));
             return combined;
         }
     };

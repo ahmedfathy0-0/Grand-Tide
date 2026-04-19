@@ -3,12 +3,15 @@
 #include "../texture/texture-utils.hpp"
 #include "../components/light.hpp"
 #include "../material/lit-material.hpp"
+#include "../material/lit-material.hpp"
 #include <glm/gtc/matrix_transform.hpp>
+#include "../components/shark-component.hpp"
 #include "../components/health.hpp"
 #include "../components/inventory.hpp"
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 #include <string>
+#include "../mesh/model.hpp"
 
 namespace our {
 
@@ -156,6 +159,15 @@ namespace our {
                 command.center = glm::vec3(command.localToWorld * glm::vec4(0, 0, 0, 1));
                 command.mesh = meshRenderer->mesh;
                 command.material = meshRenderer->material;
+                command.entity = entity;
+                
+                // If it's an animated shark, override the default mesh with the actual FBX rigged mesh
+                if (auto shark = entity->getComponent<SharkComponent>(); shark && !shark->modelName.empty()) {
+                    if (our::ModelLoader::models.find(shark->modelName) != our::ModelLoader::models.end()) {
+                        command.mesh = our::ModelLoader::models[shark->modelName]->getMesh();
+                    }
+                }
+
                 // if it is transparent, we add it to the transparent commands list
                 if(command.material->transparent){
                     transparentCommands.push_back(command);
@@ -273,6 +285,17 @@ namespace our {
                 lit_material->shader->set("M", command.localToWorld);
                 lit_material->shader->set("M_IT", glm::transpose(glm::inverse(command.localToWorld)));
                 lit_material->shader->set("VP", VP);
+
+                if (auto shark = command.entity->getComponent<SharkComponent>(); shark) {
+                    for(int b = 0; b < shark->finalBonesMatrices.size() && b < 128; b++) {
+                        lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", shark->finalBonesMatrices[b]);
+                    }
+                    if (shark->damageFlashTimer > 0.0f) {
+                        lit_material->shader->set("albedo_tint", glm::vec3(1.0f, 0.2f, 0.2f)); // Flash red, use vec3 as declared
+                    } else {
+                        lit_material->shader->set("albedo_tint", lit_material->albedo_tint); // Restore natural vec3 tint
+                    }
+                }
             }
             
             command.material->shader->set("transform", VP * command.localToWorld);
@@ -363,6 +386,12 @@ namespace our {
                 lit_material->shader->set("M", command.localToWorld);
                 lit_material->shader->set("M_IT", glm::transpose(glm::inverse(command.localToWorld)));
                 lit_material->shader->set("VP", VP);
+
+                if (auto shark = command.entity->getComponent<SharkComponent>(); shark) {
+                    for(int b = 0; b < shark->finalBonesMatrices.size() && b < 100; b++) {
+                        lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", shark->finalBonesMatrices[b]);
+                    }
+                }
             }
             
             command.material->shader->set("transform", VP * command.localToWorld);

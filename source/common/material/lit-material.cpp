@@ -31,6 +31,7 @@ namespace our {
         shader->set("albedo_tint", albedo_tint);
         shader->set("specular_tint", specular_tint);
         shader->set("roughness_multiplier", roughness_multiplier);
+        shader->set("isAnimated", isAnimated);
     }
 
     void LitMaterial::teardown() const {
@@ -57,6 +58,7 @@ namespace our {
         albedo_tint = data.value("albedo_tint", albedo_tint);
         specular_tint = data.value("specular_tint", specular_tint);
         roughness_multiplier = data.value("roughness_multiplier", roughness_multiplier);
+        isAnimated = data.value("isAnimated", isAnimated);
     }
 
 }
