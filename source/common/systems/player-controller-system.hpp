@@ -110,6 +110,11 @@ namespace our
     class PlayerControllerSystem {
         Application* app; 
         bool mouse_locked = false;
+        float jumpBufferTimer = 0.0f;
+        float coyoteTimer = 0.0f;
+
+        static constexpr float JumpBufferDuration = 0.12f;
+        static constexpr float CoyoteDuration = 0.10f;
 
     public:
         // Sets the application environment when traversing state
@@ -174,6 +179,18 @@ namespace our
 
             glm::vec3& playerPos = playerEntity->localTransform.position;
             glm::vec3& playerRot = playerEntity->localTransform.rotation;
+
+            if(player->isGrounded) {
+                coyoteTimer = CoyoteDuration;
+            } else {
+                coyoteTimer = glm::max(0.0f, coyoteTimer - deltaTime);
+            }
+
+            if(app->getKeyboard().justPressed(GLFW_KEY_SPACE)) {
+                jumpBufferTimer = JumpBufferDuration;
+            } else {
+                jumpBufferTimer = glm::max(0.0f, jumpBufferTimer - deltaTime);
+            }
             
             glm::vec2 delta = app->getMouse().getMouseDelta();
             
@@ -221,10 +238,12 @@ namespace our
             if(app->getKeyboard().isPressed(GLFW_KEY_D)) playerPos += right * ds;
             if(app->getKeyboard().isPressed(GLFW_KEY_A)) playerPos -= right * ds;
 
-            // Apply jumping with Mock Gravity System
-            if(player->isGrounded && app->getKeyboard().justPressed(GLFW_KEY_SPACE)){
+            // Buffered jump logic makes jumping tolerant to frame/input timing jitter.
+            if(jumpBufferTimer > 0.0f && coyoteTimer > 0.0f){
                 player->yVelocity = player->jumpVelocity;
                 player->isGrounded = false;
+                jumpBufferTimer = 0.0f;
+                coyoteTimer = 0.0f;
             }
 
             if(!player->isGrounded) {

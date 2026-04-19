@@ -16,6 +16,12 @@ namespace our {
         Application* app;
         Entity* playerEntity;
         Entity* boatEntity;
+        bool eventsSubscribed = false;
+
+        void handleBoatDamaged(int damage);
+        void handleRepairAction();
+        void handleGatherAction();
+        void handleAttackAction();
 
     public:
         void setup(World* world, Application* app, Entity* player, Entity* boat) {
@@ -24,23 +30,13 @@ namespace our {
             this->playerEntity = player;
             this->boatEntity = boat;
 
-            EventManager::subscribe("BOAT_DAMAGED", [this](int damage) {
-                if (this->boatEntity) {
-                    auto boatHealth = this->boatEntity->getComponent<HealthComponent>();
-                    if (boatHealth) {
-                        boatHealth->takeDamage(static_cast<float>(damage));
-                        std::cout << "[Event] Boat damaged for " << damage << " hp. Current: " << boatHealth->currentHealth << "\n";
-                        if (boatHealth->isDead()) {
-                            std::cout << "[Event] Boat destroyed!\n";
-                            // Swap boat material to a dark/broken material
-                            auto meshR = this->boatEntity->getComponent<MeshRendererComponent>();
-                            if (meshR) {
-                                meshR->material = AssetLoader<Material>::get("dark_broken"); 
-                            }
-                        }
-                    }
-                }
-            });
+            if(!eventsSubscribed) {
+                EventManager::subscribe("BOAT_DAMAGED", [this](int damage) { handleBoatDamaged(damage); });
+                EventManager::subscribe("PLAYER_REPAIR_ACTION", [this](int) { handleRepairAction(); });
+                EventManager::subscribe("PLAYER_GATHER_ACTION", [this](int) { handleGatherAction(); });
+                EventManager::subscribe("PLAYER_ATTACK_ACTION", [this](int) { handleAttackAction(); });
+                eventsSubscribed = true;
+            }
         }
 
         void update();

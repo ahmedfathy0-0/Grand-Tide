@@ -9,10 +9,10 @@ namespace our {
     // A convenience class to read mouse input
     class Mouse {
     private:
-        bool enabled; // Is this class enabled (allowed to read user input)
-        glm::vec2 currentMousePosition, previousMousePosition;
-        bool currentMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1], previousMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1];
-        glm::vec2 scrollOffset; // Stores mouse wheel scroll amount for this frame
+        bool enabled = false; // Is this class enabled (allowed to read user input)
+        glm::vec2 currentMousePosition = glm::vec2(0.0f), previousMousePosition = glm::vec2(0.0f);
+        bool currentMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1] = {}, previousMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1] = {};
+        glm::vec2 scrollOffset = glm::vec2(0.0f); // Stores mouse wheel scroll amount for this frame
 
     public:
         // Enable this object and capture current mouse state from window
@@ -71,6 +71,7 @@ namespace our {
 
         void MouseButtonEvent(int button, int action, int) {
             if(!enabled) return;
+            if(button < 0 || button > GLFW_MOUSE_BUTTON_LAST) return;
             if (action == GLFW_PRESS) currentMouseButtons[button] = true;
             else if (action == GLFW_RELEASE) currentMouseButtons[button] = false;
         }
