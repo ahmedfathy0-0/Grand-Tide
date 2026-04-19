@@ -8,9 +8,9 @@ namespace our {
     // A convenience class to read keyboard input
     class Keyboard {
     private:
-        bool enabled; // Is this class enabled (allowed to read user input)
-        bool currentKeyStates[GLFW_KEY_LAST + 1];
-        bool previousKeyStates[GLFW_KEY_LAST + 1];
+        bool enabled = false; // Is this class enabled (allowed to read user input)
+        bool currentKeyStates[GLFW_KEY_LAST + 1] = {};
+        bool previousKeyStates[GLFW_KEY_LAST + 1] = {};
 
     public:
         // Enable this object and capture current keyboard state from window
@@ -37,6 +37,7 @@ namespace our {
         // Event functions called from GLFW callbacks in "application.cpp"
         void keyEvent(int key, int, int action, int){
             if(!enabled) return;
+            if(key < GLFW_KEY_SPACE || key > GLFW_KEY_LAST) return;
             if(action == GLFW_PRESS){
                 currentKeyStates[key] = true;
             } else if(action == GLFW_RELEASE){
