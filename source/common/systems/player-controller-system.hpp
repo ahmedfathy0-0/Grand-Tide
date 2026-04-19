@@ -60,7 +60,7 @@ namespace our
     }
 
     inline glm::vec2 getWaveDx(float posX, float posZ, float time) {
-        const int iters = 3; // Reduced from 20 to 3 so the raft only tilts on the massive rolling waves, ignoring chaotic tiny ripples
+        const int iters = 3; 
         const float SCRL_SPEED = 0.4f;
         const glm::vec2 scrollDir = {1.0f, 1.0f};
         const float HOR_SCALE = 1.1f;

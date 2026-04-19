@@ -28,7 +28,11 @@
                     "vs":"assets/shaders/lit.vert",
                     "fs":"assets/shaders/lit.frag"
                 },
-                "health-bar":{
+                "minimap": {
+                    "vs": "assets/shaders/textured.vert",
+                    "fs": "assets/shaders/minimap.frag"
+                },
+                "health-bar": {
                     "vs":"assets/shaders/textured.vert",
                     "fs":"assets/shaders/health-bar.frag"
                 },
@@ -104,7 +108,18 @@
                     "roughness_multiplier": 1.0,
                     "sampler": "default"
                 },
-                "health-bar":{
+                "minimap": {
+                    "type": "tinted",
+                    "shader": "minimap",
+                    "pipelineState": {
+                        "faceCulling": { "enabled": false },
+                        "depthTesting": { "enabled": false },
+                        "blending": { "enabled": true, "sourceFactor": "GL_SRC_ALPHA", "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA" },
+                        "colorMask": [true, true, true, true]
+                    },
+                    "tint": [1, 1, 1, 1]
+                },
+                "health-bar": {
                     "type": "tinted",
                     "shader": "health-bar",
                     "pipelineState": {

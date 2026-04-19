@@ -46,13 +46,17 @@ class Playstate: public our::State {
 
     void onImmediateGui() override {
         our::Entity* player = nullptr;
+        our::Entity* raft = nullptr;
         for (auto entity : world.getEntities()) {
-            if (entity->name == "player") { player = entity; break; }
+            if (entity->name == "player") player = entity;
+            if (entity->name == "raft") raft = entity;
         }
+        
         if (player) {
             if (auto inv = player->getComponent<our::InventoryComponent>()) {
                 auto size = getApp()->getFrameBufferSize();
                 float tbY = size.y - 80.0f;
+                // ... Existing logic for inventory ... //
                 
                 ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
                 if (inv->woodCount > 0) {
@@ -74,6 +78,7 @@ class Playstate: public our::State {
             }
         }
     }
+
 
     void onDraw(double deltaTime) override {
         // Here, we just run a bunch of systems to control the world logic
