@@ -69,7 +69,7 @@ namespace our {
                     // Swap back to original material (Red Glass)
                     auto meshR = boatEntity->getComponent<MeshRendererComponent>();
                     if (meshR) {
-                        meshR->material = AssetLoader<Material>::get("red_glass");
+                        meshR->material = AssetLoader<Material>::get("raft_mat");
                     }
                 }
             } 

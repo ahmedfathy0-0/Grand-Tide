@@ -410,7 +410,7 @@ namespace our {
                     if (entity->getComponent<InventoryComponent>()) {
                         playerHealth = hp;
                         playerInventory = entity->getComponent<InventoryComponent>();
-                    } else if (entity->name == "boat") {
+                    } else if (entity->name == "raft") {
                         boatHealth = hp;
                     }
                 }

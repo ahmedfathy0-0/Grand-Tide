@@ -212,6 +212,31 @@
                         "depthTesting": { "enabled": true }
                     },
                     "tint": [0.45, 0.4, 0.5, 1]
+                },
+                "brown": { 
+                    "type": "tinted", "shader": "tinted", 
+                    "pipelineState": { "faceCulling": { "enabled": false }, "depthTesting": { "enabled": true } }, 
+                    "tint": [0.6, 0.4, 0.2, 1.0] 
+                },
+                "green": { 
+                    "type": "tinted", "shader": "tinted", 
+                    "pipelineState": { "faceCulling": { "enabled": false }, "depthTesting": { "enabled": true } }, 
+                    "tint": [0.2, 0.8, 0.2, 1.0] 
+                },
+                "silver": { 
+                    "type": "tinted", "shader": "tinted", 
+                    "pipelineState": { "faceCulling": { "enabled": false }, "depthTesting": { "enabled": true } }, 
+                    "tint": [0.8, 0.8, 0.8, 1.0] 
+                },
+                "dark_broken": { 
+                    "type": "tinted", "shader": "tinted", 
+                    "pipelineState": { "faceCulling": { "enabled": false }, "depthTesting": { "enabled": true } }, 
+                    "tint": [0.2, 0.2, 0.2, 1.0] 
+                },
+                "blue": { 
+                    "type": "tinted", "shader": "tinted", 
+                    "pipelineState": { "faceCulling": { "enabled": false }, "depthTesting": { "enabled": true } }, 
+                    "tint": [0.2, 0.2, 0.8, 1.0] 
                 }
             }
         },
@@ -268,7 +293,44 @@
                         "type": "Mesh Renderer",
                         "mesh": "cube",
                         "material": "raft_mat"
+                    },
+                    {
+                        "type": "Health",
+                        "maxHealth": 1000,
+                        "currentHealth": 500
                     }
+                ]
+            },
+            {
+                "position": [2, 0.5, 8],
+                "scale": [0.5, 0.5, 0.5],
+                "components": [
+                    { "type": "Mesh Renderer", "mesh": "cube", "material": "brown" },
+                    { "type": "Resource", "Resource": { "type": "wood", "amount": 1 } }
+                ]
+            },
+            {
+                "position": [-2, 0.5, 8],
+                "scale": [0.5, 0.5, 0.5],
+                "components": [
+                    { "type": "Mesh Renderer", "mesh": "cube", "material": "brown" },
+                    { "type": "Resource", "Resource": { "type": "wood", "amount": 1 } }
+                ]
+            },
+            {
+                "position": [0, 0.5, 6],
+                "scale": [0.5, 0.5, 0.5],
+                "components": [
+                    { "type": "Mesh Renderer", "mesh": "cube", "material": "blue" },
+                    { "type": "Resource", "Resource": { "type": "fish", "amount": 1 } }
+                ]
+            },
+            {
+                "position": [1, 0.5, 7],
+                "scale": [0.5, 0.5, 0.5],
+                "components": [
+                    { "type": "Mesh Renderer", "mesh": "cube", "material": "blue" },
+                    { "type": "Resource", "Resource": { "type": "fish", "amount": 1 } }
                 ]
             }
         ]

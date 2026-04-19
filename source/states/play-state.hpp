@@ -39,7 +39,7 @@ class Playstate: public our::State {
         our::Entity* boat = nullptr;
         for (auto entity : world.getEntities()) {
             if (entity->name == "player") player = entity;
-            if (entity->name == "boat") boat = entity;
+            if (entity->name == "raft") boat = entity;
         }
         survivalSystem.setup(&world, getApp(), player, boat);
     }
