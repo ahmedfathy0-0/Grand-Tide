@@ -2,7 +2,7 @@
     "start-scene": "play",
     "window":
     {
-        "title":"Raft (Task 1: The Ocean)",
+        "title":"Raft: The Once Piece Adventure",
         "size":{
             "width":1280,
             "height":720
@@ -262,7 +262,7 @@
                     {
                         "type": "Health",
                         "maxHealth": 100,
-                        "currentHealth": 100
+                        "currentHealth": 50
                     },
                     {
                         "type": "Inventory"
