@@ -30,13 +30,10 @@
                 "shark": {
                     "vs": "assets/shaders/lit.vert",
                     "fs": "assets/shaders/shark.frag"
+                },
                 "minimap": {
                     "vs": "assets/shaders/textured.vert",
                     "fs": "assets/shaders/minimap.frag"
-                },
-                "health-bar": {
-                    "vs":"assets/shaders/textured.vert",
-                    "fs":"assets/shaders/health-bar.frag"
                 },
                 "health-bar": {
                     "vs": "assets/shaders/textured.vert",
@@ -179,17 +176,34 @@
                     "roughness_multiplier": 1.0,
                     "sampler": "default"
                 },
-                "health-bar": {
                 "minimap": {
                     "type": "tinted",
                     "shader": "minimap",
                     "pipelineState": {
-                        "faceCulling": { "enabled": false },
-                        "depthTesting": { "enabled": false },
-                        "blending": { "enabled": true, "sourceFactor": "GL_SRC_ALPHA", "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA" },
-                        "colorMask": [true, true, true, true]
+                        "faceCulling": {
+                            "enabled": false
+                        },
+                        "depthTesting": {
+                            "enabled": false
+                        },
+                        "blending": {
+                            "enabled": true,
+                            "sourceFactor": "GL_SRC_ALPHA",
+                            "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA"
+                        },
+                        "colorMask": [
+                            true,
+                            true,
+                            true,
+                            true
+                        ]
                     },
-                    "tint": [1, 1, 1, 1]
+                    "tint": [
+                        1,
+                        1,
+                        1,
+                        1
+                    ]
                 },
                 "health-bar": {
                     "type": "tinted",
@@ -736,8 +750,16 @@
             },
             {
                 "name": "boat",
-                "position": [0, 0, 24],
-                "scale": [0.03, 0.03, 0.03],
+                "position": [
+                    0,
+                    0,
+                    24
+                ],
+                "scale": [
+                    0.03,
+                    0.03,
+                    0.03
+                ],
                 "components": [
                     {
                         "type": "Mesh Renderer",
