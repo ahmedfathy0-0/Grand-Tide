@@ -6,6 +6,7 @@
 #include "../material/lit-material.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 #include "../components/shark-component.hpp"
+#include "../components/octopus-component.hpp"
 #include "../components/health.hpp"
 #include "../components/inventory.hpp"
 #include <GLFW/glfw3.h>
@@ -167,6 +168,13 @@ namespace our {
                         command.mesh = our::ModelLoader::models[shark->modelName]->getMesh();
                     }
                 }
+                
+                // If it's an animated octopus, override the default mesh with the actual FBX rigged mesh
+                if (auto octopus = entity->getComponent<OctopusComponent>(); octopus && !octopus->modelName.empty()) {
+                    if (our::ModelLoader::models.find(octopus->modelName) != our::ModelLoader::models.end()) {
+                        command.mesh = our::ModelLoader::models[octopus->modelName]->getMesh();
+                    }
+                }
 
                 // if it is transparent, we add it to the transparent commands list
                 if(command.material->transparent){
@@ -285,9 +293,12 @@ namespace our {
                 lit_material->shader->set("M", command.localToWorld);
                 lit_material->shader->set("M_IT", glm::transpose(glm::inverse(command.localToWorld)));
                 lit_material->shader->set("VP", VP);
+                lit_material->shader->set("u_time", (float)glfwGetTime());
+                
+                float current_wetness = 0.0f;
 
                 if (auto shark = command.entity->getComponent<SharkComponent>(); shark) {
-                    for(int b = 0; b < shark->finalBonesMatrices.size() && b < 128; b++) {
+                    for(int b = 0; b < shark->finalBonesMatrices.size() && b < 200; b++) {
                         lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", shark->finalBonesMatrices[b]);
                     }
                     if (shark->damageFlashTimer > 0.0f) {
@@ -296,6 +307,18 @@ namespace our {
                         lit_material->shader->set("albedo_tint", lit_material->albedo_tint); // Restore natural vec3 tint
                     }
                 }
+                
+                if (auto octopus = command.entity->getComponent<OctopusComponent>(); octopus) {
+                    for(int b = 0; b < octopus->finalBonesMatrices.size() && b < 200; b++) {
+                        lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", octopus->finalBonesMatrices[b]);
+                    }
+                    // Octopus is wet after surfacing (ANGRY state lasts 5s, dries over time)
+                    if (octopus->state == OctopusState::ANGRY) {
+                        current_wetness = std::max(0.0f, 1.0f - (octopus->stateTimer / 5.0f));
+                    }
+                }
+                
+                lit_material->shader->set("u_wetness", current_wetness);
             }
             
             command.material->shader->set("transform", VP * command.localToWorld);
@@ -326,6 +349,23 @@ namespace our {
             skyMaterial->shader->set("transform", alwaysBehindTransform * VP * skyModel);
             skyMaterial->shader->set("camera_position", cameraPosition);
             skyMaterial->shader->set("u_time", (float)glfwGetTime());
+            
+            // Pass Octopus position and state timer for water ripples
+            glm::vec3 octoPos(0.0f, -1000.0f, 0.0f);
+            float rippleIntensity = 0.0f;
+            for (auto entity : world->getEntities()) {
+                if (auto octopus = entity->getComponent<OctopusComponent>()) {
+                    octoPos = entity->localTransform.position;
+                    // Only ripple when surfacing (ANGRY state) during the first 2 seconds
+                    if (octopus->state == OctopusState::ANGRY && octopus->stateTimer < 2.0f) {
+                        // Creates a curve that peaks at 1.0 seconds and fades out by 2.0 seconds
+                        rippleIntensity = 1.0f - std::abs(octopus->stateTimer - 1.0f);
+                    }
+                    break;
+                }
+            }
+            skyMaterial->shader->set("u_octopus_pos", octoPos);
+            skyMaterial->shader->set("u_ripple_intensity", std::max(0.0f, rippleIntensity));
             
             //TODO: (Req 10) draw the sky sphere
             skySphere->draw();

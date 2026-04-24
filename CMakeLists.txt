@@ -103,6 +103,8 @@ set(COMMON_SOURCES
         source/common/components/resource.cpp
         source/common/components/shark-component.hpp
         source/common/components/shark-component.cpp
+        source/common/components/octopus-component.hpp
+        source/common/components/octopus-component.cpp
         source/common/components/component-deserializer.hpp
 
         source/common/ecs/event-manager.hpp
@@ -120,6 +122,8 @@ set(COMMON_SOURCES
         source/common/systems/animation-system.cpp
         source/common/systems/shark-system.hpp
         source/common/systems/shark-system.cpp
+        source/common/systems/octopus-system.hpp
+        source/common/systems/octopus-system.cpp
 )
 
 set(STATES_SOURCES

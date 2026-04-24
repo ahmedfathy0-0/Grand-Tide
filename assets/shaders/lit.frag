@@ -27,6 +27,8 @@ uniform sampler2D roughness;
 uniform vec3 albedo_tint;
 uniform vec3 specular_tint;
 uniform float roughness_multiplier;
+uniform float u_time;
+uniform float u_wetness;
 
 void main() {
     vec3 normal = normalize(vs_normal);
@@ -35,6 +37,23 @@ void main() {
     vec4 albedo_color = texture(albedo, vs_tex_coord) * vec4(albedo_tint, 1.0) * vs_color;
     vec3 specular_color = texture(specular, vs_tex_coord).rgb * specular_tint;
     float rgh = texture(roughness, vs_tex_coord).r * roughness_multiplier;
+    
+    // Dripping water effect
+    if (u_wetness > 0.0) {
+        // Vertical stripes that scroll downwards based on world position and time
+        // We use sin/cos on X,Z to give some noise, and Y for the vertical scroll
+        float noise = sin(vs_world.x * 15.0) * cos(vs_world.z * 15.0);
+        float drops = fract(noise + vs_world.y * 3.0 + u_time * 6.0);
+        drops = smoothstep(0.85, 1.0, drops); // Sharpen to look like small water droplets
+        
+        // Make the object look wet (darker albedo, brighter specular, very low roughness)
+        albedo_color.rgb = mix(albedo_color.rgb, albedo_color.rgb * 0.6, u_wetness);
+        specular_color = mix(specular_color, vec3(1.0, 1.0, 1.0), u_wetness);
+        rgh = mix(rgh, 0.05, u_wetness); // Water makes it very smooth and shiny
+        
+        // Add the visible flowing water drops (bright teal/white highlight)
+        albedo_color.rgb += vec3(0.6, 0.8, 1.0) * drops * u_wetness * 1.5;
+    }
     
     // Map roughness [0, 1] to shininess power
     float shininess = mix(1024.0, 1.0, clamp(rgh, 0.0, 1.0));

@@ -11,6 +11,7 @@
 #include "light.hpp"
 #include "player-controller.hpp"
 #include "shark-component.hpp"
+#include "octopus-component.hpp"
 
 namespace our {
 
@@ -40,6 +41,8 @@ namespace our {
             component = entity->addComponent<LightComponent>();
         } else if (type == SharkComponent::getID()) {
             component = entity->addComponent<SharkComponent>();
+        } else if (type == OctopusComponent::getID()) {
+            component = entity->addComponent<OctopusComponent>();
         }
         if(component) component->deserialize(data);
     }

@@ -16,7 +16,7 @@ uniform mat4 M;
 uniform mat4 M_IT;
 uniform mat4 VP;
 
-const int MAX_BONES = 128;
+const int MAX_BONES = 200;
 const int MAX_BONE_INFLUENCE = 4;
 uniform mat4 finalBonesMatrices[MAX_BONES];
 uniform bool isAnimated;

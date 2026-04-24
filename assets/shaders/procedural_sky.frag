@@ -234,8 +234,36 @@ vec3 norm(vec3 p){
     vec2 wav = -wavedx(p.xz, ITERS_NORM, u_time);
     return normalize(vec3(wav.x,1.0,wav.y));
 }
+uniform vec3 u_octopus_pos;
+uniform float u_ripple_intensity;
+
 float map(vec3 p){
     p.y-= wave(p.xz,ITERS_TRACE,u_time);
+    
+    // Add octopus ripples
+    if (u_ripple_intensity > 0.0) {
+        float dist = distance(p.xz, u_octopus_pos.xz);
+        
+        // Tighten the radius to the immediate vicinity of the octopus (25 meters)
+        if (dist < 25.0) {
+            // Lower ripple frequency and amplitude as requested
+            float ripple_freq = 0.8;
+            float ripple_speed = 8.0;
+            
+            // Fade out smoothly towards the edge of the 25m radius
+            float falloff = smoothstep(25.0, 0.0, dist);
+            float ripple_amp = falloff * 2.0 * u_ripple_intensity; 
+            
+            p.y -= sin(dist * ripple_freq - u_time * ripple_speed) * ripple_amp;
+            
+            // Subtle turbulent splashing near the center
+            if (dist < 10.0) {
+                float splash_noise = (sin(dist * 4.0 + u_time * 20.0) * 0.5 + 0.5) * 1.5;
+                p.y -= splash_noise * falloff * u_ripple_intensity;
+            }
+        }
+    }
+    
     return p.y;
 }
 

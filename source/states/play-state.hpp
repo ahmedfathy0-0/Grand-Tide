@@ -9,6 +9,7 @@
 #include <systems/survival-system.hpp>
 #include <systems/animation-system.hpp>
 #include <systems/shark-system.hpp>
+#include <systems/octopus-system.hpp>
 #include <asset-loader.hpp>
 
 // This state shows how to use the ECS framework and deserialization.
@@ -21,6 +22,7 @@ class Playstate: public our::State {
     our::SurvivalSystem survivalSystem;
     our::AnimationSystem animationSystem;
     our::SharkSystem sharkSystem;
+    our::OctopusSystem octopusSystem;
 
     void onInitialize() override {
         // First of all, we get the scene configuration from the app config
@@ -86,6 +88,7 @@ class Playstate: public our::State {
         survivalSystem.update();
         animationSystem.update(&world, (float)deltaTime);
         sharkSystem.update(&world, (float)deltaTime);
+        octopusSystem.update(&world, (float)deltaTime, getApp());
         
         world.deleteMarkedEntities();
         

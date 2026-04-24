@@ -58,7 +58,10 @@
                 "wood_icon": "assets/icons/wood.png",
                 "shark_albedo": "assets/textures/shark-tex/RGB_Alpha.jpg",
                 "shark_roughness": "assets/textures/shark-tex/DefaultMaterial_Roughness.jpg",
-                "shark_normal": "assets/textures/shark-tex/DefaultMaterial_Normal_OpenGL.jpg"
+                "shark_normal": "assets/textures/shark-tex/DefaultMaterial_Normal_OpenGL.jpg",
+                "octopus_albedo": "assets/textures/octopus-tex/octopus_albedo.png",
+                "octopus_normal": "assets/textures/octopus-tex/octopus_normal.png",
+                "octopus_roughness": "assets/textures/octopus-tex/octopus_metallic.png"
             },
             "meshes": {
                 "cube": "assets/models/cube.obj",
@@ -68,7 +71,8 @@
                 "sphere": "assets/models/sphere.obj"
             },
             "animated_models": {
-                "shark": "assets/models/shark/Shark.fbx"
+                "shark": "assets/models/shark/Shark.fbx",
+                "octopus": "assets/models/octopus/PiratesKing.fbx"
             },
             "samplers": {
                 "default": {},
@@ -146,6 +150,25 @@
                         1
                     ],
                     "roughness_multiplier": 1.0,
+                    "sampler": "default",
+                    "isAnimated": true
+                },
+                "lit_octopus": {
+                    "type": "lit",
+                    "shader": "lit",
+                    "pipelineState": {
+                        "faceCulling": {
+                            "enabled": false
+                        },
+                        "depthTesting": {
+                            "enabled": true
+                        }
+                    },
+                    "albedo": "octopus_albedo",
+                    "specular": "octopus_metallic",
+                    "albedo_tint": [ 1, 1, 1 ],
+                    "specular_tint": [ 1, 1, 1 ],
+                    "roughness_multiplier": 0.5,
                     "sampler": "default",
                     "isAnimated": true
                 },
@@ -513,6 +536,26 @@
                         0.8,
                         1.0
                     ]
+                },
+                "lit_octopus": {
+                    "type": "lit",
+                    "shader": "lit",
+                    "transparent": false,
+                    "pipelineState": {
+                        "faceCulling": {
+                            "enabled": true
+                        },
+                        "depthTesting": {
+                            "enabled": true
+                        }
+                    },
+                    "albedo": "octopus_albedo",
+                    "normal": "octopus_normal",
+                    "roughness": "octopus_roughness",
+                    "albedo_tint": [1, 1, 1],
+                    "specular_tint": [0.5, 0.5, 0.5],
+                    "roughness_multiplier": 1.0,
+                    "sampler": "default"
                 }
             }
         },
@@ -645,6 +688,43 @@
                 ]
             },
             {
+                "name": "octopus",
+                "position": [
+                    50,
+                    -2,
+                    50
+                ],
+                "scale": [
+                    0.05,
+                    0.05,
+                    0.05
+                ],
+                "rotation": [
+                    -90,
+                    0,
+                    0
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "lit_octopus"
+                    },
+                    {
+                        "type": "Octopus",
+                        "modelName": "octopus",
+                        "health": 500,
+                        "state": "TESTING",
+                        "currentAnimIndex": 0
+                    },
+                    {
+                        "type": "Health",
+                        "maxHealth": 500,
+                        "currentHealth": 500
+                    }
+                ]
+            },
+            {
                 "position": [
                     2,
                     0.5,
@@ -749,7 +829,7 @@
                 ]
             },
             {
-                "name": "boat",
+                "name": "raft",
                 "position": [
                     0,
                     0,

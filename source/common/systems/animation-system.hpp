@@ -2,6 +2,7 @@
 #include "ecs/world.hpp"
 #include "mesh/model.hpp"
 #include "components/shark-component.hpp"
+#include "components/octopus-component.hpp"
 
 namespace our {
 
@@ -12,6 +13,7 @@ namespace our {
 
         // Pre-compute bone matrices for rendering
         void calculateBoneTransform(const aiNode* node, const aiScene* scene, float animationTime, int animIndex, const glm::mat4& parentTransform, Model* model, SharkComponent* shark);
+        void calculateBoneTransformOctopus(const aiNode* node, const aiScene* scene, float animationTime, int animIndex, const glm::mat4& parentTransform, Model* model, OctopusComponent* octopus);
         
         // Find best keyframes
         int getPositionIndex(float animationTime, const aiNodeAnim* nodeAnim);

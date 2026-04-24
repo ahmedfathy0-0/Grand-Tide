@@ -41,6 +41,24 @@ namespace our {
                     calculateBoneTransform(model->getScene()->mRootNode, model->getScene(), shark->currentAnimationTime, animIndex, glm::mat4(1.0f), model, shark);
                 }
             }
+            
+            auto octopus = entity->getComponent<OctopusComponent>();
+            if (octopus && !octopus->modelName.empty()) {
+                Model* model = ModelLoader::models[octopus->modelName];
+                if(model && model->getScene() && model->getScene()->HasAnimations()) {
+                    int animIndex = octopus->currentAnimIndex;
+                    if (animIndex >= (int)model->getScene()->mNumAnimations) animIndex = 0;
+                    if (animIndex >= 0) {
+                        aiAnimation* animation = model->getScene()->mAnimations[animIndex];
+                        float ticksPerSecond = animation->mTicksPerSecond != 0 ? animation->mTicksPerSecond : 25.0f;
+                        float timeInTicks = deltaTime * ticksPerSecond;
+                        octopus->currentAnimationTime += timeInTicks;
+                        octopus->currentAnimationTime = fmod(octopus->currentAnimationTime, animation->mDuration);
+                    }
+                    octopus->finalBonesMatrices.assign(model->getBoneCount(), glm::mat4(1.0f));
+                    calculateBoneTransformOctopus(model->getScene()->mRootNode, model->getScene(), octopus->currentAnimationTime, animIndex, glm::mat4(1.0f), model, octopus);
+                }
+            }
         }
     }
 
@@ -80,6 +98,42 @@ namespace our {
 
         for (unsigned int i = 0; i < node->mNumChildren; i++) {
             calculateBoneTransform(node->mChildren[i], scene, animationTime, animIndex, globalTransform, model, shark);
+        }
+    }
+
+    void AnimationSystem::calculateBoneTransformOctopus(const aiNode* node, const aiScene* scene, float animationTime, int animIndex, const glm::mat4& parentTransform, Model* model, OctopusComponent* octopus) {
+        std::string nodeName(node->mName.data);
+        glm::mat4 nodeTransform = AssimpMatToGlm(node->mTransformation);
+
+        if (animIndex >= 0 && animIndex < scene->mNumAnimations) {
+            aiAnimation* animation = scene->mAnimations[animIndex];
+            const aiNodeAnim* nodeAnim = findNodeAnim(animation, nodeName);
+            
+            if (nodeAnim) {
+                glm::vec3 scaling = calcInterpolatedScale(animationTime, nodeAnim);
+                glm::mat4 scaleM = glm::scale(glm::mat4(1.0f), scaling);
+
+                glm::quat rotation = calcInterpolatedRotation(animationTime, nodeAnim);
+                glm::mat4 rotM = glm::mat4_cast(rotation);
+
+                glm::vec3 translation = calcInterpolatedPosition(animationTime, nodeAnim);
+                glm::mat4 transM = glm::translate(glm::mat4(1.0f), translation);
+
+                nodeTransform = transM * rotM * scaleM;
+            }
+        }
+
+        glm::mat4 globalTransform = parentTransform * nodeTransform;
+        
+        if (model->getBoneInfoMap().find(nodeName) != model->getBoneInfoMap().end()) {
+            int boneIndex = model->getBoneInfoMap()[nodeName].id;
+            glm::mat4 offset = model->getBoneInfoMap()[nodeName].offset;
+            glm::mat4 globalInverseTransform = glm::inverse(AssimpMatToGlm(scene->mRootNode->mTransformation));
+            octopus->finalBonesMatrices[boneIndex] = globalInverseTransform * globalTransform * offset;
+        }
+
+        for (unsigned int i = 0; i < node->mNumChildren; i++) {
+            calculateBoneTransformOctopus(node->mChildren[i], scene, animationTime, animIndex, globalTransform, model, octopus);
         }
     }
 
