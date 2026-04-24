@@ -40,8 +40,9 @@ namespace our {
         auto& getBoneInfoMap() { return boneInfoMap; }
         int& getBoneCount() { return boneCounter; }
         
-        // Load model and animation
-        bool load(const std::string& path);
+        // Load model and animation. If preTransform is true, all node transforms
+        // are baked into vertices (for static multi-part models like ships).
+        bool load(const std::string& path, bool preTransform = false);
         
         // Getting animation from Assimp (keeping importer alive is easier for basic assignments)
         const aiScene* getScene() const { return scene; }
@@ -53,8 +54,8 @@ namespace our {
         int boneCounter = 0;
         const aiScene* scene = nullptr;
 
-        void processNode(aiNode *node, const aiScene *n_scene, std::vector<our::Vertex>& vertices, std::vector<unsigned int>& indices);
-        void processMesh(aiMesh *aimesh, const aiScene *n_scene, std::vector<our::Vertex>& vertices, std::vector<unsigned int>& indices);
+        void processNode(aiNode *node, const aiScene *n_scene, std::vector<our::Vertex>& vertices, std::vector<unsigned int>& indices, const glm::mat4& parentTransform = glm::mat4(1.0f));
+        void processMesh(aiMesh *aimesh, const aiScene *n_scene, std::vector<our::Vertex>& vertices, std::vector<unsigned int>& indices, const glm::mat4& nodeTransform = glm::mat4(1.0f));
         void setVertexBoneDataToDefault(our::Vertex& vertex);
         void setVertexBoneData(our::Vertex& vertex, int boneID, float weight);
         void extractBoneWeightForVertices(std::vector<our::Vertex>& vertices, aiMesh* aimesh, int baseVertex);

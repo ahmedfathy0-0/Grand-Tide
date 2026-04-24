@@ -61,7 +61,15 @@
                 "shark_normal": "assets/textures/shark-tex/DefaultMaterial_Normal_OpenGL.jpg",
                 "octopus_albedo": "assets/textures/octopus-tex/octopus_albedo.png",
                 "octopus_normal": "assets/textures/octopus-tex/octopus_normal.png",
-                "octopus_roughness": "assets/textures/octopus-tex/octopus_metallic.png"
+                "octopus_roughness": "assets/textures/octopus-tex/octopus_metallic.png",
+                "ship_body_albedo": "assets/textures/New folder/Marine_ship_body_BaseColor.jpg",
+                "ship_body_roughness": "assets/textures/New folder/Marine_ship_body_Roughness.png",
+                "ship_body_normal": "assets/textures/New folder/Marine_ship_body_Normal.png",
+                "cannon_ball_albedo": "assets/textures/New folder/cannon_ball_base_color.jpg",
+                "boat_albedo": "assets/textures/marine-boat/boatColor.jpg",
+                "boat_roughness": "assets/textures/marine-boat/boatRoughness.png",
+                "boat_normal": "assets/textures/marine-boat/boatNormal.png",
+                "musket_albedo": "assets/textures/pl_mb_marine01_musk01_diff.png"
             },
             "meshes": {
                 "cube": "assets/models/cube.obj",
@@ -72,10 +80,16 @@
             },
             "animated_models": {
                 "shark": "assets/models/shark/Shark.fbx",
-                "octopus": "assets/models/octopus/PiratesKing.fbx"
+                "octopus": "assets/models/octopus/PiratesKing.fbx",
+                "marine_ship": "assets/models/marine-ship/one piece marine ship blue 14 1920.fbx",
+                "marine_boat": "assets/models/marine-boat/boat.fbx",
+                "marine_musket": "assets/models/pl_mb_marine01_musk01.fbx"
             },
             "samplers": {
-                "default": {},
+                "default": {
+                    "MAG_FILTER": "GL_NEAREST",
+                    "MIN_FILTER": "GL_NEAREST"
+                },
                 "pixelated": {
                     "MAG_FILTER": "GL_NEAREST",
                     "MIN_FILTER": "GL_NEAREST"
@@ -139,6 +153,7 @@
                     },
                     "albedo": "shark_albedo",
                     "roughness": "shark_roughness",
+                    "normal": "shark_normal",
                     "albedo_tint": [
                         1,
                         1,
@@ -536,26 +551,6 @@
                         0.8,
                         1.0
                     ]
-                },
-                "lit_octopus": {
-                    "type": "lit",
-                    "shader": "lit",
-                    "transparent": false,
-                    "pipelineState": {
-                        "faceCulling": {
-                            "enabled": true
-                        },
-                        "depthTesting": {
-                            "enabled": true
-                        }
-                    },
-                    "albedo": "octopus_albedo",
-                    "normal": "octopus_normal",
-                    "roughness": "octopus_roughness",
-                    "albedo_tint": [1, 1, 1],
-                    "specular_tint": [0.5, 0.5, 0.5],
-                    "roughness_multiplier": 1.0,
-                    "sampler": "default"
                 }
             }
         },
@@ -678,7 +673,19 @@
                         "modelName": "shark",
                         "health": 100,
                         "state": "APPROACHING",
-                        "currentAnimIndex": 0
+                        "currentAnimIndex": 0,
+                        "attackRange": 25.0,
+                        "speed": 15.0
+                    },
+                    {
+                        "type": "Animator",
+                        "modelName": "shark"
+                    },
+                    {
+                        "type": "Enemy",
+                        "enemyType": "shark",
+                        "primaryTarget": "RAFT",
+                        "attackDamage": 100.0
                     },
                     {
                         "type": "Health",

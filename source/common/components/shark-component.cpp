@@ -14,8 +14,8 @@ namespace our {
             else if (stateStr == "DEAD") state = SharkState::DEAD;
         }
         health = data.value("health", health);
-        currentAnimIndex = data.value("currentAnimIndex", currentAnimIndex);
-        modelName = data.value("modelName", "");
+        speed = data.value("speed", speed);
+        attackRange = data.value("attackRange", attackRange);
     }
 
 }

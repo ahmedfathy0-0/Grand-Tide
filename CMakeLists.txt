@@ -101,6 +101,14 @@ set(COMMON_SOURCES
         source/common/components/inventory.cpp
         source/common/components/resource.hpp
         source/common/components/resource.cpp
+        source/common/components/animator.hpp
+        source/common/components/animator.cpp
+        source/common/components/enemy.hpp
+        source/common/components/enemy.cpp
+        source/common/components/component-deserializer.hpp
+        source/common/components/musket-component.hpp
+        source/common/components/musket-component.cpp
+        source/common/components/marine-boat-component.hpp
         source/common/components/shark-component.hpp
         source/common/components/shark-component.cpp
         source/common/components/octopus-component.hpp
@@ -120,10 +128,15 @@ set(COMMON_SOURCES
         source/common/systems/survival-system.cpp
         source/common/systems/animation-system.hpp
         source/common/systems/animation-system.cpp
+<<<<<<< HEAD
         source/common/systems/shark-system.hpp
         source/common/systems/shark-system.cpp
         source/common/systems/octopus-system.hpp
         source/common/systems/octopus-system.cpp
+=======
+        source/common/systems/combat-system.hpp
+        source/common/systems/combat-system.cpp
+>>>>>>> origin/enemy-of-my-enemy
 )
 
 set(STATES_SOURCES
