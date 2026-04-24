@@ -20,6 +20,7 @@ const int MAX_BONES = 128;
 const int MAX_BONE_INFLUENCE = 4;
 uniform mat4 finalBonesMatrices[MAX_BONES];
 uniform bool isAnimated;
+uniform vec2 uv_multiplier = vec2(1.0, 1.0);
 
 void main() {
     mat4 boneTransform = mat4(1.0);
@@ -40,7 +41,7 @@ void main() {
     gl_Position = VP * world_position;
     
     vs_color = color;
-    vs_tex_coord = tex_coord;
+    vs_tex_coord = tex_coord * uv_multiplier;
     
     // Transform normal, removing translation and handling non-uniform scale
     mat3 normalMatrix = mat3(M_IT);
