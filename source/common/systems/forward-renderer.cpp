@@ -380,9 +380,9 @@ namespace our {
                         lit_material->shader->set(lightStr + ".direction", direction);
                         lit_material->shader->set(lightStr + ".cone_angles", light->cone_angles);
                         
-                        // Turn player spot on at night automatically
+                        // Turn player spot on at night only
                         if(light->getOwner()->name == "player" || light->getOwner()->getComponent<CameraComponent>()) {
-                           active_intensity += glm::smoothstep(0.1f, -0.4f, sun_dir.y) * 5.0f; 
+                           active_intensity *= glm::smoothstep(0.1f, -0.4f, sun_dir.y); 
                         }
                     }
                     lit_material->shader->set(lightStr + ".intensity", active_intensity);
@@ -496,7 +496,7 @@ namespace our {
                     waterMaterial->shader->set(lightStr + ".cone_angles", light->cone_angles);
                     
                     if(light->getOwner()->name == "player" || light->getOwner()->getComponent<CameraComponent>()) {
-                        active_intensity += glm::smoothstep(0.1f, -0.4f, sun_dir.y) * 5.0f; 
+                        active_intensity *= glm::smoothstep(0.1f, -0.4f, sun_dir.y); 
                     }
                 }
                 waterMaterial->shader->set(lightStr + ".intensity", active_intensity);
@@ -546,9 +546,9 @@ namespace our {
                         lit_material->shader->set(lightStr + ".direction", direction);
                         lit_material->shader->set(lightStr + ".cone_angles", light->cone_angles);
                         
-                        // Turn player spot on at night automatically
+                        // Turn player spot on at night only
                         if(light->getOwner()->name == "player" || light->getOwner()->getComponent<CameraComponent>()) {
-                           active_intensity += glm::smoothstep(0.1f, -0.4f, sun_dir.y) * 5.0f; 
+                           active_intensity *= glm::smoothstep(0.1f, -0.4f, sun_dir.y); 
                         }
                     }
                     lit_material->shader->set(lightStr + ".intensity", active_intensity);
