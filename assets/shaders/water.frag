@@ -8,6 +8,21 @@ out vec4 frag_color;
 
 uniform float u_time;
 uniform vec3 camera_position;
+uniform vec2 resolution;
+uniform sampler2D reflection_map;
+
+struct Light {
+    int type; // 0: directional, 1: point, 2: spot
+    vec3 color;
+    float intensity;
+    vec3 position; // Direction for directional, Position for point
+    vec3 direction;
+    vec2 cone_angles;
+};
+
+const int MAX_LIGHTS = 16;
+uniform Light lights[MAX_LIGHTS];
+uniform int light_count;
 
 #define AA 1.0
 #define STEPS 120.0
@@ -41,7 +56,6 @@ vec2 scrollDir = vec2(1,1);
 #define SUN_DIR         normalize(vec3(0, sin(SKY_TIME), -cos(SKY_TIME)))
 #define MOON_DIR        normalize(vec3(0, -sin(SKY_TIME), cos(SKY_TIME)))
 
-// Dynamic sun and moon colors based on height
 vec3 get_sun_color() {
     float h = max(SUN_DIR.y, 0.0);
     return mix(vec3(1.0, 0.4, 0.2), vec3(1.0, 0.9, 0.8), h);
@@ -86,13 +100,12 @@ vec3 render_sky_color(vec3 rd) {
     return sky;
 }
 
-// Simplified version for water reflections without clouds
 vec3 sky_eval(vec3 rd) {
+    // Sky evaluation including sun, moon, and simplistic clouds!
     vec3 sky_base = render_sky_color(rd);
     return sky_base;
 }
 
-// ===== WATER MAP =====
 vec2 wavedx(vec2 wavPos, int iters, float t){
     vec2 dx = vec2(0);
     vec2 wavDir = vec2(1,0);
@@ -147,8 +160,6 @@ float map(vec3 p){
 }
 
 void main() {
-    float iTime = u_time;
-    // We already have the ray direction directly since it's mapped to a sphere!
     vec3 rd = normalize(vs_world);
     vec3 ro = camera_position;
 
@@ -161,7 +172,6 @@ void main() {
 
     float tPln = -(ro.y - 0.0) / rd.y; 
     
-    // Only trace if pointing downwards towards the plane!
     if(tPln>0.){
         dO += tPln;
         for(float i = 0.; i<STEPS; i++){
@@ -191,7 +201,21 @@ void main() {
 
         vec3 sunDir = SUN_DIR;
                
-        col += sky_eval(rfl)*fres*0.9;
+        // Planar Reflection sampling
+        vec2 screenUv = gl_FragCoord.xy / resolution;
+        
+        // Add a bit of distortion from the normal
+        vec2 distortion = n.xz * 0.1 * clamp(dO/MDIST, 0.0, 1.0);
+        vec2 reflUv = clamp(screenUv + distortion, 0.0, 1.0);
+        
+        // Flip UV vertically since reflection is inverted from gl_FragCoord mapping? 
+        // We will do exact planar pass mapping!
+        vec3 reflectionCol = texture(reflection_map, reflUv).rgb;
+        if(length(reflectionCol) < 0.01) {
+            reflectionCol = sky_eval(rfl); 
+        }
+
+        col += reflectionCol * fres * 0.9;
         
         float subRefract = pow(max(0.0, dot(rf,sunDir)),35.0);
         vec3 sss_color = vec3(0.1, 0.6, 0.8); 
@@ -200,6 +224,53 @@ void main() {
         vec3 deep_water_color = vec3(0.0, 0.15, 0.3); 
         vec3 waterCol = deep_water_color * (0.8*pow(min(p.y*0.7+0.9,1.8),4.)*length(skyrd));
         col += waterCol*0.17;
+
+        // --- SCENE LIGHTING ---
+        vec3 V = normalize(camera_position - p);
+        vec3 Lo = vec3(0.0);
+        vec3 water_tint = vec3(0.1, 0.5, 0.9); // Watery blue tint
+        
+        for(int i = 0; i < light_count; ++i) {
+            if(i == 0 && lights[i].type == 0) continue; 
+
+            vec3 light_color = lights[i].color * lights[i].intensity;
+            vec3 L;
+            float attenuation = 1.0;
+            
+            if (lights[i].type == 0) { // Directional
+                L = normalize(-lights[i].position);
+            } else if (lights[i].type == 1) { // Point
+                L = lights[i].position - p;
+                float distance = length(L);
+                L = normalize(L);
+                attenuation = 1.0 / (1.0 + 0.07 * distance + 0.0002 * distance * distance); 
+            } else if (lights[i].type == 2) { // Spot
+                L = lights[i].position - p;
+                float distance = length(L);
+                L = normalize(L);
+                attenuation = 1.0 / (1.0 + 0.07 * distance + 0.0002 * distance * distance); 
+                float theta = dot(L, normalize(-lights[i].direction));
+                
+                float inner = lights[i].cone_angles.x * 2.5; 
+                float outer = lights[i].cone_angles.y * 2.5; 
+                
+                float epsilon = cos(inner) - cos(outer);
+                float spot_intensity = clamp((theta - cos(outer)) / epsilon, 0.0, 1.0);
+                attenuation *= spot_intensity;
+            }
+            
+            vec3 H = normalize(V + L);
+            float spec = pow(max(dot(n, H), 0.0), 128.0);
+            float diff = max(dot(n, L), 0.0);
+            
+            // Add blue tint to the light to prevent "gray" look
+            Lo += (diff * 0.2 * water_tint + spec * 6.0 * mix(vec3(1.0), water_tint, 0.3)) * light_color * attenuation;
+            
+            // Add SSS from artificial lights
+            float lightSSS = pow(max(0.0, dot(rf, L)), 20.0);
+            col += sss_color * lightSSS * lights[i].intensity * attenuation * 0.5;
+        }
+        col += Lo;
         
         col = mix(col,skyrd, smoothstep(0.0, 1.0, dO/MDIST)); 
         
@@ -208,7 +279,6 @@ void main() {
         
         frag_color = vec4(col,1.0);
     } else {
-        // Did not hit water surface, discard and let the sky show through!
         discard;
     }
 }

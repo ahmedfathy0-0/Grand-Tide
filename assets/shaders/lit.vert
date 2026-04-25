@@ -9,10 +9,12 @@ out vec4 vs_color;
 out vec2 vs_tex_coord;
 out vec3 vs_normal;
 out vec3 vs_world;
+out vec4 vs_light_space_pos;
 
 uniform mat4 M;
 uniform mat4 M_IT;
 uniform mat4 VP;
+uniform mat4 lightSpaceMatrix;
 
 void main() {
     vec4 world_position = M * vec4(position, 1.0);
@@ -24,4 +26,6 @@ void main() {
     // Transform normal, removing translation and handling non-uniform scale
     vs_normal = normalize((M_IT * vec4(normal, 0.0)).xyz);
     vs_world = world_position.xyz;
+    
+    vs_light_space_pos = lightSpaceMatrix * world_position;
 }

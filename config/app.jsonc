@@ -281,6 +281,14 @@
                         "type": "Camera"
                     },
                     {
+                        "type": "Light",
+                        "lightType": "spot",
+                        "color": [1, 1, 1],
+                        "intensity": 0.0,
+                        "direction": [0, 0, -1],
+                        "cone_angles": [12.5, 17.5]
+                    },
+                    {
                         "type": "PlayerController",
                         "speed": 5.0,
                         "speedupFactor": 2.0,
