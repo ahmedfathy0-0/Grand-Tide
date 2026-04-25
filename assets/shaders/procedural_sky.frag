@@ -8,29 +8,7 @@ out vec4 frag_color;
 
 uniform float u_time;
 
-#define AA 1.0
-#define STEPS 120.0
-#define MDIST 250.0
 #define pi 3.1415926535
-#define rot(a) mat2(cos(a),sin(a),-sin(a),cos(a))
-#define sat(a) clamp(a,0.0,1.0)
-
-#define ITERS_TRACE 9
-#define ITERS_NORM 20
-
-#define HOR_SCALE 1.1
-#define OCC_SPEED 0.4
-#define DX_DET 0.65
-
-#define FREQ 0.6
-#define HEIGHT_DIV 2.5
-#define WEIGHT_SCL 0.8
-#define FREQ_SCL 1.2
-#define TIME_SCL 1.095
-#define WAV_ROT 1.21
-#define DRAG 0.9
-#define SCRL_SPEED 0.4
-vec2 scrollDir = vec2(1,1);
 
 // ===== CLOUD / SKY PARAMETERS =====
 #define COVERAGE        .50
@@ -125,9 +103,6 @@ vec3 render_sky_color(vec3 rd) {
     float moon_bloom = pow(moon_amount, 21.0) * 0.43;
 
     // Draw the moon disc, incorporating some simple procedural noise for craters
-    float moon_dist; 
-    vec3 moon_normal;
-    // We can approximate a moon intersection manually or just use the direction dot product
     if (moon_amount > 0.999) { // Inside moon angular radius
         vec2 moon_uv = rd.xz; // Very rough mapping
         float crater_noise = noise(rd * 150.0) * 0.3 + 0.7; // Simple crater-like variation
@@ -173,7 +148,6 @@ vec4 render_clouds(ray_t eye) {
     return vec4(C, alpha);
 }
 
-// Combine for the new "sky" evaluation in water reflections
 vec3 sky_eval(vec3 rd) {
     vec3 sky_base = render_sky_color(rd);
     if(rd.y > 0.0){
@@ -185,68 +159,6 @@ vec3 sky_eval(vec3 rd) {
     }
 }
 
-// ===== WATER MAP =====
-vec2 wavedx(vec2 wavPos, int iters, float t){
-    vec2 dx = vec2(0);
-    vec2 wavDir = vec2(1,0);
-    float wavWeight = 1.0; 
-    wavPos+= t*SCRL_SPEED*scrollDir;
-    wavPos*= HOR_SCALE;
-    float wavFreq = FREQ;
-    float wavTime = OCC_SPEED*t;
-    for(int i=0;i<iters;i++){
-        wavDir*=rot(WAV_ROT);
-        float x = dot(wavDir,wavPos)*wavFreq+wavTime; 
-        float result = exp(sin(x)-1.)*cos(x);
-        result*=wavWeight;
-        dx+= result*wavDir/pow(wavWeight,DX_DET); 
-        wavFreq*= FREQ_SCL; 
-        wavTime*= TIME_SCL;
-        wavPos-= wavDir*result*DRAG; 
-        wavWeight*= WEIGHT_SCL;
-    }
-    float wavSum = -(pow(WEIGHT_SCL,float(iters))-1.)*HEIGHT_DIV; 
-    return dx/pow(wavSum,1.-DX_DET);
-}
-
-float wave(vec2 wavPos, int iters, float t){
-    float wav = 0.0;
-    vec2 wavDir = vec2(1,0);
-    float wavWeight = 1.0;
-    wavPos+= t*SCRL_SPEED*scrollDir;
-    wavPos*= HOR_SCALE; 
-    float wavFreq = FREQ;
-    float wavTime = OCC_SPEED*t;
-    for(int i=0;i<iters;i++){
-        wavDir*=rot(WAV_ROT);
-        float x = dot(wavDir,wavPos)*wavFreq+wavTime;
-        float wave = exp(sin(x)-1.0)*wavWeight;
-        wav+= wave;
-        wavFreq*= FREQ_SCL;
-        wavTime*= TIME_SCL;
-        wavPos-= wavDir*wave*DRAG*cos(x);
-        wavWeight*= WEIGHT_SCL;
-    }
-    float wavSum = -(pow(WEIGHT_SCL,float(iters))-1.)*HEIGHT_DIV; 
-    return wav/wavSum;
-}
-vec3 norm(vec3 p){
-    vec2 wav = -wavedx(p.xz, ITERS_NORM, u_time);
-    return normalize(vec3(wav.x,1.0,wav.y));
-}
-float map(vec3 p){
-    p.y-= wave(p.xz,ITERS_TRACE,u_time);
-    return p.y;
-}
-
-vec3 pal(float t, vec3 a, vec3 b, vec3 c, vec3 d){
-    return a+b*cos(2.0*pi*(c*t+d));
-}
-vec3 spc(float n,float bright){
-    return pal(n,vec3(bright),vec3(0.5),vec3(1.0),vec3(0.0,0.33,0.67));
-}
-float spec = 0.13;
-
 uniform vec3 camera_position;
 
 void main() {
@@ -254,71 +166,9 @@ void main() {
     // We already have the ray direction directly since it's mapped to a sphere!
     vec3 rd = normalize(vs_world);
     
-    // Virtual camera position to trace the infinite plane correctly.
-    // If we use actual camera position here, the sea moves with the camera. 
-    // We'll simulate a steady camera or slightly moving if needed.
-    vec3 ro = camera_position; // Use the actual camera position so it moves with the player!
-
-    vec3 col = vec3(0);
+    vec3 col = sky_eval(rd);
+    col = clamp(col, 0.0, 1.0);
+    col = pow(col, vec3(0.87)); // gamma correction
     
-    float dO = 0.;
-    bool hit = false;
-    float d = 0.;
-    vec3 p = ro;
-
-    float tPln = -(ro.y - 0.0) / rd.y; // intersect with the actual sea surface at Y=0.0
-    
-    // Only trace if pointing downwards towards the plane!
-    if(tPln>0.){
-        dO += tPln;
-        for(float i = 0.; i<STEPS; i++){
-            p = ro+rd*dO;
-            d = map(p);
-            dO+=d;
-            if(abs(d)<0.005||i>STEPS-2.0){
-                hit = true;
-                break;
-            }
-            if(dO>MDIST){
-                dO = MDIST;
-                break;
-            }
-        }
-    }
-    
-    vec3 skyrd = sky_eval(rd);
-    
-    if(hit){
-        vec3 n = norm(p);
-        vec3 rfl = reflect(rd,n);
-        rfl.y = abs(rfl.y);
-        vec3 rf = refract(rd,n,1./1.33); 
-        
-        float fres = clamp((pow(1. - max(0.0, dot(-n, rd)), 5.0)),0.0,1.0);
-
-        // Sun direction from our procedural sky
-        vec3 sunDir = SUN_DIR;
-        
-        col += sky_eval(rfl)*fres*0.9;
-        
-        float subRefract = pow(max(0.0, dot(rf,sunDir)),35.0);
-        vec3 sss_color = vec3(0.1, 0.6, 0.8); // Teal subsurface scattering
-        col += sss_color * subRefract * 2.5;
-        
-        vec3 deep_water_color = vec3(0.0, 0.15, 0.3); // Ocean dark blue
-        vec3 waterCol = deep_water_color * (0.8*pow(min(p.y*0.7+0.9,1.8),4.)*length(skyrd));
-        col += waterCol*0.17;
-        
-        // Smoothly blend the water into the sky at the horizon over the new extended distance
-        col = mix(col,skyrd, smoothstep(0.0, 1.0, dO/MDIST)); 
-    }
-    else{
-        col += skyrd;
-    }
-    
-    col = sat(col);
-    col = pow(col,vec3(0.87)); // gamma correction
-    // removing the screen vignette since this is a 3D skybox mapped to a sphere!
-    
-    frag_color = vec4(col,1.0);
+    frag_color = vec4(col, 1.0);
 }

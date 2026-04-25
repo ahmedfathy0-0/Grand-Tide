@@ -39,6 +39,10 @@
                 "toolbar":{
                     "vs":"assets/shaders/textured.vert",
                     "fs":"assets/shaders/toolbar.frag"
+                },
+                "water":{
+                    "vs":"assets/shaders/water.vert",
+                    "fs":"assets/shaders/water.frag"
                 }
             },
             "textures":{
@@ -106,6 +110,18 @@
                     "albedo_tint": [1, 1, 1],
                     "specular_tint": [0.05, 0.05, 0.05],
                     "roughness_multiplier": 1.0,
+                    "sampler": "default"
+                },
+                "water_mat": {
+                    "type": "lit",
+                    "shader": "water",
+                    "pipelineState": {
+                        "faceCulling":{ "enabled": false },
+                        "depthTesting":{ "enabled": true },
+                        "blending": { "enabled": true, "sourceFactor": "GL_SRC_ALPHA", "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA" }
+                    },
+                    "transparent": true,
+                    "albedo": "wood_albedo",
                     "sampler": "default"
                 },
                 "minimap": {
@@ -317,6 +333,7 @@
                     }
                 ]
             },
+
             {
                 "position": [2, 0.5, 8],
                 "scale": [0.5, 0.5, 0.5],

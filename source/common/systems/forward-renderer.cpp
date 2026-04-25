@@ -50,6 +50,15 @@ namespace our {
                 this->skyMaterial->shader = skyShader;
                 this->skyMaterial->pipelineState = skyPipelineState;
                 this->skyMaterial->transparent = false;
+
+                ShaderProgram* waterShader = new ShaderProgram();
+                waterShader->attach("assets/shaders/water.vert", GL_VERTEX_SHADER);
+                waterShader->attach("assets/shaders/water.frag", GL_FRAGMENT_SHADER);
+                waterShader->link();
+                this->waterMaterial = new Material();
+                this->waterMaterial->shader = waterShader;
+                this->waterMaterial->pipelineState = skyPipelineState;
+                this->waterMaterial->transparent = false;
             } else {
                 Texture2D* skyTexture = texture_utils::loadImage(skyTextureFile, false);
 
@@ -127,6 +136,10 @@ namespace our {
                 delete texMat->sampler;
             }
             delete skyMaterial;
+        }
+        if(waterMaterial){
+            delete waterMaterial->shader;
+            delete waterMaterial;
         }
         // Delete all objects related to post processing
         if(postprocessMaterial){
@@ -244,6 +257,7 @@ namespace our {
                 float intensity = 3.0f * glm::smoothstep(-0.1f, 0.1f, sun_dir.y);
 
                 lit_material->shader->set("camera_position", eye);
+                lit_material->shader->set("u_time", u_time); // Required for wave animation
                 lit_material->shader->set("light_count", (int)lights.size() + 1);
                 
                 // Add the sun as the first light
@@ -308,6 +322,23 @@ namespace our {
             skySphere->draw();
             skyMaterial->teardown();
         }
+        if(this->waterMaterial){
+            waterMaterial->setup();
+            glm::vec3 cameraPosition = glm::vec3(cameraLocalToWorld * glm::vec4(0, 0, 0, 1));
+            glm::mat4 skyModel = glm::translate(glm::mat4(1.0f), cameraPosition);
+            glm::mat4 alwaysBehindTransform = glm::mat4(
+                1.0f, 0.0f, 0.0f, 0.0f,
+                0.0f, 1.0f, 0.0f, 0.0f,
+                0.0f, 0.0f, 0.0f, 0.0f,
+                0.0f, 0.0f, 1.0f, 1.0f
+            );
+            waterMaterial->shader->set("transform", alwaysBehindTransform * VP * skyModel);
+            waterMaterial->shader->set("camera_position", cameraPosition);
+            waterMaterial->shader->set("u_time", (float)glfwGetTime());
+            
+            skySphere->draw();
+            waterMaterial->teardown();
+        }
         //TODO: (Req 9) Draw all the transparent commands
         // Don't forget to set the "transform" uniform to be equal the model-view-projection matrix for each render command
         for(const auto& command : transparentCommands){
@@ -335,6 +366,7 @@ namespace our {
                 float intensity = 3.0f * glm::smoothstep(-0.1f, 0.1f, sun_dir.y);
 
                 lit_material->shader->set("camera_position", eye);
+                lit_material->shader->set("u_time", u_time); // Required for wave animation
                 lit_material->shader->set("light_count", (int)lights.size() + 1);
                 
                 // Add the sun as the first light

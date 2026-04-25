@@ -36,6 +36,7 @@ namespace our
         // Objects used for rendering a skybox
         Mesh* skySphere;
         Material* skyMaterial;
+        Material* waterMaterial;
         // Objects used for Postprocessing
         GLuint postprocessFrameBuffer, postProcessVertexArray;
         Texture2D *colorTarget, *depthTarget;
