@@ -8,14 +8,10 @@
 #include <systems/movement.hpp>
 #include <systems/survival-system.hpp>
 #include <systems/animation-system.hpp>
-<<<<<<< HEAD
-#include <systems/shark-system.hpp>
 #include <systems/octopus-system.hpp>
-=======
 #include <systems/combat-system.hpp>
 #include <systems/marine-boat-system.hpp>
 
->>>>>>> origin/enemy-of-my-enemy
 #include <asset-loader.hpp>
 
 // This state shows how to use the ECS framework and deserialization.

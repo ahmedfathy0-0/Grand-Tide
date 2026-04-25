@@ -59,9 +59,6 @@
                 "shark_albedo": "assets/textures/shark-tex/RGB_Alpha.jpg",
                 "shark_roughness": "assets/textures/shark-tex/DefaultMaterial_Roughness.jpg",
                 "shark_normal": "assets/textures/shark-tex/DefaultMaterial_Normal_OpenGL.jpg",
-                "octopus_albedo": "assets/textures/octopus-tex/octopus_albedo.png",
-                "octopus_normal": "assets/textures/octopus-tex/octopus_normal.png",
-                "octopus_roughness": "assets/textures/octopus-tex/octopus_metallic.png",
                 "ship_body_albedo": "assets/textures/New folder/Marine_ship_body_BaseColor.jpg",
                 "ship_body_roughness": "assets/textures/New folder/Marine_ship_body_Roughness.png",
                 "ship_body_normal": "assets/textures/New folder/Marine_ship_body_Normal.png",
@@ -69,7 +66,9 @@
                 "boat_albedo": "assets/textures/marine-boat/boatColor.jpg",
                 "boat_roughness": "assets/textures/marine-boat/boatRoughness.png",
                 "boat_normal": "assets/textures/marine-boat/boatNormal.png",
-                "musket_albedo": "assets/textures/pl_mb_marine01_musk01_diff.png"
+                "musket_albedo": "assets/textures/pl_mb_marine01_musk01_diff.png",
+                "octopus_albedo": "assets/textures/octopus-tex/octopus_albedo.png",
+                "octopus_normal": "assets/textures/octopus-tex/octopus_normal.png"
             },
             "meshes": {
                 "cube": "assets/models/cube.obj",
@@ -80,10 +79,10 @@
             },
             "animated_models": {
                 "shark": "assets/models/shark/Shark.fbx",
-                "octopus": "assets/models/octopus/PiratesKing.fbx",
                 "marine_ship": "assets/models/marine-ship/one piece marine ship blue 14 1920.fbx",
                 "marine_boat": "assets/models/marine-boat/boat.fbx",
-                "marine_musket": "assets/models/pl_mb_marine01_musk01.fbx"
+                "marine_musket": "assets/models/pl_mb_marine01_musk01.fbx",
+                "octopus": "assets/models/octopus/PiratesKing.fbx"
             },
             "samplers": {
                 "default": {
@@ -180,10 +179,18 @@
                         }
                     },
                     "albedo": "octopus_albedo",
-                    "specular": "octopus_metallic",
-                    "albedo_tint": [ 1, 1, 1 ],
-                    "specular_tint": [ 1, 1, 1 ],
-                    "roughness_multiplier": 0.5,
+                    "normal": "octopus_normal",
+                    "albedo_tint": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "specular_tint": [
+                        0.5,
+                        0.5,
+                        0.5
+                    ],
+                    "roughness_multiplier": 1.0,
                     "sampler": "default",
                     "isAnimated": true
                 },
@@ -551,6 +558,118 @@
                         0.8,
                         1.0
                     ]
+                },
+                "lit_ship": {
+                    "type": "lit",
+                    "shader": "lit",
+                    "pipelineState": {
+                        "faceCulling": {
+                            "enabled": false
+                        },
+                        "depthTesting": {
+                            "enabled": true
+                        }
+                    },
+                    "albedo": "ship_body_albedo",
+                    "roughness": "ship_body_roughness",
+                    "normal": "ship_body_normal",
+                    "albedo_tint": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "specular_tint": [
+                        0.5,
+                        0.5,
+                        0.5
+                    ],
+                    "roughness_multiplier": 1.0,
+                    "sampler": "default",
+                    "isAnimated": false
+                },
+                "lit_cannonball": {
+                    "type": "lit",
+                    "shader": "lit",
+                    "pipelineState": {
+                        "faceCulling": {
+                            "enabled": false
+                        },
+                        "depthTesting": {
+                            "enabled": true
+                        }
+                    },
+                    "albedo": "cannon_ball_albedo",
+                    "albedo_tint": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "specular_tint": [
+                        0.8,
+                        0.8,
+                        0.8
+                    ],
+                    "roughness_multiplier": 0.3,
+                    "sampler": "default",
+                    "isAnimated": false
+                },
+                "lit_boat": {
+                    "type": "lit",
+                    "shader": "lit",
+                    "pipelineState": {
+                        "faceCulling": {
+                            "enabled": false
+                        },
+                        "depthTesting": {
+                            "enabled": true
+                        }
+                    },
+                    "albedo": "boat_albedo",
+                    "roughness": "boat_roughness",
+                    "normal": "boat_normal",
+                    "albedo_tint": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "specular_tint": [
+                        0.5,
+                        0.5,
+                        0.5
+                    ],
+                    "roughness_multiplier": 1.0,
+                    "sampler": "default",
+                    "isAnimated": false
+                },
+                "lit_musket": {
+                    "type": "lit",
+                    "shader": "lit",
+                    "pipelineState": {
+                        "faceCulling": {
+                            "enabled": false
+                        },
+                        "depthTesting": {
+                            "enabled": true
+                        }
+                    },
+                    "albedo": "musket_albedo",
+                    "albedo_tint": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "specular_tint": [
+                        0.5,
+                        0.5,
+                        0.5
+                    ],
+                    "roughness_multiplier": 0.8,
+                    "uv_multiplier": [
+                        1.0,
+                        -1.0
+                    ],
+                    "sampler": "default",
+                    "isAnimated": true
                 }
             }
         },
@@ -564,7 +683,8 @@
                 ],
                 "components": [
                     {
-                        "type": "Camera"
+                        "type": "Camera",
+                        "far": 1000.0
                     },
                     {
                         "type": "PlayerController",
@@ -697,17 +817,17 @@
             {
                 "name": "octopus",
                 "position": [
-                    50,
-                    -2,
-                    50
+                    80,
+                    -150,
+                    10
                 ],
                 "scale": [
-                    0.05,
-                    0.05,
-                    0.05
+                    0.1,
+                    0.1,
+                    0.1
                 ],
                 "rotation": [
-                    -90,
+                    0,
                     0,
                     0
                 ],
@@ -720,14 +840,196 @@
                     {
                         "type": "Octopus",
                         "modelName": "octopus",
+                        "state": "IDLE",
                         "health": 500,
-                        "state": "TESTING",
-                        "currentAnimIndex": 0
+                        "attackDamage": 50.0,
+                        "attackCooldown": 2.0,
+                        "attackDuration": 30.0,
+                        "idleDuration": 60.0,
+                        "emergeDelay": 10.0,
+                        "attackRange": 40.0,
+                        "surfacedY": 1.0,
+                        "submergedY": -150.0,
+                        "followDistance": 60.0,
+                        "minFollowDistance": 30.0,
+                        "maxFollowDistance": 100.0,
+                        "speed": 1.0
+                    },
+                    {
+                        "type": "Animator",
+                        "modelName": "octopus"
                     },
                     {
                         "type": "Health",
                         "maxHealth": 500,
                         "currentHealth": 500
+                    },
+                    {
+                        "type": "Enemy",
+                        "enemyType": "shark",
+                        "primaryTarget": "RAFT",
+                        "attackDamage": 50.0
+                    }
+                ]
+            },
+            {
+                "name": "debug_marine",
+                "position": [
+                    4,
+                    0,
+                    10
+                ],
+                "scale": [
+                    2.0,
+                    2.0,
+                    2.0
+                ],
+                "rotation": [
+                    0,
+                    0,
+                    0
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "lit_musket"
+                    },
+                    {
+                        "type": "Musket",
+                        "modelName": "marine_musket",
+                        "damage": 10.0,
+                        "fireRate": 5.0,
+                        "musketIndex": 0,
+                        "boatIndex": 0
+                    },
+                    {
+                        "type": "Animator",
+                        "modelName": "marine_musket"
+                    },
+                    {
+                        "type": "Enemy",
+                        "enemyType": "musket",
+                        "primaryTarget": "PLAYER",
+                        "attackDamage": 10.0
+                    }
+                ]
+            },
+            {
+                "name": "debug_marine_boat",
+                "position": [
+                    -15,
+                    0,
+                    10
+                ],
+                "scale": [
+                    0.05,
+                    0.05,
+                    0.05
+                ],
+                "rotation": [
+                    0,
+                    45,
+                    0
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "lit_boat"
+                    },
+                    {
+                        "type": "Marine Boat",
+                        "modelName": "marine_boat",
+                        "speed": 2.0
+                    },
+                    {
+                        "type": "Animator",
+                        "modelName": "marine_boat"
+                    },
+                    {
+                        "type": "Enemy",
+                        "enemyType": "marine_boat",
+                        "primaryTarget": "RAFT",
+                        "attackDamage": 0.0
+                    }
+                ],
+                "children": [
+                    {
+                        "name": "musket_1",
+                        "position": [
+                            20,
+                            10,
+                            -50
+                        ],
+                        "scale": [
+                            50,
+                            50,
+                            50,
+                        ],
+                        "components": [
+                            {
+                                "type": "Mesh Renderer",
+                                "mesh": "cube",
+                                "material": "lit_musket"
+                            },
+                            {
+                                "type": "Musket",
+                                "modelName": "marine_musket",
+                                "damage": 10.0,
+                                "musketIndex": 0,
+                                "boatIndex": 1,
+                                "fireRate": 10
+                            },
+                            {
+                                "type": "Animator",
+                                "modelName": "marine_musket"
+                            },
+                            {
+                                "type": "Enemy",
+                                "enemyType": "musket",
+                                "primaryTarget": "PLAYER",
+                                "attackDamage": 10.0
+                            }
+                        ]
+                    },
+                    {
+                        "name": "musket_2",
+                        "position": [
+                            -20,
+                            10,
+                            50
+                        ],
+                        "scale": [
+                            100,
+                            50,
+                            50
+                        ],
+                        "components": [
+                            {
+                                "type": "Mesh Renderer",
+                                "mesh": "cube",
+                                "material": "lit_musket"
+                            },
+                            {
+                                "type": "Musket",
+                                "modelName": "marine_musket",
+                                "damage": 10.0,
+                                "musketIndex": 1,
+                                "boatIndex": 1,
+                                "fireRate": 12.0
+                            },
+                            {
+                                "type": "Animator",
+                                "modelName": "marine_musket"
+                            },
+                            {
+                                "type": "Enemy",
+                                "enemyType": "musket",
+                                "primaryTarget": "PLAYER",
+                                "attackDamage": 10.0
+                            }
+                        ]
                     }
                 ]
             },
@@ -836,7 +1138,7 @@
                 ]
             },
             {
-                "name": "raft",
+                "name": "boat",
                 "position": [
                     0,
                     0,

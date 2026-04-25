@@ -6,6 +6,8 @@
 #include "../material/lit-material.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 #include "../components/shark-component.hpp"
+#include "../components/octopus-component.hpp"
+#include "../components/animator.hpp"
 #include "../components/health.hpp"
 #include "../components/inventory.hpp"
 #include <GLFW/glfw3.h>
@@ -326,19 +328,26 @@ namespace our
                 
                 float current_wetness = 0.0f;
 
-                if (auto shark = command.entity->getComponent<SharkComponent>(); shark) {
-                    for(int b = 0; b < shark->finalBonesMatrices.size() && b < 128; b++) {
-                        lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", shark->finalBonesMatrices[b]);
+                // Set bone matrices from AnimatorComponent (single source of truth)
+                // If no animator, reset to identity to prevent stale matrices from previous draw calls
+                if (auto animator = command.entity->getComponent<AnimatorComponent>(); animator && !animator->finalBonesMatrices.empty()) {
+                    for(int b = 0; b < (int)animator->finalBonesMatrices.size() && b < 200; b++) {
+                        lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", animator->finalBonesMatrices[b]);
                     }
-                    lit_material->shader->set("albedo_tint", lit_material->albedo_tint); // Flash removed for generic animator
+                    // Clear any remaining bones beyond what this animator has
+                    for(int b = (int)animator->finalBonesMatrices.size(); b < 200; b++) {
+                        lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", glm::mat4(1.0f));
+                    }
+                } else {
+                    // No animator: reset all bone matrices to identity so previous entity's bones don't deform this one
+                    for(int b = 0; b < 200; b++) {
+                        lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", glm::mat4(1.0f));
+                    }
                 }
-                
+
                 if (auto octopus = command.entity->getComponent<OctopusComponent>(); octopus) {
-                    for(int b = 0; b < octopus->finalBonesMatrices.size() && b < 200; b++) {
-                        lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", octopus->finalBonesMatrices[b]);
-                    }
-                    // Octopus is wet after surfacing (ANGRY state lasts 5s, dries over time)
-                    if (octopus->state == OctopusState::ANGRY) {
+                    // Octopus is wet while attacking (dries over time)
+                    if (octopus->state == OctopusState::ATTACKING) {
                         current_wetness = std::max(0.0f, 1.0f - (octopus->stateTimer / 5.0f));
                     }
                 }
@@ -441,11 +450,23 @@ namespace our
                 lit_material->shader->set("M_IT", glm::transpose(glm::inverse(command.localToWorld)));
                 lit_material->shader->set("VP", VP);
 
-                if (auto animator = command.entity->getComponent<AnimatorComponent>(); animator)
+                // Set bone matrices from AnimatorComponent, reset to identity for non-animated
+                if (auto animator = command.entity->getComponent<AnimatorComponent>(); animator && !animator->finalBonesMatrices.empty())
                 {
-                    for (int b = 0; b < animator->finalBonesMatrices.size() && b < 100; b++)
+                    for (int b = 0; b < (int)animator->finalBonesMatrices.size() && b < 200; b++)
                     {
                         lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", animator->finalBonesMatrices[b]);
+                    }
+                    for (int b = (int)animator->finalBonesMatrices.size(); b < 200; b++)
+                    {
+                        lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", glm::mat4(1.0f));
+                    }
+                }
+                else
+                {
+                    for (int b = 0; b < 200; b++)
+                    {
+                        lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", glm::mat4(1.0f));
                     }
                 }
             }

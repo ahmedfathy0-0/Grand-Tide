@@ -128,15 +128,10 @@ set(COMMON_SOURCES
         source/common/systems/survival-system.cpp
         source/common/systems/animation-system.hpp
         source/common/systems/animation-system.cpp
-<<<<<<< HEAD
-        source/common/systems/shark-system.hpp
-        source/common/systems/shark-system.cpp
         source/common/systems/octopus-system.hpp
         source/common/systems/octopus-system.cpp
-=======
         source/common/systems/combat-system.hpp
         source/common/systems/combat-system.cpp
->>>>>>> origin/enemy-of-my-enemy
 )
 
 set(STATES_SOURCES

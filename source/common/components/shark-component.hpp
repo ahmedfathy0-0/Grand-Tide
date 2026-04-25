@@ -25,6 +25,9 @@ namespace our {
         float speed = 12.0;
         float attackRange = 25.0f;
         
+        // Bone matrices computed by AnimationSystem, copied here for renderer
+        std::vector<glm::mat4> finalBonesMatrices;
+        
         // This is the animated model id or name loaded via ModelLoader
 
         // The ID of this component type is "Shark"

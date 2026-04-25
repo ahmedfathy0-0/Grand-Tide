@@ -9,6 +9,7 @@ namespace our {
     public:
         float maxHealth = 100.0f;
         float currentHealth = 100.0f;
+        float damageFlashTimer = 0.0f;  // Timer for screen blood effect when damaged
 
         static std::string getID() { return "Health"; }
 

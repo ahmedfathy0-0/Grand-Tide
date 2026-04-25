@@ -1,5 +1,7 @@
 #include "animation-system.hpp"
 #include <glm/gtx/matrix_decompose.hpp>
+#include "components/shark-component.hpp"
+#include "components/octopus-component.hpp"
 
 namespace our
 {
@@ -49,23 +51,13 @@ namespace our
                 {
                     animator->finalBonesMatrices.assign(model->getBoneCount(), glm::mat4(1.0f));
                 }
-            }
-            
-            auto octopus = entity->getComponent<OctopusComponent>();
-            if (octopus && !octopus->modelName.empty()) {
-                Model* model = ModelLoader::models[octopus->modelName];
-                if(model && model->getScene() && model->getScene()->HasAnimations()) {
-                    int animIndex = octopus->currentAnimIndex;
-                    if (animIndex >= (int)model->getScene()->mNumAnimations) animIndex = 0;
-                    if (animIndex >= 0) {
-                        aiAnimation* animation = model->getScene()->mAnimations[animIndex];
-                        float ticksPerSecond = animation->mTicksPerSecond != 0 ? animation->mTicksPerSecond : 25.0f;
-                        float timeInTicks = deltaTime * ticksPerSecond;
-                        octopus->currentAnimationTime += timeInTicks;
-                        octopus->currentAnimationTime = fmod(octopus->currentAnimationTime, animation->mDuration);
-                    }
-                    octopus->finalBonesMatrices.assign(model->getBoneCount(), glm::mat4(1.0f));
-                    calculateBoneTransformOctopus(model->getScene()->mRootNode, model->getScene(), octopus->currentAnimationTime, animIndex, glm::mat4(1.0f), model, octopus);
+
+                // Copy bone matrices to component-specific arrays for the renderer
+                if (auto shark = entity->getComponent<SharkComponent>(); shark) {
+                    shark->finalBonesMatrices = animator->finalBonesMatrices;
+                }
+                if (auto octopus = entity->getComponent<OctopusComponent>(); octopus) {
+                    octopus->finalBonesMatrices = animator->finalBonesMatrices;
                 }
             }
         }
