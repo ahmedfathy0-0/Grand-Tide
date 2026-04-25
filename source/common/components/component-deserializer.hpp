@@ -10,6 +10,7 @@
 #include "resource.hpp"
 #include "light.hpp"
 #include "player-controller.hpp"
+#include "shark-component.hpp"
 
 namespace our {
 
@@ -37,6 +38,8 @@ namespace our {
             component = entity->addComponent<ResourceComponent>();
         } else if (type == LightComponent::getID()) {
             component = entity->addComponent<LightComponent>();
+        } else if (type == SharkComponent::getID()) {
+            component = entity->addComponent<SharkComponent>();
         }
         if(component) component->deserialize(data);
     }

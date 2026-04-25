@@ -7,6 +7,8 @@
 #include <systems/player-controller-system.hpp>
 #include <systems/movement.hpp>
 #include <systems/survival-system.hpp>
+#include <systems/animation-system.hpp>
+#include <systems/shark-system.hpp>
 #include <asset-loader.hpp>
 
 // This state shows how to use the ECS framework and deserialization.
@@ -17,6 +19,8 @@ class Playstate: public our::State {
     our::PlayerControllerSystem cameraController; // Now utilizing Player Controller explicitly
     our::MovementSystem movementSystem;
     our::SurvivalSystem survivalSystem;
+    our::AnimationSystem animationSystem;
+    our::SharkSystem sharkSystem;
 
     void onInitialize() override {
         // First of all, we get the scene configuration from the app config
@@ -46,17 +50,13 @@ class Playstate: public our::State {
 
     void onImmediateGui() override {
         our::Entity* player = nullptr;
-        our::Entity* raft = nullptr;
         for (auto entity : world.getEntities()) {
-            if (entity->name == "player") player = entity;
-            if (entity->name == "raft") raft = entity;
+            if (entity->name == "player") { player = entity; break; }
         }
-        
         if (player) {
             if (auto inv = player->getComponent<our::InventoryComponent>()) {
                 auto size = getApp()->getFrameBufferSize();
                 float tbY = size.y - 80.0f;
-                // ... Existing logic for inventory ... //
                 
                 ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
                 if (inv->woodCount > 0) {
@@ -79,12 +79,13 @@ class Playstate: public our::State {
         }
     }
 
-
     void onDraw(double deltaTime) override {
         // Here, we just run a bunch of systems to control the world logic
         movementSystem.update(&world, (float)deltaTime);
         cameraController.update(&world, (float)deltaTime);
         survivalSystem.update();
+        animationSystem.update(&world, (float)deltaTime);
+        sharkSystem.update(&world, (float)deltaTime);
         
         world.deleteMarkedEntities();
         
@@ -111,3 +112,5 @@ class Playstate: public our::State {
         our::clearAllAssets();
     }
 };
+
+// Force build 2

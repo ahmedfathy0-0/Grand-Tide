@@ -6,6 +6,7 @@
 #include "texture/sampler.hpp"
 #include "mesh/mesh.hpp"
 #include "mesh/mesh-utils.hpp"
+#include "mesh/model.hpp"
 #include "material/material.hpp"
 #include "deserialize-utils.hpp"
 
@@ -107,6 +108,8 @@ namespace our {
             AssetLoader<Sampler>::deserialize(assetData["samplers"]);
         if(assetData.contains("meshes"))
             AssetLoader<Mesh>::deserialize(assetData["meshes"]);
+        if(assetData.contains("animated_models"))
+            ModelLoader::deserialize(assetData["animated_models"]);
         if(assetData.contains("materials"))
             AssetLoader<Material>::deserialize(assetData["materials"]);
     }
@@ -116,6 +119,7 @@ namespace our {
         AssetLoader<Texture2D>::clear();
         AssetLoader<Sampler>::clear();
         AssetLoader<Mesh>::clear();
+        ModelLoader::clear();
         AssetLoader<Material>::clear();
     }
 

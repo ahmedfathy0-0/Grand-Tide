@@ -3,6 +3,7 @@
 #include "../ecs/world.hpp"
 #include "../components/camera.hpp"
 #include "../components/mesh-renderer.hpp"
+#include "../ecs/entity.hpp"
 #include "../asset-loader.hpp"
 
 #include <glad/gl.h>
@@ -20,6 +21,7 @@ namespace our
         glm::vec3 center;
         Mesh* mesh;
         Material* material;
+        Entity* entity;
     };
 
     // A forward renderer is a renderer that draw the object final color directly to the framebuffer

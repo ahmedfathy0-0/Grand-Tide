@@ -22,6 +22,8 @@ namespace our {
         glm::vec3 albedo_tint = glm::vec3(1.0f);
         glm::vec3 specular_tint = glm::vec3(1.0f);
         float roughness_multiplier = 1.0f;
+        
+        bool isAnimated = false;
 
         void setup() const override;
         void teardown() const override;
