@@ -345,13 +345,6 @@ namespace our
                     }
                 }
 
-                if (auto octopus = command.entity->getComponent<OctopusComponent>(); octopus) {
-                    // Octopus is wet while attacking (dries over time)
-                    if (octopus->state == OctopusState::ATTACKING) {
-                        current_wetness = std::max(0.0f, 1.0f - (octopus->stateTimer / 5.0f));
-                    }
-                }
-                
                 lit_material->shader->set("u_wetness", current_wetness);
             }
 

@@ -20,8 +20,8 @@ namespace our {
     };
 
     enum class OctopusAnimation : int {
-        ATTACK = 1,
-        FINISH = 2,
+        ATTACK = 0,
+        FINISH = 1,
         RUN_FORWARD = 3,
         DEATH = 4,
         IDLE = 5,
