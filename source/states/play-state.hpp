@@ -12,6 +12,7 @@
 #include <systems/combat-system.hpp>
 #include <systems/marine-boat-system.hpp>
 #include <systems/boss-health-bar.hpp>
+#include <systems/damage-flash.hpp>
 #include <components/health.hpp>
 
 #include <asset-loader.hpp>
@@ -30,6 +31,7 @@ class Playstate : public our::State
     our::MarineBoatSystem marineBoatSystem;
     our::OctopusSystem octopusSystem;
     our::BossHealthBar bossHealthBar;
+    our::DamageFlash damageFlash;
     void
     onInitialize() override
     {
@@ -51,6 +53,7 @@ class Playstate : public our::State
         auto size = getApp()->getFrameBufferSize();
         renderer.initialize(size, config["renderer"]);
         bossHealthBar.init(size.x, size.y);
+        damageFlash.init();
 
         our::Entity *player = nullptr;
         our::Entity *boat = nullptr;
@@ -120,6 +123,13 @@ class Playstate : public our::State
         // And finally we use the renderer system to draw the scene
         renderer.render(&world);
 
+        // Damage flash overlay (before HUD)
+        damageFlash.update((float)deltaTime);
+        {
+            auto size = getApp()->getFrameBufferSize();
+            damageFlash.render(size.x, size.y);
+        }
+
         // Find octopus health and draw boss bar
         our::HealthComponent* octopusHealth = nullptr;
         for (auto entity : world.getEntities()) {
@@ -150,6 +160,7 @@ class Playstate : public our::State
         // Don't forget to destroy the renderer
         renderer.destroy();
         bossHealthBar.destroy();
+        damageFlash.destroy();
         // On exit, we call exit for the camera controller system to make sure that the mouse is unlocked
         cameraController.exit();
         // Clear the world

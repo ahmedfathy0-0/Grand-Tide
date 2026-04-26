@@ -134,6 +134,8 @@ set(COMMON_SOURCES
         source/common/systems/combat-system.cpp
         source/common/systems/boss-health-bar.hpp
         source/common/systems/boss-health-bar.cpp
+        source/common/systems/damage-flash.hpp
+        source/common/systems/damage-flash.cpp
 )
 
 set(STATES_SOURCES
