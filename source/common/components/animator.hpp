@@ -14,6 +14,7 @@ namespace our
         float currentAnimationTime = 0.0f;
         int currentAnimIndex = 0;
         float playSpeed = 1.0f;
+        bool isLooping = true; // If false, animation clamps at end (one-shot)
         std::vector<glm::mat4> finalBonesMatrices; // Computed bone matrices per frame
 
         static std::string getID() { return "Animator"; }
