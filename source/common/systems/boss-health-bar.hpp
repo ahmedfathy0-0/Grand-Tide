@@ -6,41 +6,54 @@
 
 namespace our {
 
-    class BossHealthBar {
-    private:
-        GLuint quadVAO = 0;
-        GLuint quadVBO = 0;
-        GLuint shaderProgram = 0;
-        GLint uProjectionLoc = -1;
-        GLint uOffsetLoc = -1;
-        GLint uSizeLoc = -1;
-        GLint uColorLoc = -1;
+class BossHealthBar {
+private:
+    GLuint quadVAO = 0;
+    GLuint quadVBO = 0;
+    GLuint shaderProgram = 0;
+    GLint uProjectionLoc = -1;
+    GLint uOffsetLoc = -1;
+    GLint uSizeLoc = -1;
+    GLint uColorLoc = -1;
 
-        // Label texture (pre-baked "KRAKEN" text)
-        GLuint labelTexture = 0;
-        GLint labelTexW = 0;
-        GLint labelTexH = 0;
-        GLuint labelShaderProgram = 0;
-        GLint lProjectionLoc = -1;
-        GLint lOffsetLoc = -1;
-        GLint lSizeLoc = -1;
-        GLint lTexLoc = -1;
+    GLuint textShaderProgram = 0;
+    GLint tProjectionLoc = -1;
+    GLint tOffsetLoc = -1;
+    GLint tSizeLoc = -1;
+    GLint tColorLoc = -1;
+    GLint tTexLoc = -1;
+    GLint tTexOffsetLoc = -1;
+    GLint tTexSizeLoc = -1;
 
-        float screenW = 0.0f;
-        float screenH = 0.0f;
+    GLuint fontTexture = 0;
+    void* cdata = nullptr;  // stbtt_bakedchar*
+    bool fontReady = false;
+    std::string fontPath;
 
-        float targetHP = 0.0f;
-        float displayHP = 0.0f;
-        float maxHP = 100.0f;
+    float screenW = 0.0f;
+    float screenH = 0.0f;
 
-    public:
-        void init(int screenWidth, int screenHeight);
-        void update(float currentHP, float maxHP, float deltaTime);
-        void render();
-        void resize(int newWidth, int newHeight);
-        void destroy();
+    float targetHP = 0.0f;
+    float displayHP = 0.0f;
+    float maxHP = 100.0f;
+    float flashTimer = 0.0f;
 
-        bool loadLabelTexture(const std::string& path);
-    };
+    glm::vec3 currentHPColor = glm::vec3(1.0f, 0.78f, 0.1f);
+
+    void buildShaders();
+    void bakeFont();
+    void drawQuad(float x, float y, float w, float h, const glm::vec4& col);
+    void drawText(const std::string& str, float x, float y);
+    glm::vec4 getHPColor(float ratio);
+    void drawBracket(float cx, float cy, bool right);
+
+public:
+    void init(int screenWidth, int screenHeight, const std::string& fontPath = "assets/fonts/pirate.ttf");
+    void update(float currentHP, float maxHP, float deltaTime);
+    void render();
+    void resize(int newWidth, int newHeight);
+    void destroy();
+    void onDamageReceived();
+};
 
 }
