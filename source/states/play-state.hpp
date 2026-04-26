@@ -11,6 +11,8 @@
 #include <systems/octopus-system.hpp>
 #include <systems/combat-system.hpp>
 #include <systems/marine-boat-system.hpp>
+#include <systems/boss-health-bar.hpp>
+#include <components/health.hpp>
 
 #include <asset-loader.hpp>
 
@@ -27,6 +29,7 @@ class Playstate : public our::State
     our::CombatSystem combatSystem;
     our::MarineBoatSystem marineBoatSystem;
     our::OctopusSystem octopusSystem;
+    our::BossHealthBar bossHealthBar;
     void
     onInitialize() override
     {
@@ -47,6 +50,7 @@ class Playstate : public our::State
         // Then we initialize the renderer
         auto size = getApp()->getFrameBufferSize();
         renderer.initialize(size, config["renderer"]);
+        bossHealthBar.init(size.x, size.y);
 
         our::Entity *player = nullptr;
         our::Entity *boat = nullptr;
@@ -116,6 +120,21 @@ class Playstate : public our::State
         // And finally we use the renderer system to draw the scene
         renderer.render(&world);
 
+        // Find octopus health and draw boss bar
+        our::HealthComponent* octopusHealth = nullptr;
+        for (auto entity : world.getEntities()) {
+            if (entity->name == "octopus") {
+                octopusHealth = entity->getComponent<our::HealthComponent>();
+                break;
+            }
+        }
+        if (octopusHealth) {
+            auto size = getApp()->getFrameBufferSize();
+            bossHealthBar.resize(size.x, size.y);
+            bossHealthBar.update(octopusHealth->currentHealth, octopusHealth->maxHealth, (float)deltaTime);
+            bossHealthBar.render();
+        }
+
         // Get a reference to the keyboard object
         auto &keyboard = getApp()->getKeyboard();
 
@@ -130,6 +149,7 @@ class Playstate : public our::State
     {
         // Don't forget to destroy the renderer
         renderer.destroy();
+        bossHealthBar.destroy();
         // On exit, we call exit for the camera controller system to make sure that the mouse is unlocked
         cameraController.exit();
         // Clear the world

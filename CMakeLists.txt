@@ -132,6 +132,8 @@ set(COMMON_SOURCES
         source/common/systems/octopus-system.cpp
         source/common/systems/combat-system.hpp
         source/common/systems/combat-system.cpp
+        source/common/systems/boss-health-bar.hpp
+        source/common/systems/boss-health-bar.cpp
 )
 
 set(STATES_SOURCES
