@@ -39,7 +39,14 @@ namespace our
                         float timeInTicks = deltaTime * ticksPerSecond * animator->playSpeed;
 
                         animator->currentAnimationTime += timeInTicks;
-                        animator->currentAnimationTime = fmod(animator->currentAnimationTime, animation->mDuration);
+                        if (animator->loopAnimation) {
+                            animator->currentAnimationTime = fmod(animator->currentAnimationTime, animation->mDuration);
+                        } else {
+                            // Clamp to last frame for non-looping animations (death)
+                            if (animator->currentAnimationTime >= animation->mDuration) {
+                                animator->currentAnimationTime = animation->mDuration - 0.001f;
+                            }
+                        }
                     }
 
                     animator->finalBonesMatrices.assign(model->getBoneCount(), glm::mat4(1.0f));

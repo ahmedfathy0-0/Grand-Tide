@@ -6,6 +6,7 @@
 #include "../components/inventory.hpp"
 #include "../components/resource.hpp"
 #include "../components/mesh-renderer.hpp"
+#include "../components/shark-component.hpp"
 #include "../application.hpp" // Assuming this gives access to Application and inputs
 #include <iostream>
 

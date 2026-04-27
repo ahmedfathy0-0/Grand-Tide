@@ -12,6 +12,8 @@
 #include "mesh/model.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtx/euler_angles.hpp>
+#include "player-controller-system.hpp"
+#include "components/burn-component.hpp"
 #include <iostream>
 
 namespace our

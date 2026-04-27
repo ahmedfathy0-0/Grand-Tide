@@ -15,6 +15,9 @@
 #include "marine-boat-component.hpp"
 #include "musket-component.hpp"
 #include "shark-component.hpp"
+#include "fireball-component.hpp"
+#include "projectile-component.hpp"
+#include "burn-component.hpp"
 namespace our
 {
 
@@ -80,6 +83,18 @@ namespace our
         else if (type == SharkComponent::getID())
         {
             component = entity->addComponent<SharkComponent>();
+        }
+        else if (type == FireballComponent::getID())
+        {
+            component = entity->addComponent<FireballComponent>();
+        }
+        else if (type == ProjectileComponent::getID())
+        {
+            component = entity->addComponent<ProjectileComponent>();
+        }
+        else if (type == BurnComponent::getID())
+        {
+            component = entity->addComponent<BurnComponent>();
         }
         if (component)
             component->deserialize(data);

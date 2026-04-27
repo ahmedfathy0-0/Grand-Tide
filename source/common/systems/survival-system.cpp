@@ -151,6 +151,8 @@ namespace our
             if (distToTarget <= targetRadius)
             {
                 health->takeDamage(25.0f);
+                if (entity->getComponent<EnemyComponent>()->type == EnemyType::SHARK)
+                    entity->getComponent<SharkComponent>()->damageFlashTimer = 0.5f;
                 std::cout << "[Combat] Hit entity for 25 damage! Health left: " << health->currentHealth << "\n";
             }
         }
@@ -191,9 +193,19 @@ namespace our
             if (auto meshR = getWeaponRenderer(world, playerEntity))
                 meshR->material = AssetLoader<Material>::get("silver");
         }
+        if (keyboard.justPressed(GLFW_KEY_5))
+        {
+            if (inventory->hasDevilFruit) {
+                inventory->activeSlot = 5;
+                std::cout << "[Tool] Switched to Fireball\n";
+                // The weapon mesh is hidden by FireballSystem when slot 5 is active
+            } else {
+                std::cout << "[Tool] You don't have devil fruit powers yet!\n";
+            }
+        }
 
         // 2. Consuming
-        if (keyboard.justPressed(GLFW_KEY_E))
+        if (keyboard.justPressed(GLFW_KEY_R))
         {
             if (inventory->fishCount > 0 && playerHealth->currentHealth < playerHealth->maxHealth)
             {
