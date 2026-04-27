@@ -63,9 +63,10 @@ namespace our {
         float attackDuration = 30.0f;
         float idleDuration = 60.0f;
         float emergeDelay = 10.0f;
-        float attackRange = 70.0f;
+        float attackRange = 40.0f;
         int attackCount = 0;
         int consecutiveMisses = 0;
+        bool force_reposition = false;
         float chaseSpeed = 8.0f;
 
         // Position properties
@@ -80,6 +81,33 @@ namespace our {
 
         // This stores the computed bone matrices for this frame
         std::vector<glm::mat4> finalBonesMatrices;
+
+        // ---- Tentacle hit detection ----
+        // Structs for cached tentacle chain data (built once from model bone info)
+        struct TentacleChainBone {
+            int boneIndex;              // Index into finalBonesMatrices
+            glm::mat4 inverseOffset;    // Precomputed glm::inverse(boneOffsetMatrix)
+        };
+
+        struct TentacleChain {
+            std::string prefix;                        // e.g. "BN_PiratesKing_Tentacle_R_"
+            std::vector<TentacleChainBone> bones;      // Sorted by suffix number (01, 02, ...)
+            std::vector<glm::vec3> worldPositions;     // Updated every frame
+        };
+
+        float tentacleRadius = 3.0f;         // Collision radius of each tentacle segment
+        float playerRadius = 1.5f;            // Collision radius of the player
+        float hitCooldownDuration = 0.8f;     // Cooldown between hits from same swing
+        float hitCooldownTimer = 0.0f;        // Current cooldown timer
+        bool isAttackActive = false;           // True during attack swing phase (norm time 0.3-0.8)
+        bool hitRegisteredThisSwing = false;   // Whether a hit was registered during current attack swing
+        glm::vec3 lastHitPosition = glm::vec3(0.0f); // World-space position of last tentacle hit
+
+        std::vector<TentacleChain> tentacleChains; // Cached tentacle chain data
+        bool tentacleChainsBuilt = false;           // Set to true after first build
+
+        // Flat array of tentacle tip positions (last bone of each chain), updated every frame
+        std::vector<glm::vec3> tentacle_tip_positions;
 
         // The ID of this component type is "Octopus"
         static std::string getID() { return "Octopus"; }

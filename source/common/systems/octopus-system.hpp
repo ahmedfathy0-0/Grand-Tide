@@ -8,8 +8,12 @@
 #include "mesh/model.hpp"
 #include "application.hpp"
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_inverse.hpp>
 #include <iostream>
 #include <unordered_map>
+#include <tuple>
+#include <algorithm>
+#include <map>
 
 namespace our {
 
@@ -87,6 +91,155 @@ namespace our {
             return getAnimDurationSeconds(m, idx);
         }
 
+        // ------------------------------------------------------------------
+        // buildTentacleChains: discovers tentacle bone chains from the model's
+        // bone info map. Groups bones by prefix, sorts by suffix number.
+        // Called once on first frame when the boss has a valid animator.
+        // ------------------------------------------------------------------
+        static void buildTentacleChains(OctopusComponent* octopus, AnimatorComponent* animator) {
+            if (!animator || animator->modelName.empty()) return;
+            Model* m = ModelLoader::models[animator->modelName];
+            if (!m) return;
+
+            auto& boneInfoMap = m->getBoneInfoMap();
+
+            // Temporary: prefix -> [(suffixNum, boneIndex, offsetMatrix)]
+            struct TempBone { int suffix; int idx; glm::mat4 off; };
+            std::map<std::string, std::vector<TempBone>> chainBones;
+
+            for (auto& [name, info] : boneInfoMap) {
+                // Only process bones with "Tentacle" in their name
+                if (name.find("Tentacle") == std::string::npos) continue;
+
+                // Extract prefix and suffix number
+                // e.g. "BN_PiratesKing_Tentacle_R_01" -> prefix="BN_PiratesKing_Tentacle_R_", suffix=1
+                size_t lastUnderscore = name.rfind('_');
+                if (lastUnderscore == std::string::npos || lastUnderscore + 1 >= name.size()) continue;
+
+                std::string prefix = name.substr(0, lastUnderscore + 1);
+                std::string suffixStr = name.substr(lastUnderscore + 1);
+
+                int suffixNum = 0;
+                try { suffixNum = std::stoi(suffixStr); }
+                catch (...) { continue; } // Skip bones without numeric suffix
+
+                chainBones[prefix].push_back({suffixNum, info.id, info.offset});
+            }
+
+            // Build sorted chains
+            for (auto& [prefix, bones] : chainBones) {
+                std::sort(bones.begin(), bones.end(),
+                          [](const auto& a, const auto& b) { return a.suffix < b.suffix; });
+
+                OctopusComponent::TentacleChain chain;
+                chain.prefix = prefix;
+                for (auto& b : bones) {
+                    OctopusComponent::TentacleChainBone cb;
+                    cb.boneIndex = b.idx;
+                    cb.inverseOffset = glm::inverse(b.off);
+                    chain.bones.push_back(cb);
+                }
+                octopus->tentacleChains.push_back(std::move(chain));
+            }
+
+            octopus->tentacleChainsBuilt = true;
+
+            // Debug: print discovered chains
+            std::cout << "[Octopus] Built " << octopus->tentacleChains.size() << " tentacle chains:" << std::endl;
+            for (auto& chain : octopus->tentacleChains) {
+                std::cout << "  " << chain.prefix << " -> " << chain.bones.size() << " bones" << std::endl;
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // updateTentacleBonePositions: computes world-space positions for all
+        // tentacle bones using the final bone matrices and model world transform.
+        //
+        // Bone world position = modelWorldMatrix * finalBonesMatrices[idx] * inverseOffset * vec4(0,0,0,1)
+        //
+        // Explanation of the math:
+        //   finalBonesMatrices[idx] = globalInverseTransform * globalAnimatedTransform * offset
+        //   This skin matrix transforms bind-pose mesh vertices to animated model-space positions.
+        //   To get the bone's HEAD position (not a vertex), we need:
+        //     globalInverseTransform * globalAnimatedTransform * vec4(0,0,0,1)
+        //   Which equals:
+        //     finalBonesMatrices[idx] * inverse(offset) * vec4(0,0,0,1)
+        //   Then modelWorldMatrix transforms from model space to world space.
+        // ------------------------------------------------------------------
+      static void updateTentacleBonePositions(OctopusComponent* octopus,
+                                         AnimatorComponent* animator,
+                                         const glm::mat4& modelWorldMatrix) {
+    if (!animator || animator->finalBonesMatrices.empty()) return;
+
+    octopus->tentacle_tip_positions.clear();
+
+    for (auto& chain : octopus->tentacleChains) {
+        chain.worldPositions.clear();
+        for (auto& bone : chain.bones) {
+            if (bone.boneIndex >= 0 &&
+                bone.boneIndex < (int)animator->finalBonesMatrices.size()) {
+
+                // finalBonesMatrices[i] = globalInverseTransform * globalBoneTransform * offset
+                // To get bone HEAD position: multiply by inverseOffset to cancel the offset
+                // Then modelWorldMatrix transforms from model space to world space
+                glm::vec4 boneModelPos = animator->finalBonesMatrices[bone.boneIndex]
+                                         * bone.inverseOffset
+                                         * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+
+                glm::vec3 boneWorldPos = glm::vec3(modelWorldMatrix * boneModelPos);
+                chain.worldPositions.push_back(boneWorldPos);
+            }
+        }
+        if (!chain.worldPositions.empty()) {
+            octopus->tentacle_tip_positions.push_back(chain.worldPositions.back());
+        }
+    }
+}
+
+        // ------------------------------------------------------------------
+        // checkTentacleHit: checks if any tentacle segment collides with the
+        // player. Each pair of consecutive bones in a chain forms a line segment
+        // (capsule). Returns true if any segment is within (tentacleRadius + playerRadius)
+        // of the player center. Outputs the world-space hit position.
+        //
+        // Closest-point-on-segment formula:
+        //   Given segment AB and point P:
+        //     t = dot(AP, AB) / dot(AB, AB)   -- parameter along segment
+        //     t = clamp(t, 0, 1)              -- clamp to segment bounds
+        //     closest = A + t * AB             -- closest point on segment
+        //     distance = length(closest - P)   -- distance to player center
+        // ------------------------------------------------------------------
+        static bool checkTentacleHit(OctopusComponent* octopus,
+                                      const glm::vec3& playerPos,
+                                      float playerRadius,
+                                      glm::vec3& outHitPos) {
+            float hitThreshold = octopus->tentacleRadius + playerRadius;
+
+            for (auto& chain : octopus->tentacleChains) {
+                // Check each consecutive pair of bones as a capsule segment
+                for (size_t i = 0; i + 1 < chain.worldPositions.size(); i++) {
+                    glm::vec3 a = chain.worldPositions[i];
+                    glm::vec3 b = chain.worldPositions[i + 1];
+
+                    // Closest point on segment AB to player center P
+                    glm::vec3 ab = b - a;
+                    glm::vec3 ap = playerPos - a;
+                    float abLenSq = glm::dot(ab, ab);
+                    // t = parameter along segment [0,1]
+                    float t = (abLenSq > 0.0001f) ? glm::dot(ap, ab) / abLenSq : 0.0f;
+                    t = glm::clamp(t, 0.0f, 1.0f);
+                    glm::vec3 closest = a + t * ab;
+
+                    float dist = glm::length(closest - playerPos);
+                    if (dist < hitThreshold) {
+                        outHitPos = closest;
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
     private:
 
         // ------------------------------------------------------------------
@@ -158,6 +311,20 @@ namespace our {
                     glm::vec3 diff = player->localTransform.position - pos;
                     diff.y = 0.0f;
                     if (glm::length(diff) > 0.01f) entity->localTransform.rotation.y = atan2(diff.x, diff.z);
+                }
+
+                // Build tentacle chains once (after model is loaded and animation system has populated bone info)
+                if (!octopus->tentacleChainsBuilt && animator && !animator->modelName.empty()) {
+                    buildTentacleChains(octopus, animator);
+                }
+                // Update tentacle bone world positions every frame
+                if (octopus->tentacleChainsBuilt && animator) {
+                    glm::mat4 modelWorldMatrix = entity->getLocalToWorldMatrix();
+                    updateTentacleBonePositions(octopus, animator, modelWorldMatrix);
+                }
+                // Tick down hit cooldown
+                if (octopus->hitCooldownTimer > 0.0f) {
+                    octopus->hitCooldownTimer -= deltaTime;
                 }
 
                 // ==============================================================
@@ -247,6 +414,9 @@ namespace our {
                                 octopus->state = OctopusState::ATTACKING;
                                 octopus->animElapsedTime = 0.0f;
                                 octopus->consecutiveMisses = 0;
+                                octopus->hitRegisteredThisSwing = false;
+                                octopus->isAttackActive = false;
+                                octopus->hitCooldownTimer = 0.0f;
                                 octopus->currentAnimIndex = OctopusAnimation::ATTACK;
                                 setAnimation(animator, "Mon_PiratesKing_Attack01", false);
                                 octopus->currentAnimDuration = queryAnimDuration(animator, "Mon_PiratesKing_Attack01");
@@ -265,44 +435,59 @@ namespace our {
                     }
                 }
                 // ==============================================================
-                // STEP 6: ATTACKING (play attack once, check hit/miss)
+                // STEP 6: ATTACKING (tentacle-based hit detection)
                 // ==============================================================
                 else if (octopus->state == OctopusState::ATTACKING) {
                     targetY = octopus->surfacedY;
                     octopus->currentAnimIndex = OctopusAnimation::ATTACK;
                     octopus->animElapsedTime += deltaTime;
 
-                    // Wait for the attack animation to finish
-                    if (octopus->animElapsedTime >= octopus->currentAnimDuration) {
-                        // Attack animation done -- check if it hit the player
-                        bool hit = false;
-                        if (player) {
-                            float rotY = entity->localTransform.rotation.y;
-                            hit = isInAttackCone(pos, rotY, player->localTransform.position, octopus->attackRange);
-                        }
+                    // Compute normalized animation time (0.0 to 1.0)
+                    float normTime = (octopus->currentAnimDuration > 0.0f)
+                                     ? octopus->animElapsedTime / octopus->currentAnimDuration
+                                     : 1.0f;
 
-                        if (hit) {
-                            // --------------------------------------------------
-                            // HIT: deal damage, reset miss count, start next attack cycle
-                            // --------------------------------------------------
+                    // Attack is "active" during the swing phase (normTime 0.3 to 0.8)
+                    octopus->isAttackActive = (normTime >= 0.3f && normTime <= 0.8f);
+
+                    // Check tentacle hits ONLY during active swing phase
+                    if (octopus->isAttackActive && !octopus->hitRegisteredThisSwing
+                        && octopus->hitCooldownTimer <= 0.0f && player) {
+                        glm::vec3 hitPos;
+                        if (checkTentacleHit(octopus, player->localTransform.position,
+                                             octopus->playerRadius, hitPos)) {
+                            // TENTACLE HIT: deal damage, set cooldown
+                            octopus->hitRegisteredThisSwing = true;
+                            octopus->hitCooldownTimer = octopus->hitCooldownDuration;
+                            octopus->lastHitPosition = hitPos;
                             octopus->consecutiveMisses = 0;
                             octopus->attackCount++;
-                            if (player) {
-                                auto playerHealth = player->getComponent<HealthComponent>();
-                                if (playerHealth) {
-                                    playerHealth->takeDamage(octopus->attackDamage);
-                                    std::cout << "[Octopus] Attack HIT! Dealt " << octopus->attackDamage
-                                              << " damage. Total attacks: " << octopus->attackCount << std::endl;
-                                }
+                            auto playerHealth = player->getComponent<HealthComponent>();
+                            if (playerHealth) {
+                                playerHealth->takeDamage(octopus->attackDamage);
+                                std::cout << "[Octopus] Tentacle HIT! Dealt " << octopus->attackDamage
+                                          << " damage at (" << hitPos.x << "," << hitPos.y << "," << hitPos.z << ")"
+                                          << ". Total attacks: " << octopus->attackCount << std::endl;
                             }
-                            // Restart attack cycle
+                        }
+                    }
+
+                    // When attack animation finishes, decide next state
+                    if (octopus->animElapsedTime >= octopus->currentAnimDuration) {
+                        if (octopus->hitRegisteredThisSwing) {
+                            // --------------------------------------------------
+                            // HIT this swing: restart attack cycle
+                            // --------------------------------------------------
+                            octopus->hitRegisteredThisSwing = false;
+                            octopus->isAttackActive = false;
                             octopus->animElapsedTime = 0.0f;
                             setAnimation(animator, "Mon_PiratesKing_Attack01", false);
                             octopus->currentAnimDuration = queryAnimDuration(animator, "Mon_PiratesKing_Attack01");
                         } else {
                             // --------------------------------------------------
-                            // MISS: increment miss count
+                            // MISS this swing: increment miss count
                             // --------------------------------------------------
+                            octopus->isAttackActive = false;
                             octopus->consecutiveMisses++;
                             std::cout << "[Octopus] Attack MISS! Consecutive misses: "
                                       << octopus->consecutiveMisses << std::endl;
@@ -310,9 +495,12 @@ namespace our {
                             if (octopus->consecutiveMisses >= 3) {
                                 // 3 consecutive misses -- stop attacking, close distance
                                 octopus->consecutiveMisses = 0;
+                                octopus->hitRegisteredThisSwing = false;
                                 octopus->state = OctopusState::MOVING;
                                 octopus->animElapsedTime = 0.0f;
+                                octopus->force_reposition = true;
                                 std::cout << "[Octopus] 3 misses -- switching to MOVING to close distance" << std::endl;
+                                std::cout << "Boss repositioning \xE2\x80\x94 closing gap before next attack" << std::endl;
                             } else {
                                 // Less than 3 misses -- try attacking again
                                 octopus->animElapsedTime = 0.0f;
@@ -334,11 +522,20 @@ namespace our {
                         float dist = glm::length(toPlayer);
                         float rotY = entity->localTransform.rotation.y;
 
+                        if (octopus->force_reposition) {
+                            if (dist < octopus->attackRange * 0.5f) {
+                                octopus->force_reposition = false;
+                            }
+                        }
+
                         // Check if player is now in attack range AND cone -- transition back to ATTACKING
-                        if (dist <= octopus->attackRange &&
+                        if (!octopus->force_reposition && dist <= octopus->attackRange &&
                             isInAttackCone(pos, rotY, player->localTransform.position, octopus->attackRange)) {
                             octopus->state = OctopusState::ATTACKING;
                             octopus->animElapsedTime = 0.0f;
+                            octopus->hitRegisteredThisSwing = false;
+                            octopus->isAttackActive = false;
+                            octopus->hitCooldownTimer = 0.0f;
                             octopus->currentAnimIndex = OctopusAnimation::ATTACK;
                             setAnimation(animator, "Mon_PiratesKing_Attack01", false);
                             octopus->currentAnimDuration = queryAnimDuration(animator, "Mon_PiratesKing_Attack01");
@@ -380,6 +577,7 @@ namespace our {
                 // ==============================================================
                 else if (octopus->state == OctopusState::ENRAGED) {
                     targetY = octopus->surfacedY;
+                    octopus->force_reposition = false;
                     octopus->currentAnimIndex = OctopusAnimation::SKILL_DANCE_HALF_HEALTH;
                 }
                 // ==============================================================
@@ -387,6 +585,7 @@ namespace our {
                 // ==============================================================
                 else if (octopus->state == OctopusState::DYING) {
                     targetY = octopus->surfacedY;
+                    octopus->force_reposition = false;
                     octopus->currentAnimIndex = OctopusAnimation::DEATH;
                 }
 
