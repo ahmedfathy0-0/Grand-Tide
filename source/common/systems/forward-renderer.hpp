@@ -38,6 +38,13 @@ namespace our
         // Objects used for rendering a skybox
         Mesh* skySphere;
         Material* skyMaterial;
+        
+        // Radar Skull marker properties
+        GLuint skullTexture = 0;
+        GLuint skullShaderProgram = 0;
+        GLuint skullVAO = 0, skullVBO = 0;
+        float skullPulseTimer = 0.0f;
+        
         // Objects used for Postprocessing
         GLuint postprocessFrameBuffer, postProcessVertexArray;
         Texture2D *colorTarget, *depthTarget;

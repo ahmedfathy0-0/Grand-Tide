@@ -14,6 +14,7 @@
 #include <imgui.h>
 #include <string>
 #include "../mesh/model.hpp"
+#include <stb/stb_image.h>
 
 namespace our
 {
@@ -130,6 +131,90 @@ namespace our
             // so it is more performant to disable the depth mask
             postprocessMaterial->pipelineState.depthMask = false;
         }
+        
+        // --- Radar Skull Marker Initialization ---
+        // 1. Load texture using stb_image
+        stbi_set_flip_vertically_on_load(false);
+        int width, height, channels;
+        unsigned char* data = stbi_load("assets/textures/skull-marker.png", &width, &height, &channels, 4);
+        if (data) {
+            glGenTextures(1, &skullTexture);
+            glBindTexture(GL_TEXTURE_2D, skullTexture);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+            glGenerateMipmap(GL_TEXTURE_2D);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            stbi_image_free(data);
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
+        
+        // 2. Create inline shaders
+        const char* skullVertSource = R"(
+            #version 330 core
+            layout(location = 0) in vec2 aPos;
+            out vec2 vUV;
+            uniform mat4 transform;
+            void main() {
+                vUV = aPos;
+                gl_Position = transform * vec4(aPos, 0.0, 1.0);
+            }
+        )";
+        
+        const char* skullFragSource = R"(
+            #version 330 core
+            uniform sampler2D uSkullTex;
+            in vec2 vUV;
+            out vec4 fragColor;
+            void main() {
+                vec4 col = texture(uSkullTex, vUV);
+                if (col.a < 0.01) discard;
+                fragColor = col;
+            }
+        )";
+        
+        GLuint vertShader = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(vertShader, 1, &skullVertSource, nullptr);
+        glCompileShader(vertShader);
+        
+        GLuint fragShader = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(fragShader, 1, &skullFragSource, nullptr);
+        glCompileShader(fragShader);
+        
+        skullShaderProgram = glCreateProgram();
+        glAttachShader(skullShaderProgram, vertShader);
+        glAttachShader(skullShaderProgram, fragShader);
+        glLinkProgram(skullShaderProgram);
+        
+        glDeleteShader(vertShader);
+        glDeleteShader(fragShader);
+        
+        // 3. Create unit quad for skull
+        struct SkullVertex { glm::vec2 position; };
+        SkullVertex skullVertices[4] = {
+            { glm::vec2(0.0f, 0.0f) },
+            { glm::vec2(1.0f, 0.0f) },
+            { glm::vec2(1.0f, 1.0f) },
+            { glm::vec2(0.0f, 1.0f) }
+        };
+        GLuint skullElements[6] = { 0, 1, 2, 2, 3, 0 };
+        
+        glGenVertexArrays(1, &skullVAO);
+        glBindVertexArray(skullVAO);
+        
+        glGenBuffers(1, &skullVBO);
+        glBindBuffer(GL_ARRAY_BUFFER, skullVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(skullVertices), skullVertices, GL_STATIC_DRAW);
+        
+        GLuint skullEBO;
+        glGenBuffers(1, &skullEBO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, skullEBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(skullElements), skullElements, GL_STATIC_DRAW);
+        
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(SkullVertex), (void*)0);
+        glBindVertexArray(0);
     }
 
     void ForwardRenderer::destroy()
@@ -157,6 +242,12 @@ namespace our
             delete postprocessMaterial->shader;
             delete postprocessMaterial;
         }
+
+        // Cleanup radar skull
+        if (skullTexture) glDeleteTextures(1, &skullTexture);
+        if (skullShaderProgram) glDeleteProgram(skullShaderProgram);
+        if (skullVAO) glDeleteVertexArrays(1, &skullVAO);
+        if (skullVBO) glDeleteBuffers(1, &skullVBO);
     }
 
     void ForwardRenderer::render(World *world)
@@ -670,8 +761,99 @@ namespace our
                     minimapMat->teardown();
                 }
 
+
+
                 // Text is handled in Playstate::onImmediateGui() due to ImGui lifecycle
             }
+// --- RADAR SKULL MARKER ---
+if (skullTexture && playerEntity) {
+    static double lastTime = glfwGetTime();
+    double currentTime = glfwGetTime();
+    float deltaTime = (float)(currentTime - lastTime);
+    lastTime = currentTime;
+
+    Entity* octopusEntity = nullptr;
+    OctopusComponent* octopus = nullptr;
+    for (auto entity : world->getEntities()) {
+        if (auto occ = entity->getComponent<OctopusComponent>(); occ) {
+            octopus = occ;
+            octopusEntity = entity;
+            break;
+        }
+    }
+
+    if (!octopus || (int)octopus->state == (int)OctopusState::DYING || octopus->health <= 0.0f) {
+        skullPulseTimer = 0.0f;
+    } 
+    else if ((int)octopus->state >= (int)OctopusState::COMBAT_IDLE) {
+        skullPulseTimer += deltaTime;
+        
+        glm::vec3 pPos = playerEntity->localTransform.position;
+        glm::vec3 ePos = octopusEntity->localTransform.position;
+     // Get raw world offset
+glm::vec2 worldOffset = glm::vec2(ePos.x - pPos.x, ePos.z - pPos.z) * 0.05f;
+
+// Rotate by player's Y rotation so radar is player-relative
+float playerRotY = playerEntity->localTransform.rotation.y;
+float cosA = std::cos(-playerRotY);
+float sinA = std::sin(-playerRotY);
+glm::vec2 relativePos = glm::vec2(
+    worldOffset.x * cosA - worldOffset.y * sinA,
+    worldOffset.x * sinA + worldOffset.y * cosA
+);
+
+        {
+            float radarRadius = 50.0f;
+            float padding = 50.0f;
+            float minX = windowSize.x - (radarRadius * 2.0f) - padding;
+            float minY = windowSize.y - (radarRadius * 2.0f) - padding;
+            float centerX = minX + radarRadius;
+            float centerY = minY + radarRadius;
+
+            // Clamp to radar edge if octopus is far away
+            glm::vec2 clampedPos = relativePos;
+            if (glm::length(relativePos) > 1.0f) {
+                clampedPos = glm::normalize(relativePos) * 0.95f;
+            }
+
+            float dotX = centerX + clampedPos.x * radarRadius;
+            float dotY = centerY - clampedPos.y * radarRadius;
+            
+            float regular_dot_radius = 4.0f;
+            float baseSize = regular_dot_radius * 4.0f;
+            float pulseScale = 1.0f + 0.2f * std::sin(skullPulseTimer * 3.0f);
+            float drawSize = baseSize * pulseScale;
+            
+            glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(dotX - drawSize*0.5f, dotY - drawSize*0.5f, 0.0f));
+            model = glm::scale(model, glm::vec3(drawSize, drawSize, 1.0f));
+            
+            glUseProgram(skullShaderProgram);
+            
+            GLint transformLoc = glGetUniformLocation(skullShaderProgram, "transform");
+            glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(uiProj * model));
+            
+            GLint texLoc = glGetUniformLocation(skullShaderProgram, "uSkullTex");
+            glUniform1i(texLoc, 0);
+            
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, skullTexture);
+            
+            GLboolean blendWasEnabled = glIsEnabled(GL_BLEND);
+            GLboolean depthWasEnabled = glIsEnabled(GL_DEPTH_TEST);
+            
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glDisable(GL_DEPTH_TEST);
+            
+            glBindVertexArray(skullVAO);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            glBindVertexArray(0);
+            
+            if (depthWasEnabled) glEnable(GL_DEPTH_TEST);
+            if (!blendWasEnabled) glDisable(GL_BLEND);
+        }
+    }
+}
         }
     }
 

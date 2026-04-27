@@ -45,6 +45,11 @@ namespace our {
                 {"Mon_PiratesKing_Skill_Spawn", (int)OctopusAnimation::SKILL_SPAWN},
                 {"Mon_PiratesKing_Skill_Dance", (int)OctopusAnimation::SKILL_DANCE_START},
                 {"Mon_PiratesKing_Skill_Dance_Half", (int)OctopusAnimation::SKILL_DANCE_HALF_HEALTH},
+                {"Mon_PiratesKing_skill01",     (int)OctopusAnimation::ENRAGE_DANCE},
+                {"Mon_PiratesKing_Skill04_Start", (int)OctopusAnimation::SKILL04_START},
+                {"Mon_PiratesKing_Skill04_Loop", (int)OctopusAnimation::SKILL04_LOOP},
+                {"Mon_PiratesKing_Skill04_End", (int)OctopusAnimation::SKILL04_END},
+                {"Mon_PiratesKing_Attack02",    (int)OctopusAnimation::ATTACK02},
                 {"Mon_PiratesKing_Death",       (int)OctopusAnimation::DEATH},
             };
 
@@ -76,6 +81,11 @@ namespace our {
                 {"Mon_PiratesKing_Skill_Spawn", (int)OctopusAnimation::SKILL_SPAWN},
                 {"Mon_PiratesKing_Skill_Dance", (int)OctopusAnimation::SKILL_DANCE_START},
                 {"Mon_PiratesKing_Skill_Dance_Half", (int)OctopusAnimation::SKILL_DANCE_HALF_HEALTH},
+                {"Mon_PiratesKing_skill01",     (int)OctopusAnimation::ENRAGE_DANCE},
+                {"Mon_PiratesKing_Skill04_Start", (int)OctopusAnimation::SKILL04_START},
+                {"Mon_PiratesKing_Skill04_Loop", (int)OctopusAnimation::SKILL04_LOOP},
+                {"Mon_PiratesKing_Skill04_End", (int)OctopusAnimation::SKILL04_END},
+                {"Mon_PiratesKing_Attack02",    (int)OctopusAnimation::ATTACK02},
                 {"Mon_PiratesKing_Death",       (int)OctopusAnimation::DEATH},
             };
 
@@ -303,6 +313,7 @@ namespace our {
                 if (!octopus) continue;
 
                 auto animator = entity->getComponent<AnimatorComponent>();
+                auto healthComp = entity->getComponent<HealthComponent>();
                 glm::vec3& pos = entity->localTransform.position;
                 float targetY = octopus->submergedY;
 
@@ -439,73 +450,84 @@ namespace our {
                 // ==============================================================
                 else if (octopus->state == OctopusState::ATTACKING) {
                     targetY = octopus->surfacedY;
-                    octopus->currentAnimIndex = OctopusAnimation::ATTACK;
-                    octopus->animElapsedTime += deltaTime;
 
-                    // Compute normalized animation time (0.0 to 1.0)
-                    float normTime = (octopus->currentAnimDuration > 0.0f)
-                                     ? octopus->animElapsedTime / octopus->currentAnimDuration
-                                     : 1.0f;
+                    // Enrage check -- can only trigger once per fight
+                    if (healthComp && healthComp->currentHealth <= healthComp->maxHealth * 0.5f && !octopus->has_enraged) {
+                        octopus->has_enraged = true;
+                        octopus->state = OctopusState::ENRAGED;
+                        octopus->enrage_phase = 0;
+                        octopus->animElapsedTime = 0.0f;
+                        std::cout << "[Octopus] HP at 50% -- ENRAGE TRIGGERED!" << std::endl;
+                    } else {
+                        // Normal ATTACKING logic
+                        octopus->currentAnimIndex = OctopusAnimation::ATTACK;
+                        octopus->animElapsedTime += deltaTime;
 
-                    // Attack is "active" during the swing phase (normTime 0.3 to 0.8)
-                    octopus->isAttackActive = (normTime >= 0.3f && normTime <= 0.8f);
+                        // Compute normalized animation time (0.0 to 1.0)
+                        float normTime = (octopus->currentAnimDuration > 0.0f)
+                                         ? octopus->animElapsedTime / octopus->currentAnimDuration
+                                         : 1.0f;
 
-                    // Check tentacle hits ONLY during active swing phase
-                    if (octopus->isAttackActive && !octopus->hitRegisteredThisSwing
-                        && octopus->hitCooldownTimer <= 0.0f && player) {
-                        glm::vec3 hitPos;
-                        if (checkTentacleHit(octopus, player->localTransform.position,
-                                             octopus->playerRadius, hitPos)) {
-                            // TENTACLE HIT: deal damage, set cooldown
-                            octopus->hitRegisteredThisSwing = true;
-                            octopus->hitCooldownTimer = octopus->hitCooldownDuration;
-                            octopus->lastHitPosition = hitPos;
-                            octopus->consecutiveMisses = 0;
-                            octopus->attackCount++;
-                            auto playerHealth = player->getComponent<HealthComponent>();
-                            if (playerHealth) {
-                                playerHealth->takeDamage(octopus->attackDamage);
-                                std::cout << "[Octopus] Tentacle HIT! Dealt " << octopus->attackDamage
-                                          << " damage at (" << hitPos.x << "," << hitPos.y << "," << hitPos.z << ")"
-                                          << ". Total attacks: " << octopus->attackCount << std::endl;
+                        // Attack is "active" during the swing phase (normTime 0.3 to 0.8)
+                        octopus->isAttackActive = (normTime >= 0.3f && normTime <= 0.8f);
+
+                        // Check tentacle hits ONLY during active swing phase
+                        if (octopus->isAttackActive && !octopus->hitRegisteredThisSwing
+                            && octopus->hitCooldownTimer <= 0.0f && player) {
+                            glm::vec3 hitPos;
+                            if (checkTentacleHit(octopus, player->localTransform.position,
+                                                 octopus->playerRadius, hitPos)) {
+                                // TENTACLE HIT: deal damage, set cooldown
+                                octopus->hitRegisteredThisSwing = true;
+                                octopus->hitCooldownTimer = octopus->hitCooldownDuration;
+                                octopus->lastHitPosition = hitPos;
+                                octopus->consecutiveMisses = 0;
+                                octopus->attackCount++;
+                                auto playerHealth = player->getComponent<HealthComponent>();
+                                if (playerHealth) {
+                                    playerHealth->takeDamage(octopus->attackDamage);
+                                    std::cout << "[Octopus] Tentacle HIT! Dealt " << octopus->attackDamage
+                                              << " damage at (" << hitPos.x << "," << hitPos.y << "," << hitPos.z << ")"
+                                              << ". Total attacks: " << octopus->attackCount << std::endl;
+                                }
                             }
                         }
-                    }
 
-                    // When attack animation finishes, decide next state
-                    if (octopus->animElapsedTime >= octopus->currentAnimDuration) {
-                        if (octopus->hitRegisteredThisSwing) {
-                            // --------------------------------------------------
-                            // HIT this swing: restart attack cycle
-                            // --------------------------------------------------
-                            octopus->hitRegisteredThisSwing = false;
-                            octopus->isAttackActive = false;
-                            octopus->animElapsedTime = 0.0f;
-                            setAnimation(animator, "Mon_PiratesKing_Attack01", false);
-                            octopus->currentAnimDuration = queryAnimDuration(animator, "Mon_PiratesKing_Attack01");
-                        } else {
-                            // --------------------------------------------------
-                            // MISS this swing: increment miss count
-                            // --------------------------------------------------
-                            octopus->isAttackActive = false;
-                            octopus->consecutiveMisses++;
-                            std::cout << "[Octopus] Attack MISS! Consecutive misses: "
-                                      << octopus->consecutiveMisses << std::endl;
-
-                            if (octopus->consecutiveMisses >= 3) {
-                                // 3 consecutive misses -- stop attacking, close distance
-                                octopus->consecutiveMisses = 0;
+                        // When attack animation finishes, decide next state
+                        if (octopus->animElapsedTime >= octopus->currentAnimDuration) {
+                            if (octopus->hitRegisteredThisSwing) {
+                                // --------------------------------------------------
+                                // HIT this swing: restart attack cycle
+                                // --------------------------------------------------
                                 octopus->hitRegisteredThisSwing = false;
-                                octopus->state = OctopusState::MOVING;
-                                octopus->animElapsedTime = 0.0f;
-                                octopus->force_reposition = true;
-                                std::cout << "[Octopus] 3 misses -- switching to MOVING to close distance" << std::endl;
-                                std::cout << "Boss repositioning \xE2\x80\x94 closing gap before next attack" << std::endl;
-                            } else {
-                                // Less than 3 misses -- try attacking again
+                                octopus->isAttackActive = false;
                                 octopus->animElapsedTime = 0.0f;
                                 setAnimation(animator, "Mon_PiratesKing_Attack01", false);
                                 octopus->currentAnimDuration = queryAnimDuration(animator, "Mon_PiratesKing_Attack01");
+                            } else {
+                                // --------------------------------------------------
+                                // MISS this swing: increment miss count
+                                // --------------------------------------------------
+                                octopus->isAttackActive = false;
+                                octopus->consecutiveMisses++;
+                                std::cout << "[Octopus] Attack MISS! Consecutive misses: "
+                                          << octopus->consecutiveMisses << std::endl;
+
+                                if (octopus->consecutiveMisses >= 3) {
+                                    // 3 consecutive misses -- stop attacking, close distance
+                                    octopus->consecutiveMisses = 0;
+                                    octopus->hitRegisteredThisSwing = false;
+                                    octopus->state = OctopusState::MOVING;
+                                    octopus->animElapsedTime = 0.0f;
+                                    octopus->force_reposition = true;
+                                    std::cout << "[Octopus] 3 misses -- switching to MOVING to close distance" << std::endl;
+                                    std::cout << "Boss repositioning \xE2\x80\x94 closing gap before next attack" << std::endl;
+                                } else {
+                                    // Less than 3 misses -- try attacking again
+                                    octopus->animElapsedTime = 0.0f;
+                                    setAnimation(animator, "Mon_PiratesKing_Attack01", false);
+                                    octopus->currentAnimDuration = queryAnimDuration(animator, "Mon_PiratesKing_Attack01");
+                                }
                             }
                         }
                     }
@@ -516,7 +538,14 @@ namespace our {
                 else if (octopus->state == OctopusState::MOVING) {
                     targetY = octopus->surfacedY;
 
-                    if (player) {
+                    // Enrage check -- can only trigger once per fight
+                    if (healthComp && healthComp->currentHealth <= healthComp->maxHealth * 0.5f && !octopus->has_enraged) {
+                        octopus->has_enraged = true;
+                        octopus->state = OctopusState::ENRAGED;
+                        octopus->enrage_phase = 0;
+                        octopus->animElapsedTime = 0.0f;
+                        std::cout << "[Octopus] HP at 50% -- ENRAGE TRIGGERED!" << std::endl;
+                    } else if (player) {
                         glm::vec3 toPlayer = player->localTransform.position - pos;
                         toPlayer.y = 0.0f;
                         float dist = glm::length(toPlayer);
@@ -528,18 +557,28 @@ namespace our {
                             }
                         }
 
-                        // Check if player is now in attack range AND cone -- transition back to ATTACKING
+                        // Check if player is now in attack range AND cone -- transition back to attacking
                         if (!octopus->force_reposition && dist <= octopus->attackRange &&
                             isInAttackCone(pos, rotY, player->localTransform.position, octopus->attackRange)) {
-                            octopus->state = OctopusState::ATTACKING;
+
+                            // Common setup for both attack states
                             octopus->animElapsedTime = 0.0f;
                             octopus->hitRegisteredThisSwing = false;
                             octopus->isAttackActive = false;
                             octopus->hitCooldownTimer = 0.0f;
-                            octopus->currentAnimIndex = OctopusAnimation::ATTACK;
-                            setAnimation(animator, "Mon_PiratesKing_Attack01", false);
-                            octopus->currentAnimDuration = queryAnimDuration(animator, "Mon_PiratesKing_Attack01");
-                            std::cout << "[Octopus] In range -- switching to ATTACKING" << std::endl;
+
+                            if (octopus->has_enraged) {
+                                // After enrage: return to enraged combat mode
+                                octopus->state = OctopusState::ENRAGED_COMBAT;
+                                std::cout << "[Octopus] In range -- switching to ENRAGED_COMBAT" << std::endl;
+                            } else {
+                                // Normal combat: return to ATTACKING
+                                octopus->state = OctopusState::ATTACKING;
+                                octopus->currentAnimIndex = OctopusAnimation::ATTACK;
+                                setAnimation(animator, "Mon_PiratesKing_Attack01", false);
+                                octopus->currentAnimDuration = queryAnimDuration(animator, "Mon_PiratesKing_Attack01");
+                                std::cout << "[Octopus] In range -- switching to ATTACKING" << std::endl;
+                            }
                         } else {
                             // --------------------------------------------------
                             // Move toward player (range+cone check above handles stopping)
@@ -573,12 +612,170 @@ namespace our {
                     }
                 }
                 // ==============================================================
-                // STEP 8: ENRAGED
+                // STEP 8: ENRAGED (enrage animation sequence)
                 // ==============================================================
                 else if (octopus->state == OctopusState::ENRAGED) {
                     targetY = octopus->surfacedY;
                     octopus->force_reposition = false;
-                    octopus->currentAnimIndex = OctopusAnimation::SKILL_DANCE_HALF_HEALTH;
+                    octopus->animElapsedTime += deltaTime;
+
+                    switch (octopus->enrage_phase) {
+                        case 0: // skill01 (one-shot)
+                            octopus->currentAnimIndex = OctopusAnimation::ENRAGE_DANCE;
+                            if (animator && animator->currentAnimIndex != (int)octopus->currentAnimIndex) {
+                                setAnimation(animator, "Mon_PiratesKing_skill01", false);
+                                octopus->currentAnimDuration = queryAnimDuration(animator, "Mon_PiratesKing_skill01");
+                            }
+                            if (octopus->animElapsedTime >= octopus->currentAnimDuration) {
+                                octopus->enrage_phase = 1;
+                                octopus->animElapsedTime = 0.0f;
+                            }
+                            break;
+
+                        case 1: // Skill04_Start (one-shot)
+                            octopus->currentAnimIndex = OctopusAnimation::SKILL04_START;
+                            if (animator && animator->currentAnimIndex != (int)octopus->currentAnimIndex) {
+                                setAnimation(animator, "Mon_PiratesKing_Skill04_Start", false);
+                                octopus->currentAnimDuration = queryAnimDuration(animator, "Mon_PiratesKing_Skill04_Start");
+                            }
+                            if (octopus->animElapsedTime >= octopus->currentAnimDuration) {
+                                octopus->enrage_phase = 2;
+                                octopus->animElapsedTime = 0.0f;
+                                octopus->currentAnimDuration = 3.0f; // 3 seconds for loop phase
+                            }
+                            break;
+
+                        case 2: // Skill04_Loop (loop for 3.0 seconds)
+                            octopus->currentAnimIndex = OctopusAnimation::SKILL04_LOOP;
+                            if (animator && animator->currentAnimIndex != (int)octopus->currentAnimIndex) {
+                                setAnimation(animator, "Mon_PiratesKing_Skill04_Loop", true);
+                            }
+                            if (octopus->animElapsedTime >= 3.0f) {
+                                octopus->enrage_phase = 3;
+                                octopus->animElapsedTime = 0.0f;
+                            }
+                            break;
+
+                        case 3: // Skill04_End (one-shot)
+                            octopus->currentAnimIndex = OctopusAnimation::SKILL04_END;
+                            if (animator && animator->currentAnimIndex != (int)octopus->currentAnimIndex) {
+                                setAnimation(animator, "Mon_PiratesKing_Skill04_End", false);
+                                octopus->currentAnimDuration = queryAnimDuration(animator, "Mon_PiratesKing_Skill04_End");
+                            }
+                            if (octopus->animElapsedTime >= octopus->currentAnimDuration) {
+                                // Sequence complete -- transition to ENRAGED_COMBAT
+                                octopus->enrage_phase = 0;
+                                octopus->animElapsedTime = 0.0f;
+                                octopus->state = OctopusState::ENRAGED_COMBAT;
+                                octopus->attack_combo_index = 0;
+                                octopus->consecutiveMisses = 0;
+                                octopus->hitRegisteredThisSwing = false;
+                                octopus->isAttackActive = false;
+                                octopus->hitCooldownTimer = 0.0f;
+                                std::cout << "[Octopus] Enrage sequence complete -- entering ENRAGED_COMBAT!" << std::endl;
+                            }
+                            break;
+                    }
+                }
+                // ==============================================================
+                // STEP 10: ENRAGED_COMBAT (enraged attack with combo pattern)
+                // ==============================================================
+                else if (octopus->state == OctopusState::ENRAGED_COMBAT) {
+                    targetY = octopus->surfacedY;
+                    octopus->force_reposition = false;
+
+                    // Determine attack clip based on combo index
+                    std::string attackClip;
+                    if (octopus->attack_combo_index == 2) {
+                        attackClip = "Mon_PiratesKing_Attack02";
+                        octopus->currentAnimIndex = OctopusAnimation::ATTACK02;
+                    } else {
+                        attackClip = "Mon_PiratesKing_Attack01";
+                        octopus->currentAnimIndex = OctopusAnimation::ATTACK;
+                    }
+
+                    // Set animation if needed (first entry or restart)
+                    if (animator && animator->currentAnimIndex != (int)octopus->currentAnimIndex) {
+                        setAnimation(animator, attackClip, false);
+                        octopus->currentAnimDuration = queryAnimDuration(animator, attackClip);
+                    }
+
+                    octopus->animElapsedTime += deltaTime;
+
+                    // Compute normalized animation time (0.0 to 1.0)
+                    float normTime = (octopus->currentAnimDuration > 0.0f)
+                                     ? octopus->animElapsedTime / octopus->currentAnimDuration
+                                     : 1.0f;
+
+                    // Attack is "active" during the swing phase (normTime 0.3 to 0.8)
+                    octopus->isAttackActive = (normTime >= 0.3f && normTime <= 0.8f);
+
+                    // Check tentacle hits ONLY during active swing phase
+                    if (octopus->isAttackActive && !octopus->hitRegisteredThisSwing
+                        && octopus->hitCooldownTimer <= 0.0f && player) {
+                        glm::vec3 hitPos;
+                        if (checkTentacleHit(octopus, player->localTransform.position,
+                                             octopus->playerRadius, hitPos)) {
+                            // TENTACLE HIT: deal damage, set cooldown
+                            octopus->hitRegisteredThisSwing = true;
+                            octopus->hitCooldownTimer = octopus->hitCooldownDuration;
+                            octopus->lastHitPosition = hitPos;
+                            octopus->consecutiveMisses = 0;
+                            octopus->attackCount++;
+                            auto playerHealth = player->getComponent<HealthComponent>();
+                            if (playerHealth) {
+                                playerHealth->takeDamage(octopus->attackDamage);
+                                std::cout << "[Octopus] Enraged Tentacle HIT! Dealt " << octopus->attackDamage
+                                          << " damage. Combo: " << octopus->attack_combo_index
+                                          << ". Total attacks: " << octopus->attackCount << std::endl;
+                            }
+                        }
+                    }
+
+                    // When attack animation finishes, decide next state
+                    if (octopus->animElapsedTime >= octopus->currentAnimDuration) {
+                        if (octopus->hitRegisteredThisSwing) {
+                            // --------------------------------------------------
+                            // HIT this swing: advance combo and start next attack
+                            // --------------------------------------------------
+                            octopus->hitRegisteredThisSwing = false;
+                            octopus->isAttackActive = false;
+                            octopus->animElapsedTime = 0.0f;
+                            octopus->attack_combo_index = (octopus->attack_combo_index + 1) % 3;
+
+                            // Set up next attack immediately
+                            std::string nextClip = (octopus->attack_combo_index == 2)
+                                ? "Mon_PiratesKing_Attack02" : "Mon_PiratesKing_Attack01";
+                            octopus->currentAnimIndex = (octopus->attack_combo_index == 2)
+                                ? OctopusAnimation::ATTACK02 : OctopusAnimation::ATTACK;
+                            setAnimation(animator, nextClip, false);
+                            octopus->currentAnimDuration = queryAnimDuration(animator, nextClip);
+                        } else {
+                            // --------------------------------------------------
+                            // MISS this swing: increment miss count
+                            // --------------------------------------------------
+                            octopus->isAttackActive = false;
+                            octopus->consecutiveMisses++;
+                            std::cout << "[Octopus] Enraged Attack MISS! Consecutive misses: "
+                                      << octopus->consecutiveMisses << std::endl;
+
+                            if (octopus->consecutiveMisses >= 3) {
+                                // 3 consecutive misses -- stop attacking, close distance
+                                octopus->consecutiveMisses = 0;
+                                octopus->hitRegisteredThisSwing = false;
+                                octopus->force_reposition = true;
+                                octopus->state = OctopusState::MOVING;
+                                octopus->animElapsedTime = 0.0f;
+                                std::cout << "[Octopus] 3 misses -- switching to MOVING to close distance" << std::endl;
+                                std::cout << "Boss repositioning -- closing gap before next attack" << std::endl;
+                            } else {
+                                // Less than 3 misses -- restart same attack
+                                octopus->animElapsedTime = 0.0f;
+                                setAnimation(animator, attackClip, false);
+                                octopus->currentAnimDuration = queryAnimDuration(animator, attackClip);
+                            }
+                        }
+                    }
                 }
                 // ==============================================================
                 // STEP 9: DYING

@@ -153,6 +153,23 @@ class Playstate : public our::State
             // If the escape  key is pressed in this frame, go to the play state
             getApp()->changeState("menu");
         }
+
+        // DEBUG: F1 deals 50 damage to octopus for enrage testing
+        if (keyboard.justPressed(GLFW_KEY_F1))
+        {
+            for (auto entity : world.getEntities()) {
+                if (entity->name == "octopus") {
+                    auto hp = entity->getComponent<our::HealthComponent>();
+                    if (hp) {
+                        hp->currentHealth -= 50.0f;
+                        if (hp->currentHealth < 0) hp->currentHealth = 0;
+                        std::cout << "[DEBUG] Dealt 50 damage to octopus. HP: "
+                                  << hp->currentHealth << " / " << hp->maxHealth << std::endl;
+                    }
+                    break;
+                }
+            }
+        }
     }
 
     void onDestroy() override

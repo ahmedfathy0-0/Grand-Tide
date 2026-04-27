@@ -15,23 +15,29 @@ namespace our {
         COMBAT_IDLE = 4,      // STEP 5: Looping combat idle, boss_ready = true
         ATTACKING = 5,        // Active combat attack
         MOVING = 6,           // Repositioning
-        ENRAGED = 7,          // Enraged mode
-        DYING = 8             // Death sequence
+        ENRAGED = 7,          // Enraged animation sequence
+        DYING = 8,            // Death sequence
+        ENRAGED_COMBAT = 9    // Enraged combat with combo attacks
     };
 
     enum class OctopusAnimation : int {
         ATTACK = 0,
         FINISH = 1,
+        ENRAGE_DANCE = 2,             // Mon_PiratesKing_skill01
         RUN_FORWARD = 3,
         DEATH = 4,
         IDLE = 5,
         SKILL_DANCE_START = 6,
+        SKILL04_START = 7,            // Mon_PiratesKing_Skill04_Start
         SKILL_DANCE_HALF_HEALTH = 8,
         SKILL_VICTORY = 9,
+        SKILL04_LOOP = 10,            // Mon_PiratesKing_Skill04_Loop
+        SKILL04_END = 11,             // Mon_PiratesKing_Skill04_End
         SKILL_SPAWN = 12,
         MOVE_LEFT = 13,
         MOVE_RIGHT = 14,
-        COMBAT_IDLE = 15
+        COMBAT_IDLE = 15,
+        ATTACK02 = 1                 // Mon_PiratesKing_Attack02
     };
 
     class OctopusComponent : public Component {
@@ -67,6 +73,9 @@ namespace our {
         int attackCount = 0;
         int consecutiveMisses = 0;
         bool force_reposition = false;
+        bool has_enraged = false;          // Enrage triggers only once per fight
+        int attack_combo_index = 0;         // 0,1,2 cycle for enraged combo attacks
+        int enrage_phase = 0;               // 0=skill01, 1=skill04_start, 2=skill04_loop, 3=skill04_end
         float chaseSpeed = 8.0f;
 
         // Position properties
