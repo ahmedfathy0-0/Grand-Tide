@@ -28,7 +28,7 @@ namespace our {
         float aoeRadius = 5.0f;
         float burnDuration = 2.0f;
         float burnDamagePerSecond = 15.0f;
-        float cooldown = 1.0f;
+        float cooldown = 5.0f;
         float cooldownTimer = 0.0f;
 
         // Throw animation timing (seconds)

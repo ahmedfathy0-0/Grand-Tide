@@ -46,6 +46,13 @@ class Playstate : public our::State
     GLuint menuVAO = 0, menuVBO = 0;
     GLuint menuShader = 0;
 
+    // Start menu
+    bool isStartMenu = true;
+    int selectedStartItem = 0; // 0=START, 1=EXIT
+    GLuint startTextures[2] = {0, 0};
+    GLuint startVAO = 0, startVBO = 0;
+    GLuint startShader = 0;
+
     // Menu shader helper
     static GLuint compileMenuShader(const char* vert, const char* frag) {
         auto compile = [](const char* src, GLenum type) -> GLuint {
@@ -171,6 +178,69 @@ void main() {
         glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
         glBindVertexArray(0);
         fireballSystem.enter(getApp());
+
+        // --- Start Menu Initialization ---
+        isStartMenu = true;
+        selectedStartItem = 0;
+
+        // Load 2 start menu textures
+        const char* startPaths[2] = {
+            "assets/textures/game_play.png",
+            "assets/textures/game_exit.png"
+        };
+        for (int i = 0; i < 2; i++) {
+            int w, h, ch;
+            unsigned char* data = stbi_load(startPaths[i], &w, &h, &ch, 4);
+            if (data) {
+                glGenTextures(1, &startTextures[i]);
+                glBindTexture(GL_TEXTURE_2D, startTextures[i]);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                stbi_image_free(data);
+                glBindTexture(GL_TEXTURE_2D, 0);
+            } else {
+                std::cerr << "[StartMenu] Failed to load: " << startPaths[i] << std::endl;
+            }
+        }
+
+        // Compile start menu shader (no transparency, UV flipped on Y)
+        static const char* startVert = R"(
+#version 330 core
+layout(location = 0) in vec2 aPos;
+out vec2 vUV;
+void main() {
+    vUV = vec2(aPos.x, 1.0 - aPos.y);
+    gl_Position = vec4(aPos * 2.0 - 1.0, 0.0, 1.0);
+}
+)";
+        static const char* startFrag = R"(
+#version 330 core
+uniform sampler2D uStartTex;
+in vec2 vUV;
+out vec4 fragColor;
+void main() {
+    vec4 col = texture(uStartTex, vUV);
+    fragColor = vec4(col.rgb, 1.0);
+}
+)";
+        startShader = compileMenuShader(startVert, startFrag);
+
+        // Create fullscreen quad VAO/VBO for start menu
+        float startQuad[12] = {
+            0.0f, 0.0f,  1.0f, 0.0f,  1.0f, 1.0f,
+            0.0f, 0.0f,  1.0f, 1.0f,  0.0f, 1.0f
+        };
+        glGenVertexArrays(1, &startVAO);
+        glGenBuffers(1, &startVBO);
+        glBindVertexArray(startVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, startVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(startQuad), startQuad, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+        glBindVertexArray(0);
     }
 
     void onImmediateGui() override
@@ -230,6 +300,48 @@ void main() {
     void onDraw(double deltaTime) override
     {
         auto &keyboard = getApp()->getKeyboard();
+
+        // --- Start Menu (shown at game launch) ---
+        if (isStartMenu) {
+            if (keyboard.justPressed(GLFW_KEY_UP)) {
+                selectedStartItem = (selectedStartItem - 1 + 2) % 2;
+            }
+            if (keyboard.justPressed(GLFW_KEY_DOWN)) {
+                selectedStartItem = (selectedStartItem + 1) % 2;
+            }
+            if (keyboard.justPressed(GLFW_KEY_ENTER)) {
+                if (selectedStartItem == 0) {
+                    isStartMenu = false; // Start game
+                } else if (selectedStartItem == 1) {
+                    getApp()->close();
+                    return;
+                }
+            }
+
+            // Clear screen with black
+            glClearColor(0, 0, 0, 1);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            // Draw start menu fullscreen
+            if (startShader && startVAO && startTextures[selectedStartItem]) {
+                glUseProgram(startShader);
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, startTextures[selectedStartItem]);
+                glUniform1i(glGetUniformLocation(startShader, "uStartTex"), 0);
+
+                glDisable(GL_DEPTH_TEST);
+                glDisable(GL_CULL_FACE);
+                glDisable(GL_BLEND);
+
+                glBindVertexArray(startVAO);
+                glDrawArrays(GL_TRIANGLES, 0, 6);
+                glBindVertexArray(0);
+
+                glEnable(GL_DEPTH_TEST);
+                glUseProgram(0);
+            }
+            return; // Don't run any game logic
+        }
 
         // --- Pause Menu Input (always checked, even when paused) ---
         if (keyboard.justPressed(GLFW_KEY_ESCAPE)) {
@@ -372,6 +484,13 @@ void main() {
         if (menuVAO) glDeleteVertexArrays(1, &menuVAO);
         if (menuVBO) glDeleteBuffers(1, &menuVBO);
         if (menuShader) glDeleteProgram(menuShader);
+        // Start menu cleanup
+        for (int i = 0; i < 2; i++) {
+            if (startTextures[i]) glDeleteTextures(1, &startTextures[i]);
+        }
+        if (startVAO) glDeleteVertexArrays(1, &startVAO);
+        if (startVBO) glDeleteBuffers(1, &startVBO);
+        if (startShader) glDeleteProgram(startShader);
         // On exit, we call exit for the camera controller system to make sure that the mouse is unlocked
         cameraController.exit();
         // Clear the world

@@ -1,5 +1,5 @@
 {
-  "start-scene": "menu",
+  "start-scene": "play",
   "window": {
     "title": "Raft: The Once Piece Adventure",
     "size": {
@@ -683,7 +683,7 @@
                 "aoeRadius": 5.0,
                 "burnDuration": 2.0,
                 "burnDamagePerSecond": 15.0,
-                "cooldown": 1.0,
+                "cooldown": 5.0,
               },
             ],
           },
