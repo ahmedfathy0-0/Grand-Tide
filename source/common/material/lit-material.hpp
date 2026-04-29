@@ -5,27 +5,33 @@
 #include "../texture/sampler.hpp"
 #include <glm/vec3.hpp>
 
-namespace our {
+namespace our
+{
 
     // This material holds properties required for standard lighting operations
-    class LitMaterial : public Material {
+    class LitMaterial : public Material
+    {
     public:
         // Diffuse/Albedo texture and sampler
-        Texture2D* albedo;
-        Sampler* sampler;
-        
+        Texture2D *albedo;
+        Sampler *sampler;
+
         // Specular texture and roughness texture
-        Texture2D* specular;
-        Texture2D* roughness;
-        
+        Texture2D *specular;
+        Texture2D *roughness;
+        Texture2D *normal;
+
         // Instead of alpha threshold from TexturedMaterial, we usually handle opacity via albedo map
         glm::vec3 albedo_tint = glm::vec3(1.0f);
         glm::vec3 specular_tint = glm::vec3(1.0f);
         float roughness_multiplier = 1.0f;
 
+        bool isAnimated = false;
+        glm::vec2 uv_multiplier = glm::vec2(1.0f, 1.0f);
+
         void setup() const override;
         void teardown() const override;
-        void deserialize(const nlohmann::json& data) override;
+        void deserialize(const nlohmann::json &data) override;
     };
 
 }
