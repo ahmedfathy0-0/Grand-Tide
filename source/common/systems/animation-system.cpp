@@ -41,9 +41,7 @@ namespace our
                         float timeInTicks = deltaTime * ticksPerSecond * animator->playSpeed;
 
                         animator->currentAnimationTime += timeInTicks;
-                        if (animator->isLooping) {
-                            animator->currentAnimationTime = fmod(animator->currentAnimationTime, animation->mDuration);
-                        } else {
+
                         if (animator->loopAnimation) {
                             animator->currentAnimationTime = fmod(animator->currentAnimationTime, animation->mDuration);
                         } else {
@@ -52,7 +50,7 @@ namespace our
                                 animator->currentAnimationTime = animation->mDuration - 0.001f;
                             }
                         }
-                    }
+                  
 
                     animator->finalBonesMatrices.assign(model->getBoneCount(), glm::mat4(1.0f));
                     calculateBoneTransform(model->getScene()->mRootNode, model->getScene(), animator->currentAnimationTime, animIndex, glm::mat4(1.0f), model, animator);

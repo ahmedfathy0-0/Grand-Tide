@@ -63,7 +63,7 @@ namespace our {
                 catch (...) { /* keep current */ }
             }
             animator->currentAnimationTime = 0.0f;
-            animator->isLooping = loop;
+            animator->loopAnimation = loop;
         }
 
         // ------------------------------------------------------------------
@@ -436,7 +436,7 @@ namespace our {
                 else if (octopus->state == OctopusState::WAIT_BEFORE_FIGHT) {
                     targetY = octopus->surfacedY;
                     octopus->currentAnimIndex = OctopusAnimation::SKILL_SPAWN;
-                    if (animator) animator->isLooping = false;
+                    if (animator) animator->loopAnimation = false;
                     octopus->stateTimer += deltaTime;
                     if (octopus->stateTimer >= octopus->waitBeforeFightDuration) {
                         octopus->state = OctopusState::FIGHT_START;
@@ -942,7 +942,7 @@ namespace our {
                     octopus->force_reposition = false;
                     octopus->currentAnimIndex = OctopusAnimation::DEATH;
                     if (animator) {
-                        animator->isLooping = false;
+                        animator->loopAnimation = false;
                         animator->currentAnimationTime = octopus->currentAnimDuration - 0.001f;
                     }
                 }
@@ -954,7 +954,7 @@ namespace our {
                     octopus->currentAnimIndex = OctopusAnimation::DEATH;
                     octopus->animElapsedTime += deltaTime;
 
-                    if (animator) animator->isLooping = false;
+                    if (animator) animator->loopAnimation = false;
 
                     if (octopus->animElapsedTime >= octopus->currentAnimDuration) {
                         if (!octopus->hasRevived) {
@@ -971,7 +971,7 @@ namespace our {
                             octopus->state = OctopusState::DYING;
                             targetY = -20.0f;
                             if (animator) {
-                                animator->isLooping = false;
+                                animator->loopAnimation = false;
                                 animator->currentAnimationTime = octopus->currentAnimDuration - 0.001f;
                             }
                             std::cout << "[Octopus] PERMANENTLY DEAD" << std::endl;
@@ -986,7 +986,7 @@ namespace our {
                     octopus->currentAnimIndex = OctopusAnimation::SKILL_VICTORY;
                     octopus->animElapsedTime += deltaTime;
 
-                    if (animator) animator->isLooping = false;
+                    if (animator) animator->loopAnimation = false;
 
                     if (octopus->animElapsedTime >= octopus->currentAnimDuration) {
                         // Revival complete -- go directly to ENRAGED_COMBAT
