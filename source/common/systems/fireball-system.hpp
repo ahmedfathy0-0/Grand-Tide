@@ -48,6 +48,7 @@ namespace our {
         }
 
         bool shouldShowDevilFruitMessage() const { return showDevilFruitMessage; }
+        bool isDevilFruitSpawned() const { return devilFruitSpawned; }
 
         void update(World* world, float deltaTime) {
             Entity* playerEntity = nullptr;
@@ -93,9 +94,6 @@ namespace our {
                         }
                     }
                 }
-                std::cout << "[DevilFruit] sharks=" << sharkCount
-                          << " alive=" << (anySharkAlive ? "yes" : "no")
-                          << " dead=" << deadSharkCount << "\n";
                 if (!anySharkAlive && sharkCount > 0) {
                     std::cout << "[DevilFruit] Spawning devil fruit!\n";
                     spawnDevilFruit(world, playerEntity);

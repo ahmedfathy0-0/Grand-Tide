@@ -21,6 +21,15 @@
 #include <GLFW/glfw3.h>
 #include <stb/stb_image.h>
 #include <iostream>
+#include <unordered_map>
+#include <components/shark-component.hpp>
+#include <components/enemy.hpp>
+#include <components/octopus-component.hpp>
+#include <components/musket-component.hpp>
+#include <components/marine-boat-component.hpp>
+#include <components/mesh-renderer.hpp>
+#include <components/animator.hpp>
+#include <mesh/model.hpp>
 
 // This state shows how to use the ECS framework and deserialization.
 class Playstate : public our::State
@@ -52,6 +61,111 @@ class Playstate : public our::State
     GLuint startTextures[2] = {0, 0};
     GLuint startVAO = 0, startVBO = 0;
     GLuint startShader = 0;
+
+    // Game phases
+    enum class GamePhase { SHARKS, MARINES, OCTOPUS };
+    GamePhase currentPhase = GamePhase::SHARKS;
+    float phaseTimer = 0.0f;          // Used in MARINES phase for 5-min survival timer
+    int sharksKilled = 0;
+    int sharksToKill = 3;
+    int sharksSpawned = 0;
+    float sharkSpawnTimer = 0.0f;
+    float sharkSpawnInterval = 8.0f;   // Seconds between shark spawns
+    bool phaseTransitioning = false;   // Prevent double-transition
+
+    // Store original scales for entities we hide/show
+    std::unordered_map<our::Entity*, glm::vec3> hiddenEntityScales;
+
+
+    void hideEntity(our::Entity* e) {
+        if (e && hiddenEntityScales.find(e) == hiddenEntityScales.end()) {
+            hiddenEntityScales[e] = e->localTransform.scale;
+            e->localTransform.scale = glm::vec3(0.0f);
+        }
+    }
+    void showEntity(our::Entity* e) {
+        auto it = hiddenEntityScales.find(e);
+        if (it != hiddenEntityScales.end()) {
+            e->localTransform.scale = it->second;
+            hiddenEntityScales.erase(it);
+        } else if (e) {
+            // Entity was never hidden via our system but scale might be 0 — force restore from config
+            // This handles entities spawned by MarineBoatSystem that weren't in hiddenEntityScales
+            if (e->localTransform.scale.x == 0.0f && e->localTransform.scale.y == 0.0f && e->localTransform.scale.z == 0.0f) {
+                // Check if it has a MarineBoatComponent — default scale is 0.05
+                if (e->getComponent<our::MarineBoatComponent>()) {
+                    e->localTransform.scale = glm::vec3(0.05f);
+                    std::cout << "[Phase] Force-restored scale for boat: " << e->name << std::endl;
+                } else if (e->getComponent<our::MusketComponent>()) {
+                    // Musket children have varying scales, try 50.0 as default
+                    if (e->parent) {
+                        e->localTransform.scale = glm::vec3(50.0f);
+                        std::cout << "[Phase] Force-restored scale for musket child: " << e->name << std::endl;
+                    } else {
+                        e->localTransform.scale = glm::vec3(2.0f);
+                        std::cout << "[Phase] Force-restored scale for standalone musket: " << e->name << std::endl;
+                    }
+                }
+            }
+        }
+    }
+    void hideEntityTree(our::Entity* e, our::World* w) {
+        hideEntity(e);
+        for (auto entity : w->getEntities()) {
+            if (entity->parent == e) hideEntityTree(entity, w);
+        }
+    }
+    void showEntityTree(our::Entity* e, our::World* w) {
+        showEntity(e);
+        for (auto entity : w->getEntities()) {
+            if (entity->parent == e) showEntityTree(entity, w);
+        }
+    }
+
+    void spawnShark(our::World* world, our::Entity* raft) {
+        if (!raft) return;
+        glm::vec3 raftPos = raft->localTransform.position;
+        float angle = static_cast<float>(rand() % 360) * glm::pi<float>() / 180.0f;
+        float spawnDist = 150.0f + static_cast<float>(rand() % 100);
+
+        our::Entity* shark = world->add();
+        shark->name = "shark_" + std::to_string(sharksSpawned);
+        shark->localTransform.position = glm::vec3(
+            raftPos.x + cos(angle) * spawnDist,
+            -10.0f,
+            raftPos.z + sin(angle) * spawnDist);
+        shark->localTransform.scale = glm::vec3(0.05f);
+        shark->localTransform.rotation = glm::vec3(0.0f);
+
+        auto* mr = shark->addComponent<our::MeshRendererComponent>();
+        mr->mesh = nullptr;
+        mr->material = our::AssetLoader<our::Material>::get("lit_shark");
+
+        auto* sc = shark->addComponent<our::SharkComponent>();
+        sc->health = 100.0f;
+        sc->state = our::SharkState::APPROACHING;
+        sc->speed = 12.0f + static_cast<float>(rand() % 6); // 12-18 speed variety
+        sc->attackRange = 25.0f;
+
+        auto* anim = shark->addComponent<our::AnimatorComponent>();
+        anim->modelName = "shark";
+        anim->currentAnimIndex = 0;
+
+        auto* enemy = shark->addComponent<our::EnemyComponent>();
+        enemy->type = our::EnemyType::SHARK;
+        enemy->primaryTarget = our::PrimaryTarget::RAFT;
+        enemy->state = our::EnemyState::ALIVE;
+        enemy->attackDamage = 100.0f;
+
+        auto* hp = shark->addComponent<our::HealthComponent>();
+        hp->maxHealth = 100.0f;
+        hp->currentHealth = 100.0f;
+
+        sharksSpawned++;
+        std::cout << "[Phase] Spawned shark #" << sharksSpawned << " at ("
+                  << shark->localTransform.position.x << ","
+                  << shark->localTransform.position.z << ")" << std::endl;
+    }
 
     // Menu shader helper
     static GLuint compileMenuShader(const char* vert, const char* frag) {
@@ -241,6 +355,7 @@ void main() {
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
         glBindVertexArray(0);
+
     }
 
     void onImmediateGui() override
@@ -295,6 +410,24 @@ void main() {
                 }
             }
         }
+
+        // --- Phase Timer (MARINES phase only) ---
+        if (currentPhase == GamePhase::MARINES) {
+            auto size = getApp()->getFrameBufferSize();
+            float remaining = 300.0f - phaseTimer;
+            if (remaining < 0.0f) remaining = 0.0f;
+            int mins = (int)remaining / 60;
+            int secs = (int)remaining % 60;
+
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 50, 50, 255));
+            ImGui::SetNextWindowPos(ImVec2(size.x * 0.5f, 20.0f), 0, ImVec2(0.5f, 0.0f));
+            ImGui::SetNextWindowBgAlpha(0.4f);
+            ImGui::Begin("PhaseTimer", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize);
+            ImGui::Text("MARINE ASSAULT - %d:%02d", mins, secs);
+            ImGui::End();
+            ImGui::PopStyleColor();
+        }
+
     }
 
     void onDraw(double deltaTime) override
@@ -397,15 +530,102 @@ void main() {
         }
 
         // --- Normal game update (not paused) ---
-        // Here, we just run a bunch of systems to control the world logic
+
+        // === PHASE MANAGEMENT ===
+        our::Entity* raft = nullptr;
+        our::Entity* player = nullptr;
+        for (auto entity : world.getEntities()) {
+            if (entity->name == "raft") raft = entity;
+            if (entity->name == "player") player = entity;
+        }
+
+        if (currentPhase == GamePhase::SHARKS) {
+            // Hide octopus and all marines
+            for (auto entity : world.getEntities()) {
+                if (entity->getComponent<our::OctopusComponent>()) hideEntity(entity);
+                if (entity->getComponent<our::MarineBoatComponent>()) hideEntityTree(entity, &world);
+                if (entity->name == "debug_marine") hideEntity(entity);
+                if (entity->getComponent<our::MusketComponent>() && !entity->parent) hideEntity(entity);
+            }
+
+            // Spawn sharks until we have enough
+            if (sharksSpawned < sharksToKill) {
+                sharkSpawnTimer += (float)deltaTime;
+                if (sharkSpawnTimer >= sharkSpawnInterval) {
+                    sharkSpawnTimer = 0.0f;
+                    spawnShark(&world, raft);
+                }
+            }
+        }
+        else if (currentPhase == GamePhase::MARINES) {
+            // Show marines, hide octopus
+            for (auto entity : world.getEntities()) {
+                if (entity->getComponent<our::OctopusComponent>()) hideEntity(entity);
+                if (entity->getComponent<our::MarineBoatComponent>()) showEntityTree(entity, &world);
+                if (entity->name == "debug_marine") showEntity(entity);
+                if (entity->getComponent<our::MusketComponent>() && !entity->parent) showEntity(entity);
+            }
+
+            phaseTimer += (float)deltaTime;
+
+            // Check if all marines are dead
+            bool anyMarineAlive = false;
+            for (auto entity : world.getEntities()) {
+                auto boat = entity->getComponent<our::MarineBoatComponent>();
+                auto musket = entity->getComponent<our::MusketComponent>();
+                auto enemy = entity->getComponent<our::EnemyComponent>();
+                if ((boat || musket) && enemy && enemy->state != our::EnemyState::DEAD) {
+                    anyMarineAlive = true;
+                }
+            }
+
+            // Transition: all marines dead OR survived 5 minutes (300 sec)
+            if ((!anyMarineAlive || phaseTimer >= 300.0f) && !phaseTransitioning) {
+                phaseTransitioning = true;
+                currentPhase = GamePhase::OCTOPUS;
+                std::cout << "[Phase] === MARINES PHASE OVER === ("
+                          << (anyMarineAlive ? "survived 5 min" : "all marines killed")
+                          << ") Transitioning to OCTOPUS phase!" << std::endl;
+                // If marines survived, they stay. If all dead, nothing to do.
+            }
+        }
+        else if (currentPhase == GamePhase::OCTOPUS) {
+            // Show octopus, keep marines as-is (visible if they survived)
+            for (auto entity : world.getEntities()) {
+                if (entity->getComponent<our::OctopusComponent>()) showEntity(entity);
+            }
+        }
+
+        // === SYSTEM UPDATES (phase-aware) ===
         movementSystem.update(&world, (float)deltaTime);
         cameraController.update(&world, (float)deltaTime);
-        marineBoatSystem.update(&world, (float)deltaTime);
         survivalSystem.update();
         animationSystem.update(&world, (float)deltaTime);
         combatSystem.update(&world, (float)deltaTime);
-        octopusSystem.update(&world, (float)deltaTime, getApp());
         fireballSystem.update(&world, (float)deltaTime);
+
+        // Only run marine boat system in MARINES and OCTOPUS phases
+        if (currentPhase == GamePhase::MARINES || currentPhase == GamePhase::OCTOPUS) {
+            marineBoatSystem.update(&world, (float)deltaTime);
+        }
+
+        // Only run octopus system in OCTOPUS phase
+        if (currentPhase == GamePhase::OCTOPUS) {
+            octopusSystem.update(&world, (float)deltaTime, getApp());
+        }
+
+        // === POST-SYSTEM PHASE CHECKS (after combat, before entity deletion) ===
+        if (currentPhase == GamePhase::SHARKS) {
+            // Transition to MARINES when devil fruit spawns (means all sharks are dead)
+            if (fireballSystem.isDevilFruitSpawned() && !phaseTransitioning) {
+                phaseTransitioning = true;
+                currentPhase = GamePhase::MARINES;
+                phaseTimer = 0.0f;
+                marineBoatSystem = our::MarineBoatSystem();
+                phaseTransitioning = false;  // Allow next phase transition
+                std::cout << "[Phase] === DEVIL FRUIT SPAWNED === Transitioning to MARINES phase!" << std::endl;
+            }
+        }
 
         world.deleteMarkedEntities();
 
@@ -430,7 +650,8 @@ void main() {
             damageFlash.render(size.x, size.y);
         }
 
-        // Find octopus health and draw boss bar
+        // Find octopus health and draw boss bar (only in OCTOPUS phase)
+        if (currentPhase == GamePhase::OCTOPUS) {
         our::HealthComponent* octopusHealth = nullptr;
         our::OctopusComponent* octopusComp = nullptr;
         for (auto entity : world.getEntities()) {
@@ -447,6 +668,7 @@ void main() {
             bossHealthBar.update(octopusHealth->currentHealth, octopusHealth->maxHealth, (float)deltaTime);
             bossHealthBar.render();
         }
+        } // end if (currentPhase == GamePhase::OCTOPUS)
 
         // DEBUG: F1 deals 50 damage to octopus for enrage testing
         if (keyboard.justPressed(GLFW_KEY_F1))

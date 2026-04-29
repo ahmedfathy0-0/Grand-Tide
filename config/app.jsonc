@@ -732,43 +732,6 @@
         ],
       },
       {
-        "name": "shark",
-        "position": [200, -10, 5],
-        "scale": [0.05, 0.05, 0.05],
-        "rotation": [0, 0, 0],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "cube",
-            "material": "lit_shark",
-          },
-          {
-            "type": "Shark",
-            "modelName": "shark",
-            "health": 100,
-            "state": "APPROACHING",
-            "currentAnimIndex": 0,
-            "attackRange": 25.0,
-            "speed": 15.0,
-          },
-          {
-            "type": "Animator",
-            "modelName": "shark",
-          },
-          {
-            "type": "Enemy",
-            "enemyType": "shark",
-            "primaryTarget": "RAFT",
-            "attackDamage": 100.0,
-          },
-          {
-            "type": "Health",
-            "maxHealth": 100,
-            "currentHealth": 100,
-          },
-        ],
-      },
-      {
         "name": "octopus",
         "position": [80, -150, 10],
         "scale": [0.08, 0.08, 0.08],
