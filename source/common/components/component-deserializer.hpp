@@ -15,6 +15,7 @@
 #include "marine-boat-component.hpp"
 #include "musket-component.hpp"
 #include "shark-component.hpp"
+#include "octopus-component.hpp"
 #include "fireball-component.hpp"
 #include "projectile-component.hpp"
 #include "burn-component.hpp"
@@ -83,6 +84,8 @@ namespace our
         else if (type == SharkComponent::getID())
         {
             component = entity->addComponent<SharkComponent>();
+        }else if (type == OctopusComponent::getID()) {
+            component = entity->addComponent<OctopusComponent>();
         }
         else if (type == FireballComponent::getID())
         {

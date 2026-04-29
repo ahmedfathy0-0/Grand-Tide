@@ -5,6 +5,8 @@
 #include "../material/lit-material.hpp"
 #include "../material/lit-material.hpp"
 #include <glm/gtc/matrix_transform.hpp>
+#include "../components/shark-component.hpp"
+#include "../components/octopus-component.hpp"
 #include "../components/animator.hpp"
 #include "../components/shark-component.hpp"
 
@@ -14,7 +16,10 @@
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 #include <string>
+#include <vector>
 #include "../mesh/model.hpp"
+#include <stb/stb_image.h>
+#include <iostream>
 
 namespace our
 {
@@ -131,6 +136,232 @@ namespace our
             // so it is more performant to disable the depth mask
             postprocessMaterial->pipelineState.depthMask = false;
         }
+        
+        // --- Radar Skull Marker Initialization ---
+        // 1. Load texture using stb_image
+        stbi_set_flip_vertically_on_load(false);
+        int width, height, channels;
+        unsigned char* data = stbi_load("assets/textures/skull-marker.png", &width, &height, &channels, 4);
+        if (data) {
+            glGenTextures(1, &skullTexture);
+            glBindTexture(GL_TEXTURE_2D, skullTexture);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+            glGenerateMipmap(GL_TEXTURE_2D);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            stbi_image_free(data);
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
+        
+        // 2. Create inline shaders
+        const char* skullVertSource = R"(
+            #version 330 core
+            layout(location = 0) in vec2 aPos;
+            out vec2 vUV;
+            uniform mat4 transform;
+            void main() {
+                vUV = aPos;
+                gl_Position = transform * vec4(aPos, 0.0, 1.0);
+            }
+        )";
+        
+        const char* skullFragSource = R"(
+            #version 330 core
+            uniform sampler2D uSkullTex;
+            in vec2 vUV;
+            out vec4 fragColor;
+            void main() {
+                vec4 col = texture(uSkullTex, vUV);
+                if (col.a < 0.01) discard;
+                fragColor = col;
+            }
+        )";
+        
+        GLuint vertShader = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(vertShader, 1, &skullVertSource, nullptr);
+        glCompileShader(vertShader);
+        
+        GLuint fragShader = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(fragShader, 1, &skullFragSource, nullptr);
+        glCompileShader(fragShader);
+        
+        skullShaderProgram = glCreateProgram();
+        glAttachShader(skullShaderProgram, vertShader);
+        glAttachShader(skullShaderProgram, fragShader);
+        glLinkProgram(skullShaderProgram);
+        
+        glDeleteShader(vertShader);
+        glDeleteShader(fragShader);
+        
+        // 3. Create unit quad for skull
+        struct SkullVertex { glm::vec2 position; };
+        SkullVertex skullVertices[4] = {
+            { glm::vec2(0.0f, 0.0f) },
+            { glm::vec2(1.0f, 0.0f) },
+            { glm::vec2(1.0f, 1.0f) },
+            { glm::vec2(0.0f, 1.0f) }
+        };
+        GLuint skullElements[6] = { 0, 1, 2, 2, 3, 0 };
+        
+        glGenVertexArrays(1, &skullVAO);
+        glBindVertexArray(skullVAO);
+        
+        glGenBuffers(1, &skullVBO);
+        glBindBuffer(GL_ARRAY_BUFFER, skullVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(skullVertices), skullVertices, GL_STATIC_DRAW);
+        
+        GLuint skullEBO;
+        glGenBuffers(1, &skullEBO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, skullEBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(skullElements), skullElements, GL_STATIC_DRAW);
+        
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(SkullVertex), (void*)0);
+        glBindVertexArray(0);
+
+        // --- Wave Ring Shader ---
+        const char* waveVertSource = R"(
+            #version 330 core
+            layout(location = 0) in vec3 aPos;
+            uniform mat4 transform;
+            uniform vec3 u_waveOrigin;
+            uniform float u_innerRadius;
+            uniform float u_outerRadius;
+            uniform float u_baseY;
+            out float v_localU;
+            out float v_heightFrac;
+            void main() {
+                gl_Position = transform * vec4(aPos, 1.0);
+                float dist = length(aPos.xz - u_waveOrigin.xz);
+                float width = u_outerRadius - u_innerRadius;
+                v_localU = (width > 0.001) ? clamp((dist - u_innerRadius) / width, 0.0, 1.0) : 0.0;
+                v_heightFrac = clamp((aPos.y - u_baseY) / 0.6, 0.0, 1.0);
+            }
+        )";
+        const char* waveFragSource = R"(
+            #version 330 core
+            uniform float u_waveT;
+            in float v_localU;
+            in float v_heightFrac;
+            out vec4 fragColor;
+            void main() {
+                // deep ocean blue, dense, fades as wave expands
+                float alpha = (1.0 - u_waveT) * 0.75;
+                float edgeFade = smoothstep(0.0, 0.25, v_localU) * smoothstep(1.0, 0.75, v_localU);
+                vec4 ringColor = vec4(0.05, 0.35, 0.85, alpha * edgeFade);
+                // foam/white highlight at the very top edge
+                float foamLine = smoothstep(0.4, 0.6, v_heightFrac);
+                ringColor.rgb = mix(ringColor.rgb, vec3(0.7, 0.85, 1.0), foamLine * 0.45);
+                fragColor = ringColor;
+            }
+        )";
+        GLuint waveVS = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(waveVS, 1, &waveVertSource, nullptr);
+        glCompileShader(waveVS);
+        GLuint waveFS = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(waveFS, 1, &waveFragSource, nullptr);
+        glCompileShader(waveFS);
+        waveShaderProgram = glCreateProgram();
+        glAttachShader(waveShaderProgram, waveVS);
+        glAttachShader(waveShaderProgram, waveFS);
+        glLinkProgram(waveShaderProgram);
+        glDeleteShader(waveVS);
+        glDeleteShader(waveFS);
+
+        // Wave ring VBO (wall + flat ring = ~520 verts, alloc 1200 for safety)
+        glGenVertexArrays(1, &waveVAO);
+        glGenBuffers(1, &waveVBO);
+        glBindVertexArray(waveVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, waveVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * 1200, nullptr, GL_DYNAMIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+        glBindVertexArray(0);
+
+        // --- Water Screen Distortion ---
+        unsigned char* wdata = stbi_load("assets/textures/water-distortion.png", &width, &height, &channels, 4);
+        if (wdata) {
+            glGenTextures(1, &waterDistortionTexture);
+            glBindTexture(GL_TEXTURE_2D, waterDistortionTexture);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, wdata);
+            glGenerateMipmap(GL_TEXTURE_2D);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            stbi_image_free(wdata);
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
+
+        const char* waterVertSource = R"(
+            #version 330 core
+            layout(location = 0) in vec2 aPos;
+            out vec2 vUV;
+            void main() {
+                vUV = aPos;
+                gl_Position = vec4(aPos * 2.0 - 1.0, 0.0, 1.0);
+            }
+        )";
+        const char* waterFragSource = R"(
+            #version 330 core
+            uniform sampler2D uScene;
+            uniform sampler2D uWaterTex;
+            uniform float uTime;
+            uniform float uStrength;
+            uniform float uBloodMix;
+            in vec2 vUV;
+            out vec4 fragColor;
+            void main() {
+                vec2 uv1 = vUV + vec2(uTime * 0.07, uTime * 0.05);
+                vec2 uv2 = vUV * 1.3 + vec2(uTime * -0.04, uTime * 0.06);
+                vec2 distort1 = texture(uWaterTex, uv1).rg;
+                distort1 = (distort1 * 2.0 - 1.0) * 0.15 * uStrength;
+                vec2 distort2 = texture(uWaterTex, uv2).rg;
+                distort2 = (distort2 * 2.0 - 1.0) * 0.10 * uStrength;
+                vec2 totalDistort = distort1 + distort2;
+                vec2 distortedUV = clamp(vUV + totalDistort, 0.0, 1.0);
+                vec2 texelSize = 1.0 / textureSize(uScene, 0);
+                vec4 color = vec4(0.0);
+                for(int x = -1; x <= 1; x++) {
+                    for(int y = -1; y <= 1; y++) {
+                        color += texture(uScene, distortedUV + vec2(x, y) * texelSize * 2.0 * uStrength);
+                    }
+                }
+                color /= 9.0;
+                // Water tint (blue-green)
+                color.rgb = mix(color.rgb, color.rgb * vec3(0.7, 0.85, 1.0), 0.3 * uStrength);
+                // Blood tint (red) mixed in when wave hit player
+                color.rgb = mix(color.rgb, color.rgb * vec3(1.0, 0.3, 0.2), uBloodMix * 0.5 * uStrength);
+                fragColor = color;
+            }
+        )";
+        GLuint waterVS = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(waterVS, 1, &waterVertSource, nullptr);
+        glCompileShader(waterVS);
+        GLuint waterFS = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(waterFS, 1, &waterFragSource, nullptr);
+        glCompileShader(waterFS);
+        waterScreenShader = glCreateProgram();
+        glAttachShader(waterScreenShader, waterVS);
+        glAttachShader(waterScreenShader, waterFS);
+        glLinkProgram(waterScreenShader);
+        glDeleteShader(waterVS);
+        glDeleteShader(waterFS);
+
+        float waterQuad[12] = {
+            0.0f, 0.0f,  1.0f, 0.0f,  1.0f, 1.0f,
+            0.0f, 0.0f,  1.0f, 1.0f,  0.0f, 1.0f
+        };
+        glGenVertexArrays(1, &waterScreenVAO);
+        glGenBuffers(1, &waterScreenVBO);
+        glBindVertexArray(waterScreenVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, waterScreenVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(waterQuad), waterQuad, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+        glBindVertexArray(0);
     }
 
     void ForwardRenderer::destroy()
@@ -158,6 +389,23 @@ namespace our
             delete postprocessMaterial->shader;
             delete postprocessMaterial;
         }
+
+        // Cleanup radar skull
+        if (skullTexture) glDeleteTextures(1, &skullTexture);
+        if (skullShaderProgram) glDeleteProgram(skullShaderProgram);
+        if (skullVAO) glDeleteVertexArrays(1, &skullVAO);
+        if (skullVBO) glDeleteBuffers(1, &skullVBO);
+
+        // Cleanup wave ring
+        if (waveShaderProgram) glDeleteProgram(waveShaderProgram);
+        if (waveVAO) glDeleteVertexArrays(1, &waveVAO);
+        if (waveVBO) glDeleteBuffers(1, &waveVBO);
+
+        // Cleanup water screen distortion
+        if (waterDistortionTexture) glDeleteTextures(1, &waterDistortionTexture);
+        if (waterScreenShader) glDeleteProgram(waterScreenShader);
+        if (waterScreenVAO) glDeleteVertexArrays(1, &waterScreenVAO);
+        if (waterScreenVBO) glDeleteBuffers(1, &waterScreenVBO);
     }
 
     void ForwardRenderer::render(World *world)
@@ -188,6 +436,13 @@ namespace our
                     if (our::ModelLoader::models.find(animator->modelName) != our::ModelLoader::models.end())
                     {
                         command.mesh = our::ModelLoader::models[animator->modelName]->getMesh();
+                    }
+                }
+                
+                // If it's an animated octopus, override the default mesh with the actual FBX rigged mesh
+                if (auto octopus = entity->getComponent<OctopusComponent>(); octopus && !octopus->modelName.empty()) {
+                    if (our::ModelLoader::models.find(octopus->modelName) != our::ModelLoader::models.end()) {
+                        command.mesh = our::ModelLoader::models[octopus->modelName]->getMesh();
                     }
                 }
 
@@ -318,19 +573,41 @@ namespace our
                 lit_material->shader->set("M", command.localToWorld);
                 lit_material->shader->set("M_IT", glm::transpose(glm::inverse(command.localToWorld)));
                 lit_material->shader->set("VP", VP);
+                lit_material->shader->set("u_time", (float)glfwGetTime());
+                
+                float current_wetness = 0.0f;
 
-                if (auto animator = command.entity->getComponent<AnimatorComponent>(); animator)
-                {
-                    for (int b = 0; b < animator->finalBonesMatrices.size() && b < 128; b++)
-                    {
+                // Set bone matrices from AnimatorComponent (single source of truth)
+                // If no animator, reset to identity to prevent stale matrices from previous draw calls
+                if (auto animator = command.entity->getComponent<AnimatorComponent>(); animator && !animator->finalBonesMatrices.empty()) {
+                    for(int b = 0; b < (int)animator->finalBonesMatrices.size() && b < 200; b++) {
                         lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", animator->finalBonesMatrices[b]);
                     }
-                    
-                    glm::vec3 tint = lit_material->albedo_tint;
+                     glm::vec3 tint = lit_material->albedo_tint;
                     if (auto shark = command.entity->getComponent<SharkComponent>(); shark) {
                         if (shark->damageFlashTimer > 0.0f) tint = glm::vec3(1.0f, 0.0f, 0.0f); // Flash Red
                     }
                     lit_material->shader->set("albedo_tint", tint);
+                    // Clear any remaining bones beyond what this animator has
+                    for(int b = (int)animator->finalBonesMatrices.size(); b < 200; b++) {
+                        lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", glm::mat4(1.0f));
+                    }
+                } else {
+                    // No animator: reset all bone matrices to identity so previous entity's bones don't deform this one
+                    for(int b = 0; b < 200; b++) {
+                        lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", glm::mat4(1.0f));
+                    }
+                }
+
+                lit_material->shader->set("u_wetness", current_wetness);
+
+                // Clip plane for octopus: discard fragments below water Y
+                if (auto octopus = command.entity->getComponent<OctopusComponent>(); octopus) {
+                    glEnable(GL_CLIP_DISTANCE0);
+                    lit_material->shader->set("uUseClipPlane", true);
+                    lit_material->shader->set("uClipPlaneY", 0.0f);
+                } else {
+                    lit_material->shader->set("uUseClipPlane", false);
                 }
             }
 
@@ -345,6 +622,7 @@ namespace our
             }
 
             command.mesh->draw();
+            glDisable(GL_CLIP_DISTANCE0); // safe no-op if not enabled
             command.material->teardown();
         }
 
@@ -371,8 +649,8 @@ namespace our
             skyMaterial->shader->set("transform", alwaysBehindTransform * VP * skyModel);
             skyMaterial->shader->set("camera_position", cameraPosition);
             skyMaterial->shader->set("u_time", (float)glfwGetTime());
-
-            // TODO: (Req 10) draw the sky sphere
+            
+            //TODO: (Req 10) draw the sky sphere
             skySphere->draw();
             skyMaterial->teardown();
         }
@@ -438,11 +716,23 @@ namespace our
                 lit_material->shader->set("M_IT", glm::transpose(glm::inverse(command.localToWorld)));
                 lit_material->shader->set("VP", VP);
 
-                if (auto animator = command.entity->getComponent<AnimatorComponent>(); animator)
+                // Set bone matrices from AnimatorComponent, reset to identity for non-animated
+                if (auto animator = command.entity->getComponent<AnimatorComponent>(); animator && !animator->finalBonesMatrices.empty())
                 {
-                    for (int b = 0; b < animator->finalBonesMatrices.size() && b < 100; b++)
+                    for (int b = 0; b < (int)animator->finalBonesMatrices.size() && b < 200; b++)
                     {
                         lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", animator->finalBonesMatrices[b]);
+                    }
+                    for (int b = (int)animator->finalBonesMatrices.size(); b < 200; b++)
+                    {
+                        lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", glm::mat4(1.0f));
+                    }
+                }
+                else
+                {
+                    for (int b = 0; b < 200; b++)
+                    {
+                        lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", glm::mat4(1.0f));
                     }
                 }
             }
@@ -485,6 +775,160 @@ namespace our
             glDrawArrays(GL_TRIANGLES, 0, 3);
             glBindVertexArray(0);
             postprocessMaterial->teardown();
+        }
+
+        // --- WAVE RING RENDERING ---
+        // Render directly to screen after postprocess so it's visible
+        {
+            OctopusComponent* octopus = nullptr;
+            for (auto entity : world->getEntities()) {
+                if (auto occ = entity->getComponent<OctopusComponent>(); occ) {
+                    octopus = occ;
+                    break;
+                }
+            }
+            if (octopus && octopus->waveActive && waveShaderProgram) {
+                const int segments = 64;
+                float waveH = 0.6f; // thin flat ridge — barely above water
+                float centerR = octopus->waveOuterRadius;  // center radius (expands)
+                float innerR = centerR - 1.2f;
+                float outerR = centerR + 1.2f;
+                if (innerR < 0.0f) innerR = 0.0f;
+                float baseY = octopus->waveOrigin.y;
+
+                std::vector<glm::vec3> verts;
+                verts.reserve(segments * 6);
+
+                // Top ring (triangle strip: inner-top, outer-top)
+                for (int i = 0; i <= segments; i++) {
+                    float angle = (float)i / (float)segments * 2.0f * glm::pi<float>();
+                    float c = std::cos(angle);
+                    float s = std::sin(angle);
+                    verts.push_back(glm::vec3(
+                        octopus->waveOrigin.x + c * innerR,
+                        baseY + waveH,
+                        octopus->waveOrigin.z + s * innerR));
+                    verts.push_back(glm::vec3(
+                        octopus->waveOrigin.x + c * outerR,
+                        baseY + waveH,
+                        octopus->waveOrigin.z + s * outerR));
+                }
+                // Degenerate triangle to jump to outer wall
+                verts.push_back(glm::vec3(
+                    octopus->waveOrigin.x + outerR,
+                    baseY + waveH,
+                    octopus->waveOrigin.z));
+                verts.push_back(glm::vec3(
+                    octopus->waveOrigin.x + outerR,
+                    baseY,
+                    octopus->waveOrigin.z));
+                // Outer wall (triangle strip: outer-top, outer-bottom)
+                for (int i = 0; i <= segments; i++) {
+                    float angle = (float)i / (float)segments * 2.0f * glm::pi<float>();
+                    float c = std::cos(angle);
+                    float s = std::sin(angle);
+                    verts.push_back(glm::vec3(
+                        octopus->waveOrigin.x + c * outerR,
+                        baseY + waveH,
+                        octopus->waveOrigin.z + s * outerR));
+                    verts.push_back(glm::vec3(
+                        octopus->waveOrigin.x + c * outerR,
+                        baseY,
+                        octopus->waveOrigin.z + s * outerR));
+                }
+
+                glBindBuffer(GL_ARRAY_BUFFER, waveVBO);
+                glBufferSubData(GL_ARRAY_BUFFER, 0, verts.size() * sizeof(glm::vec3), verts.data());
+
+                GLboolean depthMaskState;
+                glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMaskState);
+                GLboolean cullFaceState;
+                glGetBooleanv(GL_CULL_FACE, &cullFaceState);
+                GLboolean depthTestState;
+                glGetBooleanv(GL_DEPTH_TEST, &depthTestState);
+
+                glEnable(GL_DEPTH_TEST);
+                glDepthFunc(GL_LEQUAL);
+                glDisable(GL_CULL_FACE);
+                glDepthMask(GL_FALSE);
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+                glUseProgram(waveShaderProgram);
+                glUniformMatrix4fv(glGetUniformLocation(waveShaderProgram, "transform"), 1, GL_FALSE, glm::value_ptr(VP));
+                float t = centerR / octopus->waveMaxRadius;
+                glUniform1f(glGetUniformLocation(waveShaderProgram, "u_waveT"), t);
+                glUniform3f(glGetUniformLocation(waveShaderProgram, "u_waveOrigin"),
+                            octopus->waveOrigin.x, octopus->waveOrigin.y, octopus->waveOrigin.z);
+                glUniform1f(glGetUniformLocation(waveShaderProgram, "u_innerRadius"), innerR);
+                glUniform1f(glGetUniformLocation(waveShaderProgram, "u_outerRadius"), outerR);
+                glUniform1f(glGetUniformLocation(waveShaderProgram, "u_baseY"), baseY);
+
+                glBindVertexArray(waveVAO);
+                glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei)verts.size());
+                glBindVertexArray(0);
+                glUseProgram(0);
+
+                glDepthMask(depthMaskState);
+                if (depthTestState) glEnable(GL_DEPTH_TEST);
+                else glDisable(GL_DEPTH_TEST);
+                glDepthFunc(GL_LESS);
+                if (cullFaceState) glEnable(GL_CULL_FACE);
+
+                // Once-per-second debug print
+                static float lastWavePrint = 0.0f;
+                float now = (float)glfwGetTime();
+                if (now - lastWavePrint > 1.0f) {
+                    std::cout << "[Wave] Rendering at centerRadius=" << centerR << std::endl;
+                    lastWavePrint = now;
+                }
+            }
+        }
+
+        // --- WATER SCREEN DISTORTION ---
+        // Apply after postprocess, before UI so HUD is not distorted
+        {
+            OctopusComponent* octopus = nullptr;
+            for (auto entity : world->getEntities()) {
+                if (auto occ = entity->getComponent<OctopusComponent>(); occ) {
+                    octopus = occ;
+                    break;
+                }
+            }
+            if (octopus && octopus->screenWaterTimer > 0.0f && waterScreenShader && waterDistortionTexture) {
+                float strength = octopus->screenWaterTimer / octopus->screenWaterDuration;
+
+                glUseProgram(waterScreenShader);
+
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, colorTarget->getOpenGLName());
+                // Must set filter params — empty() doesn't set them, so default
+                // GL_NEAREST_MIPMAP_LINEAR makes texture incomplete (no mipmaps = black)
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                glUniform1i(glGetUniformLocation(waterScreenShader, "uScene"), 0);
+
+                glActiveTexture(GL_TEXTURE1);
+                glBindTexture(GL_TEXTURE_2D, waterDistortionTexture);
+                glUniform1i(glGetUniformLocation(waterScreenShader, "uWaterTex"), 1);
+
+                glUniform1f(glGetUniformLocation(waterScreenShader, "uTime"), (float)glfwGetTime());
+                glUniform1f(glGetUniformLocation(waterScreenShader, "uStrength"), strength);
+                glUniform1f(glGetUniformLocation(waterScreenShader, "uBloodMix"),
+                            (octopus->waveHasDealtDamage || octopus->hitRegisteredThisSwing) ? 1.0f : 0.0f);
+
+                glDisable(GL_DEPTH_TEST);
+                glDisable(GL_BLEND);
+                glDisable(GL_CULL_FACE);
+
+                glBindVertexArray(waterScreenVAO);
+                glDrawArrays(GL_TRIANGLES, 0, 6);
+                glBindVertexArray(0);
+
+                glUseProgram(0);
+            }
         }
 
         // Phase 2 UI Pass
@@ -674,8 +1118,102 @@ namespace our
                     minimapMat->teardown();
                 }
 
+
+
                 // Text is handled in Playstate::onImmediateGui() due to ImGui lifecycle
             }
+// --- RADAR SKULL MARKER ---
+if (skullTexture && playerEntity) {
+    static double lastTime = glfwGetTime();
+    double currentTime = glfwGetTime();
+    float deltaTime = (float)(currentTime - lastTime);
+    lastTime = currentTime;
+
+    Entity* octopusEntity = nullptr;
+    OctopusComponent* octopus = nullptr;
+    for (auto entity : world->getEntities()) {
+        if (auto occ = entity->getComponent<OctopusComponent>(); occ) {
+            octopus = occ;
+            octopusEntity = entity;
+            break;
+        }
+    }
+    if (octopus && octopus->permanentlyDead) {
+        // Skip skull rendering when permanently dead
+    } else
+
+    if (!octopus || (int)octopus->state == (int)OctopusState::DYING || (int)octopus->state == (int)OctopusState::DEATH_ANIM || (int)octopus->state == (int)OctopusState::REVIVING || octopus->health <= 0.0f) {
+        skullPulseTimer = 0.0f;
+    } 
+    else if ((int)octopus->state >= (int)OctopusState::COMBAT_IDLE) {
+        skullPulseTimer += deltaTime;
+        
+        glm::vec3 pPos = playerEntity->localTransform.position;
+        glm::vec3 ePos = octopusEntity->localTransform.position;
+     // Get raw world offset
+glm::vec2 worldOffset = glm::vec2(ePos.x - pPos.x, ePos.z - pPos.z) * 0.05f;
+
+// Rotate by player's Y rotation so radar is player-relative
+float playerRotY = playerEntity->localTransform.rotation.y;
+float cosA = std::cos(-playerRotY);
+float sinA = std::sin(-playerRotY);
+glm::vec2 relativePos = glm::vec2(
+    worldOffset.x * cosA - worldOffset.y * sinA,
+    worldOffset.x * sinA + worldOffset.y * cosA
+);
+
+        {
+            float radarRadius = 50.0f;
+            float padding = 50.0f;
+            float minX = windowSize.x - (radarRadius * 2.0f) - padding;
+            float minY = windowSize.y - (radarRadius * 2.0f) - padding;
+            float centerX = minX + radarRadius;
+            float centerY = minY + radarRadius;
+
+            // Clamp to radar edge if octopus is far away
+            glm::vec2 clampedPos = relativePos;
+            if (glm::length(relativePos) > 1.0f) {
+                clampedPos = glm::normalize(relativePos) * 0.95f;
+            }
+
+            float dotX = centerX + clampedPos.x * radarRadius;
+            float dotY = centerY - clampedPos.y * radarRadius;
+            
+            float regular_dot_radius = 4.0f;
+            float baseSize = regular_dot_radius * 4.0f;
+            float pulseScale = 1.0f + 0.2f * std::sin(skullPulseTimer * 3.0f);
+            float drawSize = baseSize * pulseScale;
+            
+            glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(dotX - drawSize*0.5f, dotY - drawSize*0.5f, 0.0f));
+            model = glm::scale(model, glm::vec3(drawSize, drawSize, 1.0f));
+            
+            glUseProgram(skullShaderProgram);
+            
+            GLint transformLoc = glGetUniformLocation(skullShaderProgram, "transform");
+            glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(uiProj * model));
+            
+            GLint texLoc = glGetUniformLocation(skullShaderProgram, "uSkullTex");
+            glUniform1i(texLoc, 0);
+            
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, skullTexture);
+            
+            GLboolean blendWasEnabled = glIsEnabled(GL_BLEND);
+            GLboolean depthWasEnabled = glIsEnabled(GL_DEPTH_TEST);
+            
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glDisable(GL_DEPTH_TEST);
+            
+            glBindVertexArray(skullVAO);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            glBindVertexArray(0);
+            
+            if (depthWasEnabled) glEnable(GL_DEPTH_TEST);
+            if (!blendWasEnabled) glDisable(GL_BLEND);
+        }
+    }
+}
         }
     }
 

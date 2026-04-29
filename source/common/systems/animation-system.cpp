@@ -1,5 +1,7 @@
 #include "animation-system.hpp"
 #include <glm/gtx/matrix_decompose.hpp>
+#include "components/shark-component.hpp"
+#include "components/octopus-component.hpp"
 
 namespace our
 {
@@ -39,6 +41,7 @@ namespace our
                         float timeInTicks = deltaTime * ticksPerSecond * animator->playSpeed;
 
                         animator->currentAnimationTime += timeInTicks;
+
                         if (animator->loopAnimation) {
                             animator->currentAnimationTime = fmod(animator->currentAnimationTime, animation->mDuration);
                         } else {
@@ -47,7 +50,7 @@ namespace our
                                 animator->currentAnimationTime = animation->mDuration - 0.001f;
                             }
                         }
-                    }
+                  
 
                     animator->finalBonesMatrices.assign(model->getBoneCount(), glm::mat4(1.0f));
                     calculateBoneTransform(model->getScene()->mRootNode, model->getScene(), animator->currentAnimationTime, animIndex, glm::mat4(1.0f), model, animator);
@@ -56,10 +59,18 @@ namespace our
                 {
                     animator->finalBonesMatrices.assign(model->getBoneCount(), glm::mat4(1.0f));
                 }
+
+                // Copy bone matrices to component-specific arrays for the renderer
+                if (auto shark = entity->getComponent<SharkComponent>(); shark) {
+                    shark->finalBonesMatrices = animator->finalBonesMatrices;
+                }
+                if (auto octopus = entity->getComponent<OctopusComponent>(); octopus) {
+                    octopus->finalBonesMatrices = animator->finalBonesMatrices;
+                }
             }
         }
     }
-
+    }
     void AnimationSystem::calculateBoneTransform(const aiNode *node, const aiScene *scene, float animationTime, int animIndex, const glm::mat4 &parentTransform, Model *model, AnimatorComponent *animator)
     {
         std::string nodeName(node->mName.data);

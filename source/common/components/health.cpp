@@ -4,10 +4,12 @@
 namespace our {
 
     void HealthComponent::takeDamage(float amount) {
+        if (amount <= 0.0f || currentHealth <= 0.0f) return;
         currentHealth -= amount;
         if (currentHealth < 0.0f) {
             currentHealth = 0.0f;
         }
+        justDamaged = true;
     }
 
     void HealthComponent::heal(float amount) {
