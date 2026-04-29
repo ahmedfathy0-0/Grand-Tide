@@ -220,6 +220,12 @@ namespace our
         if (!player)
             return;
 
+        // Skip if entity is hidden (scale=0) — used by phase system
+        if (entity->localTransform.scale.x == 0.0f &&
+            entity->localTransform.scale.y == 0.0f &&
+            entity->localTransform.scale.z == 0.0f)
+            return;
+
         auto animator = entity->getComponent<AnimatorComponent>();
         auto health = entity->getComponent<HealthComponent>();
         auto burn = entity->getComponent<BurnComponent>();

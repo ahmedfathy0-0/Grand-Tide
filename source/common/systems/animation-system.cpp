@@ -57,7 +57,9 @@ namespace our
                 }
                 else if (model && model->getBoneCount() > 0)
                 {
+                    // animIndex < 0: render as static object using bind pose (node default transforms)
                     animator->finalBonesMatrices.assign(model->getBoneCount(), glm::mat4(1.0f));
+                    calculateBoneTransform(model->getScene()->mRootNode, model->getScene(), 0.0f, -1, glm::mat4(1.0f), model, animator);
                 }
 
                 // Copy bone matrices to component-specific arrays for the renderer

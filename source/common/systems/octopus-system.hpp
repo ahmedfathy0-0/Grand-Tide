@@ -393,6 +393,23 @@ namespace our {
                 if (octopus->hitCooldownTimer > 0.0f) {
                     octopus->hitCooldownTimer -= deltaTime;
                 }
+                // Tick down stun timer
+                if (octopus->stunTimer > 0.0f) {
+                    octopus->stunTimer -= deltaTime;
+                }
+
+                // If stunned, skip attack/move states and go to COMBAT_IDLE
+                if (octopus->stunTimer > 0.0f &&
+                    (octopus->state == OctopusState::ATTACKING ||
+                     octopus->state == OctopusState::ENRAGED_COMBAT ||
+                     octopus->state == OctopusState::MOVING)) {
+                    octopus->state = OctopusState::COMBAT_IDLE;
+                    octopus->animElapsedTime = 0.0f;
+                    octopus->currentAnimIndex = OctopusAnimation::COMBAT_IDLE;
+                    setAnimation(animator, "Mon_PiratesKing_CombatIdle", true);
+                    octopus->currentAnimDuration = queryAnimDuration(animator, "Mon_PiratesKing_CombatIdle");
+                    std::cout << "[Octopus] STUNNED -- forced to COMBAT_IDLE" << std::endl;
+                }
 
                 // ==============================================================
                 // STEP 1: HIDDEN (underwater, waiting for spawnDelay)
@@ -470,7 +487,8 @@ namespace our {
                     octopus->currentAnimIndex = OctopusAnimation::COMBAT_IDLE;
 
                     // Transition to ATTACKING when boss is ready and player is in range+cone
-                    if (octopus->bossReady && player) {
+                    // But NOT while stunned
+                    if (octopus->bossReady && player && octopus->stunTimer <= 0.0f) {
                         glm::vec3 toPlayer = player->localTransform.position - pos;
                         toPlayer.y = 0.0f;
                         float dist = glm::length(toPlayer);

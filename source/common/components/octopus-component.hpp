@@ -136,6 +136,10 @@ namespace our {
         float screenWaterTimer = 0.0f;
         float screenWaterDuration = 3.0f;
 
+        // ---- Fireball Stun ----
+        float stunTimer = 0.0f;           // >0 means stunned, can't attack
+        float stunDuration = 2.0f;        // Duration of stun from fireball hit
+
         // ---- Death & Revival ----
         bool hasRevived = false;           // true after first death and revival
         float damageMultiplier = 1.0f;     // increases after revival to 1.75f

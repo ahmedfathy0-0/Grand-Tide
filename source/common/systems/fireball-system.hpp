@@ -13,6 +13,7 @@
 #include "components/enemy.hpp"
 #include "components/marine-boat-component.hpp"
 #include "components/shark-component.hpp"
+#include "components/octopus-component.hpp"
 #include "components/musket-component.hpp"
 #include "application.hpp"
 #include "mesh/model.hpp"
@@ -47,6 +48,7 @@ namespace our {
         }
 
         bool shouldShowDevilFruitMessage() const { return showDevilFruitMessage; }
+        bool isDevilFruitSpawned() const { return devilFruitSpawned; }
 
         void update(World* world, float deltaTime) {
             Entity* playerEntity = nullptr;
@@ -92,9 +94,6 @@ namespace our {
                         }
                     }
                 }
-                std::cout << "[DevilFruit] sharks=" << sharkCount
-                          << " alive=" << (anySharkAlive ? "yes" : "no")
-                          << " dead=" << deadSharkCount << "\n";
                 if (!anySharkAlive && sharkCount > 0) {
                     std::cout << "[DevilFruit] Spawning devil fruit!\n";
                     spawnDevilFruit(world, playerEntity);
@@ -413,25 +412,33 @@ namespace our {
                 // Billboard: make the fire quad face the camera
                 billboardToCamera(entity, playerEntity);
 
-                // Check collision with y=0 plane (water/ground)
-                bool hit = entity->localTransform.position.y <= 0.3f;
+                // Check collision with enemy entities FIRST (before water check)
+                // because the octopus is below water and the projectile would hit water first
+                bool hit = false;
+                for (auto target : world->getEntities()) {
+                    auto enemy = target->getComponent<EnemyComponent>();
+                    auto octopus = target->getComponent<OctopusComponent>();
 
-                // Check collision with enemy entities
-                if (!hit) {
-                    for (auto target : world->getEntities()) {
-                        auto enemy = target->getComponent<EnemyComponent>();
-                        if (!enemy) continue;
+                    if (!enemy && !octopus) continue;
+                    // Don't collide with permanently dead octopus
+                    if (octopus && octopus->permanentlyDead) continue;
 
-                        glm::vec3 targetPos = target->localTransform.position;
-                        float dist = glm::distance(glm::vec3(entity->localTransform.position.x, 0, entity->localTransform.position.z),
-                                                    glm::vec3(targetPos.x, 0, targetPos.z));
-                        // Use a generous collision radius based on entity scale
-                        float collisionRadius = 3.0f;
-                        if (dist < collisionRadius) {
-                            hit = true;
-                            break;
-                        }
+                    glm::vec3 targetPos = target->localTransform.position;
+                    float dist = glm::distance(glm::vec3(entity->localTransform.position.x, 0, entity->localTransform.position.z),
+                                                glm::vec3(targetPos.x, 0, targetPos.z));
+                    // Octopus is much larger than regular enemies
+                    float collisionRadius = octopus ? 15.0f : 3.0f;
+                    if (dist < collisionRadius) {
+                        hit = true;
+                        std::cout << "[Fireball] Direct hit on " << target->name
+                                  << " dist=" << dist << std::endl;
+                        break;
                     }
+                }
+
+                // Check collision with y=0 plane (water/ground) only if no entity hit
+                if (!hit) {
+                    hit = entity->localTransform.position.y <= 0.3f;
                 }
 
                 // Timeout
@@ -447,10 +454,11 @@ namespace our {
                         auto health = target->getComponent<HealthComponent>();
                         if (!health) continue;
 
-                        // Must be a boat, shark, marine boat, or musket
+                        // Must be a boat, shark, marine boat, musket, or octopus
                         bool isBurnable = target->getComponent<MarineBoatComponent>() != nullptr ||
                                          target->getComponent<SharkComponent>() != nullptr ||
                                          target->getComponent<MusketComponent>() != nullptr ||
+                                         target->getComponent<OctopusComponent>() != nullptr ||
                                          target->name == "raft" ||
                                          target->name == "boat";
 
@@ -461,7 +469,12 @@ namespace our {
                         float dist = glm::distance(glm::vec3(hitPos.x, 0, hitPos.z),
                                                     glm::vec3(targetPos.x, 0, targetPos.z));
 
-                        if (dist <= proj->aoeRadius) {
+                        // Octopus is a massive boss — use much larger AOE radius
+                        float effectiveRadius = target->getComponent<OctopusComponent>() ? proj->aoeRadius + 15.0f : proj->aoeRadius;
+
+                        if (dist <= effectiveRadius) {
+                            std::cout << "[Fireball] AOE hit " << target->name
+                                      << " dist=" << dist << " radius=" << effectiveRadius << std::endl;
                             // Add burn component if not already burning
                             auto existingBurn = target->getComponent<BurnComponent>();
                             if (!existingBurn) {
@@ -473,6 +486,14 @@ namespace our {
                                 // Refresh burn duration
                                 existingBurn->remainingTime = proj->burnDuration;
                                 existingBurn->burnIntensity = 1.0f;
+                            }
+
+                            // Stun the octopus if this is an octopus entity
+                            auto octopusComp = target->getComponent<OctopusComponent>();
+                            if (octopusComp && !octopusComp->permanentlyDead) {
+                                octopusComp->stunTimer = octopusComp->stunDuration;
+                                std::cout << "[Fireball] Octopus STUNNED for "
+                                          << octopusComp->stunDuration << " seconds!" << std::endl;
                             }
                         }
                     }
