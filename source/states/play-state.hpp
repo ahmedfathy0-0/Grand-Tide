@@ -16,6 +16,10 @@
 #include <components/health.hpp>
 
 #include <asset-loader.hpp>
+#include <glad/gl.h>
+#include <GLFW/glfw3.h>
+#include <stb/stb_image.h>
+#include <iostream>
 
 // This state shows how to use the ECS framework and deserialization.
 class Playstate : public our::State
@@ -32,6 +36,36 @@ class Playstate : public our::State
     our::OctopusSystem octopusSystem;
     our::BossHealthBar bossHealthBar;
     our::DamageFlash damageFlash;
+
+    // Pause menu
+    bool isPaused = false;
+    int selectedMenuItem = 0; // 0=CONTINUE, 1=RESTART, 2=EXIT
+    GLuint menuTextures[3] = {0, 0, 0};
+    GLuint menuVAO = 0, menuVBO = 0;
+    GLuint menuShader = 0;
+
+    // Menu shader helper
+    static GLuint compileMenuShader(const char* vert, const char* frag) {
+        auto compile = [](const char* src, GLenum type) -> GLuint {
+            GLuint sh = glCreateShader(type);
+            glShaderSource(sh, 1, &src, nullptr);
+            glCompileShader(sh);
+            int ok; glGetShaderiv(sh, GL_COMPILE_STATUS, &ok);
+            if (!ok) { char buf[512]; glGetShaderInfoLog(sh, 512, nullptr, buf);
+                std::cerr << "[PauseMenu] shader error: " << buf << std::endl; glDeleteShader(sh); return 0; }
+            return sh;
+        };
+        GLuint vs = compile(vert, GL_VERTEX_SHADER);
+        GLuint fs = compile(frag, GL_FRAGMENT_SHADER);
+        if (!vs || !fs) { if(vs) glDeleteShader(vs); if(fs) glDeleteShader(fs); return 0; }
+        GLuint p = glCreateProgram();
+        glAttachShader(p, vs); glAttachShader(p, fs); glLinkProgram(p);
+        int ok; glGetProgramiv(p, GL_LINK_STATUS, &ok);
+        if (!ok) { char buf[512]; glGetProgramInfoLog(p, 512, nullptr, buf);
+            std::cerr << "[PauseMenu] link error: " << buf << std::endl; glDeleteProgram(p); p = 0; }
+        glDeleteShader(vs); glDeleteShader(fs);
+        return p;
+    }
     void
     onInitialize() override
     {
@@ -65,6 +99,75 @@ class Playstate : public our::State
                 boat = entity;
         }
         survivalSystem.setup(&world, getApp(), player, boat);
+
+        // --- Pause Menu Initialization ---
+        isPaused = false;
+        selectedMenuItem = 0;
+
+        // Load 3 menu textures
+        stbi_set_flip_vertically_on_load(false);
+        const char* menuPaths[3] = {
+            "assets/textures/menu_continue.png",
+            "assets/textures/menu_restart.png",
+            "assets/textures/menu_exit.png"
+        };
+        for (int i = 0; i < 3; i++) {
+            int w, h, ch;
+            unsigned char* data = stbi_load(menuPaths[i], &w, &h, &ch, 4);
+            if (data) {
+                glGenTextures(1, &menuTextures[i]);
+                glBindTexture(GL_TEXTURE_2D, menuTextures[i]);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                stbi_image_free(data);
+                glBindTexture(GL_TEXTURE_2D, 0);
+            } else {
+                std::cerr << "[PauseMenu] Failed to load: " << menuPaths[i] << std::endl;
+            }
+        }
+
+        // Compile menu shader
+        static const char* menuVert = R"(
+#version 330 core
+layout(location = 0) in vec2 aPos;
+out vec2 vUV;
+void main() {
+    vUV = vec2(aPos.x, 1.0 - aPos.y);
+    gl_Position = vec4(aPos * 2.0 - 1.0, 0.0, 1.0);
+}
+)";
+        static const char* menuFrag = R"(
+#version 330 core
+uniform sampler2D uMenuTex;
+uniform float uAlpha;
+in vec2 vUV;
+out vec4 fragColor;
+void main() {
+    vec4 col = texture(uMenuTex, vUV);
+    float brightness = (col.r + col.g + col.b) / 3.0;
+    float darkMask = smoothstep(0.08, 0.20, brightness);
+    fragColor = vec4(col.rgb, col.a * darkMask * uAlpha);
+    if (fragColor.a < 0.02) discard;
+}
+)";
+        menuShader = compileMenuShader(menuVert, menuFrag);
+
+        // Create fullscreen quad VAO/VBO
+        float menuQuad[12] = {
+            0.0f, 0.0f,  1.0f, 0.0f,  1.0f, 1.0f,
+            0.0f, 0.0f,  1.0f, 1.0f,  0.0f, 1.0f
+        };
+        glGenVertexArrays(1, &menuVAO);
+        glGenBuffers(1, &menuVBO);
+        glBindVertexArray(menuVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, menuVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(menuQuad), menuQuad, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+        glBindVertexArray(0);
     }
 
     void onImmediateGui() override
@@ -110,6 +213,62 @@ class Playstate : public our::State
 
     void onDraw(double deltaTime) override
     {
+        auto &keyboard = getApp()->getKeyboard();
+
+        // --- Pause Menu Input (always checked, even when paused) ---
+        if (keyboard.justPressed(GLFW_KEY_ESCAPE)) {
+            isPaused = !isPaused;
+            if (isPaused) selectedMenuItem = 0;
+        }
+
+        if (isPaused) {
+            // Arrow key navigation
+            if (keyboard.justPressed(GLFW_KEY_UP)) {
+                selectedMenuItem = (selectedMenuItem - 1 + 3) % 3;
+            }
+            if (keyboard.justPressed(GLFW_KEY_DOWN)) {
+                selectedMenuItem = (selectedMenuItem + 1) % 3;
+            }
+            if (keyboard.justPressed(GLFW_KEY_ENTER)) {
+                if (selectedMenuItem == 0) {
+                    isPaused = false;
+                } else if (selectedMenuItem == 1) {
+                    getApp()->changeState("play");
+                    return;
+                } else if (selectedMenuItem == 2) {
+                    getApp()->close();
+                    return;
+                }
+            }
+
+            // Still render the scene (frozen) but skip all game logic
+            renderer.render(&world);
+
+            // Draw pause menu overlay on top
+            if (menuShader && menuVAO && menuTextures[selectedMenuItem]) {
+                glUseProgram(menuShader);
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, menuTextures[selectedMenuItem]);
+                glUniform1i(glGetUniformLocation(menuShader, "uMenuTex"), 0);
+                glUniform1f(glGetUniformLocation(menuShader, "uAlpha"), 1.0f);
+
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                glDisable(GL_DEPTH_TEST);
+                glDisable(GL_CULL_FACE);
+
+                glBindVertexArray(menuVAO);
+                glDrawArrays(GL_TRIANGLES, 0, 6);
+                glBindVertexArray(0);
+
+                glEnable(GL_DEPTH_TEST);
+                glDisable(GL_BLEND);
+                glUseProgram(0);
+            }
+            return; // Freeze: skip all game logic
+        }
+
+        // --- Normal game update (not paused) ---
         // Here, we just run a bunch of systems to control the world logic
         movementSystem.update(&world, (float)deltaTime);
         cameraController.update(&world, (float)deltaTime);
@@ -159,15 +318,6 @@ class Playstate : public our::State
             bossHealthBar.render();
         }
 
-        // Get a reference to the keyboard object
-        auto &keyboard = getApp()->getKeyboard();
-
-        if (keyboard.justPressed(GLFW_KEY_ESCAPE))
-        {
-            // If the escape  key is pressed in this frame, go to the play state
-            getApp()->changeState("menu");
-        }
-
         // DEBUG: F1 deals 50 damage to octopus for enrage testing
         if (keyboard.justPressed(GLFW_KEY_F1))
         {
@@ -197,6 +347,13 @@ class Playstate : public our::State
         renderer.destroy();
         bossHealthBar.destroy();
         damageFlash.destroy();
+        // Pause menu cleanup
+        for (int i = 0; i < 3; i++) {
+            if (menuTextures[i]) glDeleteTextures(1, &menuTextures[i]);
+        }
+        if (menuVAO) glDeleteVertexArrays(1, &menuVAO);
+        if (menuVBO) glDeleteBuffers(1, &menuVBO);
+        if (menuShader) glDeleteProgram(menuShader);
         // On exit, we call exit for the camera controller system to make sure that the mouse is unlocked
         cameraController.exit();
         // Clear the world
