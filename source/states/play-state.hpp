@@ -568,19 +568,21 @@ void main() {
 
             phaseTimer += (float)deltaTime;
 
-            // Check if all marines are dead
+            // Check if all marines are dead (only if at least one boat has spawned)
             bool anyMarineAlive = false;
+            bool anyMarineExists = false;
             for (auto entity : world.getEntities()) {
                 auto boat = entity->getComponent<our::MarineBoatComponent>();
                 auto musket = entity->getComponent<our::MusketComponent>();
                 auto enemy = entity->getComponent<our::EnemyComponent>();
+                if (boat || musket) anyMarineExists = true;
                 if ((boat || musket) && enemy && enemy->state != our::EnemyState::DEAD) {
                     anyMarineAlive = true;
                 }
             }
 
-            // Transition: all marines dead OR survived 5 minutes (300 sec)
-            if ((!anyMarineAlive || phaseTimer >= 300.0f) && !phaseTransitioning) {
+            // Transition: survived 5 minutes, OR all marines dead (but only if marines have spawned)
+            if ((phaseTimer >= 300.0f || (anyMarineExists && !anyMarineAlive)) && !phaseTransitioning) {
                 phaseTransitioning = true;
                 currentPhase = GamePhase::OCTOPUS;
                 std::cout << "[Phase] === MARINES PHASE OVER === ("
