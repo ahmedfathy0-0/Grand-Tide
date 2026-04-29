@@ -54,7 +54,12 @@
                 "cube": "assets/models/cube.obj",
                 "monkey": "assets/models/monkey.obj",
                 "plane": "assets/models/plane.obj",
-                "sphere": "assets/models/sphere.obj"
+                "sphere": "assets/models/sphere.obj",
+                "fish": "assets/models/fish.obj",
+                "hammer": "assets/models/hammer.obj",
+                "net": "assets/models/net.obj",
+                "spear": "assets/models/spear.obj",
+                "wood": "assets/models/wood.obj"
             },
             "samplers":{
                 "default":{},
@@ -273,11 +278,11 @@
                         "name": "weapon",
                         "position": [1, -1, -1],
                         "rotation": [45, 45, 0],
-                        "scale": [0.1, 0.1, 1.0],
+                        "scale": [0.1, 0.1, 0.1],
                         "components": [
                             {
                                 "type": "Mesh Renderer",
-                                "mesh": "cube",
+                                "mesh": "hammer",
                                 "material": "metal"
                             }
                         ]
@@ -305,7 +310,7 @@
                 "position": [2, 0.5, 8],
                 "scale": [0.5, 0.5, 0.5],
                 "components": [
-                    { "type": "Mesh Renderer", "mesh": "cube", "material": "brown" },
+                    { "type": "Mesh Renderer", "mesh": "wood", "material": "brown" },
                     { "type": "Resource", "Resource": { "type": "wood", "amount": 1 } }
                 ]
             },
@@ -313,23 +318,23 @@
                 "position": [-2, 0.5, 8],
                 "scale": [0.5, 0.5, 0.5],
                 "components": [
-                    { "type": "Mesh Renderer", "mesh": "cube", "material": "brown" },
+                    { "type": "Mesh Renderer", "mesh": "wood", "material": "brown" },
                     { "type": "Resource", "Resource": { "type": "wood", "amount": 1 } }
                 ]
             },
             {
                 "position": [0, 0.5, 6],
-                "scale": [0.5, 0.5, 0.5],
+                "scale": [0.035, 0.035, 0.035],
                 "components": [
-                    { "type": "Mesh Renderer", "mesh": "cube", "material": "blue" },
+                    { "type": "Mesh Renderer", "mesh": "fish", "material": "blue" },
                     { "type": "Resource", "Resource": { "type": "fish", "amount": 1 } }
                 ]
             },
             {
                 "position": [1, 0.5, 7],
-                "scale": [0.5, 0.5, 0.5],
+                "scale": [0.035, 0.035, 0.035],
                 "components": [
-                    { "type": "Mesh Renderer", "mesh": "cube", "material": "blue" },
+                    { "type": "Mesh Renderer", "mesh": "fish", "material": "blue" },
                     { "type": "Resource", "Resource": { "type": "fish", "amount": 1 } }
                 ]
             }

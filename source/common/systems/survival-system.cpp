@@ -4,14 +4,40 @@
 namespace our {
 
     namespace {
-        MeshRendererComponent* getWeaponRenderer(World* world, Entity* playerEntity) {
+        Entity* getWeaponEntity(World* world, Entity* playerEntity) {
             if(!world || !playerEntity) return nullptr;
             for(auto entity : world->getEntities()) {
                 if(entity->parent == playerEntity && entity->name == "weapon") {
-                    return entity->getComponent<MeshRendererComponent>();
+                    return entity;
                 }
             }
             return nullptr;
+        }
+
+        MeshRendererComponent* getWeaponRenderer(World* world, Entity* playerEntity) {
+            auto* weaponEntity = getWeaponEntity(world, playerEntity);
+            if(!weaponEntity) return nullptr;
+            return weaponEntity->getComponent<MeshRendererComponent>();
+        }
+
+        void setWeaponMesh(
+            World* world,
+            Entity* playerEntity,
+            const std::string& meshName,
+            const glm::vec3& scale,
+            const glm::vec3& rotationDegrees
+        ) {
+            auto meshR = getWeaponRenderer(world, playerEntity);
+            auto* weaponEntity = getWeaponEntity(world, playerEntity);
+            if(!meshR || !weaponEntity) return;
+
+            if(auto* mesh = AssetLoader<Mesh>::get(meshName)) {
+                meshR->mesh = mesh;
+            }
+
+            // Keep visual size consistent across imported tool models.
+            weaponEntity->localTransform.scale = scale;
+            weaponEntity->localTransform.rotation = glm::radians(rotationDegrees);
         }
     }
 
@@ -107,17 +133,17 @@ namespace our {
         if (keyboard.justPressed(GLFW_KEY_1)) {
             inventory->activeSlot = 1;
             std::cout << "[Tool] Switched to Hammer\n";
-            if (auto meshR = getWeaponRenderer(world, playerEntity)) meshR->material = AssetLoader<Material>::get("brown");
+            setWeaponMesh(world, playerEntity, "hammer", glm::vec3(0.1f), glm::vec3(45.0f, 45.0f, 0.0f));
         }
         if (keyboard.justPressed(GLFW_KEY_2)) {
             inventory->activeSlot = 2;
             std::cout << "[Tool] Switched to Net\n";
-            if (auto meshR = getWeaponRenderer(world, playerEntity)) meshR->material = AssetLoader<Material>::get("green");
+            setWeaponMesh(world, playerEntity, "net", glm::vec3(0.004f), glm::vec3(45.0f, 225.0f, 0.0f));
         }
         if (keyboard.justPressed(GLFW_KEY_3)) {
             inventory->activeSlot = 3;
             std::cout << "[Tool] Switched to Spear\n";
-            if (auto meshR = getWeaponRenderer(world, playerEntity)) meshR->material = AssetLoader<Material>::get("silver");
+            setWeaponMesh(world, playerEntity, "spear", glm::vec3(0.018f), glm::vec3(45.0f, 45.0f, 90.0f));
         }
 
         // 2. Consuming
