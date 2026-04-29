@@ -14,6 +14,7 @@
 #include <systems/boss-health-bar.hpp>
 #include <systems/damage-flash.hpp>
 #include <components/health.hpp>
+#include <systems/fireball-system.hpp>
 
 #include <asset-loader.hpp>
 #include <glad/gl.h>
@@ -36,6 +37,7 @@ class Playstate : public our::State
     our::OctopusSystem octopusSystem;
     our::BossHealthBar bossHealthBar;
     our::DamageFlash damageFlash;
+    our::FireballSystem fireballSystem;
 
     // Pause menu
     bool isPaused = false;
@@ -168,6 +170,7 @@ void main() {
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
         glBindVertexArray(0);
+        fireballSystem.enter(getApp());
     }
 
     void onImmediateGui() override
@@ -207,6 +210,19 @@ void main() {
                     ImGui::End();
                 }
                 ImGui::PopStyleColor();
+
+                // Devil fruit pickup notification
+                if (fireballSystem.shouldShowDevilFruitMessage())
+                {
+                    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 100, 0, 255));
+                    ImVec2 center = ImVec2(size.x * 0.5f, size.y * 0.3f);
+                    ImGui::SetNextWindowPos(center, 0, ImVec2(0.5f, 0.5f));
+                    ImGui::SetNextWindowBgAlpha(0.5f);
+                    ImGui::Begin("DevilFruitMsg", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize);
+                    ImGui::Text("You now possess devil fruit powers! Press 5 to try it!");
+                    ImGui::End();
+                    ImGui::PopStyleColor();
+                }
             }
         }
     }
@@ -272,11 +288,13 @@ void main() {
         // Here, we just run a bunch of systems to control the world logic
         movementSystem.update(&world, (float)deltaTime);
         cameraController.update(&world, (float)deltaTime);
-        // marineBoatSystem.update(&world, (float)deltaTime);
+        marineBoatSystem.update(&world, (float)deltaTime);
         survivalSystem.update();
         animationSystem.update(&world, (float)deltaTime);
         combatSystem.update(&world, (float)deltaTime);
         octopusSystem.update(&world, (float)deltaTime, getApp());
+        fireballSystem.update(&world, (float)deltaTime);
+
         world.deleteMarkedEntities();
 
         // And finally we use the renderer system to draw the scene

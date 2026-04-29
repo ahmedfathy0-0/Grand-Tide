@@ -8,8 +8,11 @@
 #include "../components/shark-component.hpp"
 #include "../components/octopus-component.hpp"
 #include "../components/animator.hpp"
+#include "../components/shark-component.hpp"
+
 #include "../components/health.hpp"
 #include "../components/inventory.hpp"
+#include "../components/burn-component.hpp"
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 #include <string>
@@ -580,6 +583,11 @@ namespace our
                     for(int b = 0; b < (int)animator->finalBonesMatrices.size() && b < 200; b++) {
                         lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", animator->finalBonesMatrices[b]);
                     }
+                     glm::vec3 tint = lit_material->albedo_tint;
+                    if (auto shark = command.entity->getComponent<SharkComponent>(); shark) {
+                        if (shark->damageFlashTimer > 0.0f) tint = glm::vec3(1.0f, 0.0f, 0.0f); // Flash Red
+                    }
+                    lit_material->shader->set("albedo_tint", tint);
                     // Clear any remaining bones beyond what this animator has
                     for(int b = (int)animator->finalBonesMatrices.size(); b < 200; b++) {
                         lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", glm::mat4(1.0f));
@@ -604,6 +612,15 @@ namespace our
             }
 
             command.material->shader->set("transform", VP * command.localToWorld);
+
+            // Set time uniform for shaders that need it (fire shader)
+            {
+                GLint timeLoc = command.material->shader->getUniformLocation("time");
+                if (timeLoc >= 0) {
+                    command.material->shader->set("time", (float)glfwGetTime());
+                }
+            }
+
             command.mesh->draw();
             glDisable(GL_CLIP_DISTANCE0); // safe no-op if not enabled
             command.material->teardown();
@@ -721,6 +738,27 @@ namespace our
             }
 
             command.material->shader->set("transform", VP * command.localToWorld);
+
+            // Set time uniform for shaders that need it (fire, aoe-indicator, aoe-fire)
+            {
+                GLint timeLoc = command.material->shader->getUniformLocation("time");
+                if (timeLoc >= 0) {
+                    command.material->shader->set("time", (float)glfwGetTime());
+                }
+            }
+
+            // Set burnIntensity uniform for aoe-fire shader from BurnComponent
+            {
+                GLint burnLoc = command.material->shader->getUniformLocation("burnIntensity");
+                if (burnLoc >= 0) {
+                    float intensity = 1.0f;
+                    if (auto burn = command.entity->getComponent<BurnComponent>(); burn) {
+                        intensity = burn->burnIntensity;
+                    }
+                    command.material->shader->set("burnIntensity", intensity);
+                }
+            }
+
             command.mesh->draw();
             command.material->teardown();
         }

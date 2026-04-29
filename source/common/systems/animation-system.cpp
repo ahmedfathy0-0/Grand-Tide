@@ -44,6 +44,10 @@ namespace our
                         if (animator->isLooping) {
                             animator->currentAnimationTime = fmod(animator->currentAnimationTime, animation->mDuration);
                         } else {
+                        if (animator->loopAnimation) {
+                            animator->currentAnimationTime = fmod(animator->currentAnimationTime, animation->mDuration);
+                        } else {
+                            // Clamp to last frame for non-looping animations (death)
                             if (animator->currentAnimationTime >= animation->mDuration) {
                                 animator->currentAnimationTime = animation->mDuration - 0.001f;
                             }
@@ -68,7 +72,7 @@ namespace our
             }
         }
     }
-
+    }
     void AnimationSystem::calculateBoneTransform(const aiNode *node, const aiScene *scene, float animationTime, int animIndex, const glm::mat4 &parentTransform, Model *model, AnimatorComponent *animator)
     {
         std::string nodeName(node->mName.data);

@@ -34,9 +34,21 @@ namespace our
                 if (enemy->state != EnemyState::DEAD)
                 {
                     enemy->state = EnemyState::DEAD;
-                    world->markForRemoval(entity);
+                    // Let marine boats and muskets handle their own death/sinking
+                    bool hasBoat = entity->getComponent<MarineBoatComponent>() != nullptr;
+                    bool hasMusket = entity->getComponent<MusketComponent>() != nullptr;
+                    if (!hasBoat && !hasMusket)
+                    {
+                        world->markForRemoval(entity);
+                    }
                 }
-                continue;
+                // For boats/muskets: still run their update functions to handle sinking/death anim
+                // but skip if already being removed (shark etc.)
+                if (entity->getComponent<MarineBoatComponent>() == nullptr &&
+                    entity->getComponent<MusketComponent>() == nullptr)
+                {
+                    continue;
+                }
             }
 
             switch (enemy->type)
@@ -66,6 +78,10 @@ namespace our
         auto shark = entity->getComponent<SharkComponent>();
         if (!shark)
             return;
+        
+        if (shark->damageFlashTimer > 0.0f)
+            shark->damageFlashTimer -= deltaTime;
+        
         auto animator = entity->getComponent<AnimatorComponent>();
 
         glm::vec3 sharkPos = entity->localTransform.position;
@@ -137,6 +153,7 @@ namespace our
         }
         }
     }
+
     void CombatSystem::updateMarineBoat(World *world, Entity *entity,
                                         MarineBoatComponent *boat,
                                         Entity *raft, float deltaTime)
@@ -144,6 +161,32 @@ namespace our
         if (!raft)
             return;
 
+        auto health = entity->getComponent<HealthComponent>();
+        
+        // --- Sinking when dead ---
+        if (health && health->currentHealth <= 0.0f)
+        {
+            entity->localTransform.position.y -= 1.5f * deltaTime; // sink slowly
+            // After fully submerged, remove boat and its muskets
+            if (entity->localTransform.position.y < -5.0f)
+            {
+                world->markForRemoval(entity);
+                // Also mark musket children for removal
+                for (auto child : world->getEntities()) {
+                    if (child->parent == entity) {
+                        world->markForRemoval(child);
+                    }
+                }
+            }
+            return; // stop all other behavior while sinking
+        }
+
+        // --- Wave physics: float on water ---
+        float time = (float)glfwGetTime();
+        float bX = entity->localTransform.position.x;
+        float bZ = entity->localTransform.position.z;
+        float waveH = getWaveHeight(bX, bZ, time) - 2.5f; // deeper submersion, hull underwater
+        
         glm::vec3 diff = raft->localTransform.position - entity->localTransform.position;
         diff.y = 0;
         float distSq = glm::length2(diff);
@@ -152,10 +195,22 @@ namespace our
         {
             glm::vec3 dir = glm::normalize(diff);
             entity->localTransform.position += dir * boat->speed * deltaTime;
+            // Keep wave height
+            entity->localTransform.position.y = waveH;
 
             float targetYaw = atan2(dir.x, dir.z);
             entity->localTransform.rotation.y = targetYaw;
         }
+        else
+        {
+            // In attack range: still bob on waves
+            entity->localTransform.position.y = waveH;
+        }
+
+        // Wave tilting (marine-boat.fbx is already flat, no -90 offset needed)
+        glm::vec2 slope = getWaveDx(bX, bZ, time);
+        entity->localTransform.rotation.x = std::atan(slope.y) * 0.25f;
+        entity->localTransform.rotation.z = -std::atan(slope.x) * 0.25f;
     }
 
     void CombatSystem::updateMusket(World *world, Entity *entity,
@@ -166,6 +221,52 @@ namespace our
             return;
 
         auto animator = entity->getComponent<AnimatorComponent>();
+        auto health = entity->getComponent<HealthComponent>();
+        auto burn = entity->getComponent<BurnComponent>();
+
+        // ── Death animation (index 7) — hold last frame ─────────────────────
+        if (health && health->currentHealth <= 0.0f)
+        {
+            if (animator && animator->currentAnimIndex != 7)
+            {
+                animator->currentAnimIndex = 7;
+                animator->currentAnimationTime = 0.0f;
+                animator->loopAnimation = false;
+                animator->playSpeed = 1.0f;
+            }
+            // Don't shoot or rotate when dead
+            return;
+        }
+
+        // ── Burning: play hurt animation (index 6), stop shooting ──────────
+        if (burn && burn->remainingTime > 0.0f)
+        {
+            if (animator && animator->currentAnimIndex != 6)
+            {
+                animator->currentAnimIndex = 6;
+                animator->currentAnimationTime = 0.0f;
+                animator->loopAnimation = true;
+                animator->playSpeed = 1.0f;
+            }
+            // While burning, face player but don't shoot
+            musket->state = MusketState::IDLE;
+            musket->timer = 0.0f;
+            return;
+        }
+        else
+        {
+            // Not burning: reset loop flag and return to idle animation
+            if (animator)
+            {
+                animator->loopAnimation = true;
+                if (animator->currentAnimIndex == 6)
+                {
+                    animator->currentAnimIndex = 0;
+                    animator->currentAnimationTime = 0.0f;
+                    animator->playSpeed = 1.0f;
+                }
+            }
+        }
 
         musket->timer += deltaTime;
 
@@ -188,7 +289,6 @@ namespace our
             float targetYaw = atan2(diff.x, diff.z);
 
             // Musket is parented to boat, so subtract parent's world yaw
-            // so the rotation stays correct in local space
             if (entity->parent)
                 targetYaw -= entity->parent->localTransform.rotation.y;
 
@@ -207,21 +307,22 @@ namespace our
         // ── State machine ────────────────────────────────────────────────────
         if (musket->state == MusketState::IDLE) // Idle — waiting to shoot
         {
-            if (musket->timer >= musket->fireRate) // User requested > 5 sec
+            if (musket->timer >= musket->fireRate)
             {
-                musket->state = MusketState::FIRING; // Enter shooting state
+                musket->state = MusketState::FIRING;
                 musket->timer = 0.0f;
                 if (animator)
                 {
                     animator->currentAnimIndex = 17;
                     animator->currentAnimationTime = 0.0f;
-                    animator->playSpeed = 0.8f; // Slower shooting
+                    animator->playSpeed = 0.8f;
+                    animator->loopAnimation = true;
                 }
             }
         }
         else if (musket->state == MusketState::FIRING) // Shooting — wait for animation to finish
         {
-            float animDuration = 4.0f; // Adjusted fallback for slower speed
+            float animDuration = 4.0f;
             if (ModelLoader::models.count("marine_musket"))
             {
                 auto *m = ModelLoader::models["marine_musket"];
@@ -231,16 +332,16 @@ namespace our
                     float tps = anim->mTicksPerSecond != 0 ? (float)anim->mTicksPerSecond : 25.0f;
                     float speed = animator ? animator->playSpeed : 1.0f;
                     if (speed < 0.001f) speed = 1.0f;
-                    animDuration = ((float)anim->mDuration / tps) / speed - 0.1f; // Subtract epsilon to prevent loop pop
+                    animDuration = ((float)anim->mDuration / tps) / speed - 0.1f;
                 }
             }
 
             if (musket->timer >= animDuration)
             {
                 // Animation finished: deal damage and return to IDLE
-                if (auto *health = player->getComponent<HealthComponent>())
+                if (auto *playerHealth = player->getComponent<HealthComponent>())
                 {
-                    health->takeDamage(musket->damage);
+                    playerHealth->takeDamage(musket->damage);
                     std::cout << "[Musket] musket " << musket->musketIndex+musket->boatIndex << "     Fire! Dealt " << musket->damage << " damage.\n";
                 }
 
@@ -249,7 +350,8 @@ namespace our
                 if (animator)
                 {
                     animator->currentAnimIndex = 0;
-                    animator->playSpeed = 1.0f; // Normal speed for idle
+                    animator->playSpeed = 1.0f;
+                    animator->loopAnimation = true;
                 }
             }
         }
