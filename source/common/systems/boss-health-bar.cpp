@@ -4,6 +4,7 @@
 
 #include <glad/gl.h>
 #include <glm/gtc/matrix_transform.hpp>
+#include <GLFW/glfw3.h>
 #include <iostream>
 
 namespace our {
@@ -176,9 +177,15 @@ void BossHealthBar::update(float currentHP, float maxHPVal, float deltaTime) {
 
     float ratio = (maxHP > 0.0f) ? (displayHP / maxHP) : 0.0f;
     glm::vec3 targetColor;
-    if (ratio > 0.6f) targetColor = glm::vec3(1.0f, 0.78f, 0.1f);
-    else if (ratio > 0.3f) targetColor = glm::vec3(1.0f, 0.45f, 0.05f);
-    else targetColor = glm::vec3(0.85f, 0.08f, 0.08f);
+    if (!isRevived) {
+        if (ratio > 0.6f)      targetColor = glm::vec3(1.0f, 0.78f, 0.1f);   // gold
+        else if (ratio > 0.3f) targetColor = glm::vec3(1.0f, 0.45f, 0.05f);  // orange
+        else                   targetColor = glm::vec3(0.85f, 0.08f, 0.08f); // red
+    } else {
+        if (ratio > 0.6f)      targetColor = glm::vec3(0.6f, 0.1f, 0.8f);   // bright purple
+        else if (ratio > 0.3f) targetColor = glm::vec3(0.4f, 0.05f, 0.6f);  // dark purple
+        else                   targetColor = glm::vec3(0.25f, 0.0f, 0.4f);  // near black purple
+    }
     float ct = deltaTime / 0.3f;
     if (ct > 1.0f) ct = 1.0f;
     currentHPColor = glm::mix(currentHPColor, targetColor, ct);
@@ -239,7 +246,12 @@ void BossHealthBar::render() {
     glm::vec4 bgColor(0.12f, 0.04f, 0.04f, 0.9f);
     glm::vec4 darkBorder(0.1f, 0.1f, 0.1f, 1.0f);
     glm::vec4 glowColor = hpColor;
-    glowColor.a = 0.4f;
+    if (isRevived) {
+        float pulse = 0.4f + 0.3f * std::sin((float)glfwGetTime() * 4.0f);
+        glowColor.a = pulse;
+    } else {
+        glowColor.a = 0.4f;
+    }
 
     // 1. Background
     drawQuad(barX, barY, barW, barH, bgColor);

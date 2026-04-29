@@ -17,6 +17,8 @@ namespace our {
             else if (stateStr == "MOVING") state = OctopusState::MOVING;
             else if (stateStr == "ENRAGED") state = OctopusState::ENRAGED;
             else if (stateStr == "DYING") state = OctopusState::DYING;
+            else if (stateStr == "DEATH_ANIM") state = OctopusState::DEATH_ANIM;
+            else if (stateStr == "REVIVING") state = OctopusState::REVIVING;
         }
         health = data.value("health", health);
         currentAnimIndex = (OctopusAnimation)data.value("currentAnimIndex", (int)currentAnimIndex);
@@ -38,6 +40,8 @@ namespace our {
         spawnDelay = data.value("spawnDelay", spawnDelay);
         surfaceDuration = data.value("surfaceDuration", surfaceDuration);
         waitBeforeFightDuration = data.value("waitBeforeFightDuration", waitBeforeFightDuration);
+        revivalHP = data.value("revivalHP", revivalHP);
+        damageMultiplier = data.value("damageMultiplier", damageMultiplier);
     }
 
 }

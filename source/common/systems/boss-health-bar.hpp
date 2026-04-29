@@ -34,6 +34,7 @@ private:
     float maxHP = 100.0f;
     float flashTimer = 0.0f;
     glm::vec3 currentHPColor = glm::vec3(1.0f, 0.78f, 0.1f);
+    bool isRevived = false;
 
     void buildShaders();
     bool loadLabelTexture(const std::string& path);
@@ -48,6 +49,7 @@ public:
     void resize(int newWidth, int newHeight);
     void destroy();
     void onDamageReceived();
+    void setRevived(bool revived) { isRevived = revived; }
 };
 
 }

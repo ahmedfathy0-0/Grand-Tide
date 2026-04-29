@@ -124,6 +124,17 @@ class Playstate : public our::State
         renderer.render(&world);
 
         // Damage flash overlay (before HUD)
+        // Check if player was just damaged and trigger red screen flash
+        for (auto entity : world.getEntities()) {
+            if (entity->name == "player") {
+                auto hp = entity->getComponent<our::HealthComponent>();
+                if (hp && hp->justDamaged) {
+                    damageFlash.triggerHit();
+                    hp->justDamaged = false;
+                }
+                break;
+            }
+        }
         damageFlash.update((float)deltaTime);
         {
             auto size = getApp()->getFrameBufferSize();
@@ -132,14 +143,17 @@ class Playstate : public our::State
 
         // Find octopus health and draw boss bar
         our::HealthComponent* octopusHealth = nullptr;
+        our::OctopusComponent* octopusComp = nullptr;
         for (auto entity : world.getEntities()) {
             if (entity->name == "octopus") {
                 octopusHealth = entity->getComponent<our::HealthComponent>();
+                octopusComp = entity->getComponent<our::OctopusComponent>();
                 break;
             }
         }
-        if (octopusHealth) {
+        if (octopusHealth && octopusComp && !octopusComp->permanentlyDead) {
             auto size = getApp()->getFrameBufferSize();
+            bossHealthBar.setRevived(octopusComp->hasRevived);
             bossHealthBar.resize(size.x, size.y);
             bossHealthBar.update(octopusHealth->currentHealth, octopusHealth->maxHealth, (float)deltaTime);
             bossHealthBar.render();
@@ -160,10 +174,15 @@ class Playstate : public our::State
             for (auto entity : world.getEntities()) {
                 if (entity->name == "octopus") {
                     auto hp = entity->getComponent<our::HealthComponent>();
+                    auto oct = entity->getComponent<our::OctopusComponent>();
                     if (hp) {
-                        hp->currentHealth -= 50.0f;
+                        float rawDamage = 50.0f;
+                        float multiplier = (oct && oct->hasRevived) ? oct->damageMultiplier : 1.0f;
+                        float finalDamage = rawDamage * multiplier;
+                        hp->currentHealth -= finalDamage;
                         if (hp->currentHealth < 0) hp->currentHealth = 0;
-                        std::cout << "[DEBUG] Dealt 50 damage to octopus. HP: "
+                        std::cout << "[DEBUG] Dealt " << finalDamage << " damage to octopus (multiplier="
+                                  << multiplier << "). HP: "
                                   << hp->currentHealth << " / " << hp->maxHealth << std::endl;
                     }
                     break;

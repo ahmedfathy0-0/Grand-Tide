@@ -16,8 +16,10 @@ namespace our {
         ATTACKING = 5,        // Active combat attack
         MOVING = 6,           // Repositioning
         ENRAGED = 7,          // Enraged animation sequence
-        DYING = 8,            // Death sequence
-        ENRAGED_COMBAT = 9    // Enraged combat with combo attacks
+        DYING = 8,            // Death sequence (permanent)
+        ENRAGED_COMBAT = 9,   // Enraged combat with combo attacks
+        DEATH_ANIM = 10,      // Playing death animation once
+        REVIVING = 11         // Playing skill03 revival animation once
     };
 
     enum class OctopusAnimation : int {
@@ -79,8 +81,8 @@ namespace our {
         float chaseSpeed = 8.0f;
 
         // Position properties
-        float surfacedY = 0.0f;
-        float submergedY = -8.0f;
+        float surfacedY = -10.0f;    // at water level; clip plane cuts below Y=0
+        float submergedY = -12.0f; // fully hidden before spawn
         float minFollowDistance = 30.0f;
         float maxFollowDistance = 100.0f;
         float followDistance = 60.0f;
@@ -117,6 +119,30 @@ namespace our {
 
         // Flat array of tentacle tip positions (last bone of each chain), updated every frame
         std::vector<glm::vec3> tentacle_tip_positions;
+
+        // ---- Attack02 shockwave effect ----
+        bool waveActive = false;
+        float waveInnerRadius = 0.0f;
+        float waveOuterRadius = 0.0f;
+        float waveMaxRadius = 40.0f;
+        float waveExpandSpeed = 12.0f;
+        float waveDamage = 0.0f;
+        bool waveHasDealtDamage = false;
+        bool waveFired = false;
+        glm::vec3 waveOrigin = glm::vec3(0.0f);
+        float waveAlpha = 0.75f;
+
+        // Screen water distortion
+        float screenWaterTimer = 0.0f;
+        float screenWaterDuration = 3.0f;
+
+        // ---- Death & Revival ----
+        bool hasRevived = false;           // true after first death and revival
+        float damageMultiplier = 1.0f;     // increases after revival to 1.75f
+        bool permanentlyDead = false;      // true after second death confirmed
+        float revivalHP = 500.0f;          // HP to restore on revival
+        bool deathAnimFinished = false;    // tracks when death anim completes
+        bool reviveAnimFinished = false;   // tracks when skill03 completes
 
         // The ID of this component type is "Octopus"
         static std::string getID() { return "Octopus"; }

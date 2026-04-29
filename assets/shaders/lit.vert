@@ -11,6 +11,7 @@ out vec4 vs_color;
 out vec2 vs_tex_coord;
 out vec3 vs_normal;
 out vec3 vs_world;
+out float gl_ClipDistance[1];
 
 uniform mat4 M;
 uniform mat4 M_IT;
@@ -21,6 +22,8 @@ const int MAX_BONE_INFLUENCE = 4;
 uniform mat4 finalBonesMatrices[MAX_BONES];
 uniform bool isAnimated;
 uniform vec2 uv_multiplier = vec2(1.0, 1.0);
+uniform float uClipPlaneY;
+uniform bool uUseClipPlane;
 
 void main() {
     mat4 boneTransform = mat4(1.0);
@@ -51,4 +54,10 @@ void main() {
     }
     vs_normal = normalize(normalMatrix * normal);
     vs_world = world_position.xyz;
+
+    if (uUseClipPlane) {
+        gl_ClipDistance[0] = world_position.y - uClipPlaneY;
+    } else {
+        gl_ClipDistance[0] = 1.0;
+    }
 }
