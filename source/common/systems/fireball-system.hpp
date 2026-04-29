@@ -105,9 +105,15 @@ namespace our {
             if (devilFruitEntity) {
                 devilFruitVelocityY -= 9.8f * deltaTime; // gravity
                 devilFruitEntity->localTransform.position.y += devilFruitVelocityY * deltaTime;
-                // Stop at water level (y = 0.5)
-                if (devilFruitEntity->localTransform.position.y < 0.5f) {
-                    devilFruitEntity->localTransform.position.y = 0.5f;
+                // Land on top of the raft (raft Y + surface height offset)
+                Entity* raft = nullptr;
+                for (auto e : world->getEntities()) {
+                    if (e->name == "raft") { raft = e; break; }
+                }
+                float raftTopY = 2.5f; // default
+                if (raft) raftTopY = raft->localTransform.position.y + 2.5f;
+                if (devilFruitEntity->localTransform.position.y < raftTopY) {
+                    devilFruitEntity->localTransform.position.y = raftTopY;
                     devilFruitVelocityY = 0.0f;
                 }
             }
@@ -198,7 +204,7 @@ namespace our {
 
                 // Show fire in hand
                 if (fireInHandEntity) {
-                    fireInHandEntity->localTransform.scale = glm::vec3(0.15f);
+                    fireInHandEntity->localTransform.scale = glm::vec3(0.3f);
                 }
 
                 // Compute aim target: raycast from camera forward onto y=0 plane
@@ -339,8 +345,8 @@ namespace our {
 
             // Add mesh renderer for the fireball (sphere with fire material)
             auto renderer = projectile->addComponent<MeshRendererComponent>();
-            renderer->mesh = AssetLoader<Mesh>::get("sphere");
-            renderer->material = AssetLoader<Material>::get("fire_mat");
+            renderer->mesh = AssetLoader<Mesh>::get("plane");
+            renderer->material = AssetLoader<Material>::get("flames_mat");
         }
 
         // Billboard: rotate entity to face the camera (Y-axis only so it stays upright)
@@ -381,12 +387,15 @@ namespace our {
             devilFruitEntity = world->add();
             devilFruitEntity->name = "devil_fruit";
             devilFruitEntity->localTransform.position = spawnPos;
-            devilFruitEntity->localTransform.scale = glm::vec3(0.8f); // bigger so you can see it
+            devilFruitEntity->localTransform.scale = glm::vec3(0.001f);
             devilFruitEntity->localTransform.rotation = glm::vec3(0.0f);
 
             auto renderer = devilFruitEntity->addComponent<MeshRendererComponent>();
-            renderer->mesh = AssetLoader<Mesh>::get("firefruitupload");
+            renderer->mesh = AssetLoader<Mesh>::get("cube"); // placeholder, overridden by animator
             renderer->material = AssetLoader<Material>::get("devil_fruit_mat");
+
+            auto animator = devilFruitEntity->addComponent<AnimatorComponent>();
+            animator->modelName = "mera_mera"; // FBX model loaded via ModelLoader
 
             // Add a BurnComponent for a subtle glow effect
             auto burn = devilFruitEntity->addComponent<BurnComponent>();
@@ -512,12 +521,12 @@ namespace our {
             // --- Tall vertical fire column (sphere stretched vertically with fire shader) ---
             Entity* fireColumn = world->add();
             fireColumn->name = "aoe_fire_effect";
-            fireColumn->localTransform.position = position + glm::vec3(0.0f, radius * 0.8f, 0.0f);
+            fireColumn->localTransform.position = position + glm::vec3(0.0f, radius * 1.2f, 0.0f);
             fireColumn->localTransform.scale = glm::vec3(radius * 1.5f, radius * 2.5f, radius * 1.5f);
 
             auto colRenderer = fireColumn->addComponent<MeshRendererComponent>();
             colRenderer->mesh = AssetLoader<Mesh>::get("plane");
-            colRenderer->material = AssetLoader<Material>::get("fire_mat");
+            colRenderer->material = AssetLoader<Material>::get("flames_mat");
 
             auto colBurn = fireColumn->addComponent<BurnComponent>();
             colBurn->remainingTime = duration;

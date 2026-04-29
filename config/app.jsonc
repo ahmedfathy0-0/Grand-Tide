@@ -47,6 +47,10 @@
           "vs": "assets/shaders/lit.vert",
           "fs": "assets/shaders/fire.frag",
         },
+        "flames": {
+          "vs": "assets/shaders/lit.vert",
+          "fs": "assets/shaders/flames.frag",
+        },
         "aoe-indicator": {
           "vs": "assets/shaders/textured.vert",
           "fs": "assets/shaders/aoe-indicator.frag",
@@ -84,6 +88,7 @@
         "red_normal": "assets/textures/RED111_NRM.png",
         "octopus_albedo": "assets/textures/octopus-tex/octopus_albedo.png",
         "octopus_normal": "assets/textures/octopus-tex/octopus_normal.png",
+        "fruit_atlas": "assets/textures/fruit_atlas.png",
       },
       "meshes": {
         "cube": "assets/models/cube.obj",
@@ -100,6 +105,7 @@
         "marine_musket": "assets/models/pl_mb_marine01_musk01.fbx",
         "throw_arms": "assets/models/throw-Arms.fbx",
         "octopus": "assets/models/octopus/PiratesKing.fbx",
+        "mera_mera": "assets/models/Mera Mera No Mi.fbx",
       },
       "samplers": {
         "default": {
@@ -210,8 +216,7 @@
             "faceCulling": { "enabled": false },
             "depthTesting": { "enabled": true },
           },
-          "albedo": "red",
-          "normal": "red_normal",
+          "albedo": "fruit_atlas",
           "albedo_tint": [1, 1, 1],
           "specular_tint": [1, 1, 1],
           "roughness_multiplier": 0.3,
@@ -572,6 +577,26 @@
           "transparent": true,
           "isAnimated": false,
         },
+        "flames_mat": {
+          "type": "lit",
+          "shader": "flames",
+          "pipelineState": {
+            "faceCulling": { "enabled": false },
+            "depthTesting": { "enabled": true },
+            "depthMask": false,
+            "blending": {
+              "enabled": true,
+              "sourceFactor": "GL_SRC_ALPHA",
+              "destinationFactor": "GL_ONE",
+            },
+          },
+          "albedo_tint": [1, 1, 1],
+          "specular_tint": [0.0, 0.0, 0.0],
+          "roughness_multiplier": 1.0,
+          "sampler": "default",
+          "transparent": true,
+          "isAnimated": false,
+        },
         "aoe_indicator_mat": {
           "type": "tinted",
           "shader": "aoe-indicator",
@@ -683,19 +708,19 @@
                 "aoeRadius": 5.0,
                 "burnDuration": 2.0,
                 "burnDamagePerSecond": 15.0,
-                "cooldown": 5.0,
+                "cooldown": 3.0,
               },
             ],
           },
           {
             "name": "fire_in_hand",
             "position": [0.2, -0.15, -0.45],
-            "scale": [0, 0, 0],
+            "scale": [3, 3, 3],
             "components": [
               {
                 "type": "Mesh Renderer",
-                "mesh": "sphere",
-                "material": "fire_mat",
+                "mesh": "plane",
+                "material": "flames_mat",
               },
             ],
           },
@@ -825,6 +850,11 @@
             "modelName": "marine_boat",
           },
           {
+            "type": "Health",
+            "maxHealth": 100.0,
+            "currentHealth": 100.0,
+          },
+          {
             "type": "Enemy",
             "enemyType": "marine_boat",
             "primaryTarget": "RAFT",
@@ -849,6 +879,11 @@
                 "musketIndex": 0,
                 "boatIndex": 1,
                 "fireRate": 10,
+              },
+              {
+                "type": "Health",
+                "maxHealth": 300,
+                "currentHealth": 300.0,
               },
               {
                 "type": "Animator",
@@ -879,6 +914,11 @@
                 "musketIndex": 1,
                 "boatIndex": 1,
                 "fireRate": 12.0,
+              },
+              {
+                "type": "Health",
+                "maxHealth": 100.0,
+                "currentHealth": 100.0,
               },
               {
                 "type": "Animator",

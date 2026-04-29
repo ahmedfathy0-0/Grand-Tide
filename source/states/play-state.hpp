@@ -67,7 +67,7 @@ class Playstate : public our::State
     GamePhase currentPhase = GamePhase::SHARKS;
     float phaseTimer = 0.0f;          // Used in MARINES phase for 5-min survival timer
     int sharksKilled = 0;
-    int sharksToKill = 3;
+    int sharksToKill = 1;
     int sharksSpawned = 0;
     float sharkSpawnTimer = 0.0f;
     float sharkSpawnInterval = 8.0f;   // Seconds between shark spawns
