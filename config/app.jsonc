@@ -93,6 +93,9 @@
         "octopus_albedo": "assets/textures/octopus-tex/octopus_albedo.png",
         "octopus_normal": "assets/textures/octopus-tex/octopus_normal.png",
         "fruit_atlas": "assets/textures/fruit_atlas.png",
+        "fish_albedo": "assets/textures/fish_pez_02_difusa.jpg",
+        "fish_bump": "assets/textures/fish_pez_02__bump_.jpg",
+        "wood_resource_albedo": "assets/textures/Wood_diffuse.tga.png",
       },
       "meshes": {
         "cube": "assets/models/cube.obj",
@@ -101,6 +104,7 @@
         "plane": "assets/models/plane.obj",
         "sphere": "assets/models/sphere.obj",
         "firefruitupload": "assets/models/firefruitupload.obj",
+        "wood": "assets/models/Wood.obj",
       },
       "animated_models": {
         "shark": "assets/models/shark/Shark.fbx",
@@ -110,6 +114,7 @@
         "throw_arms": "assets/models/throw-Arms.fbx",
         "octopus": "assets/models/octopus/PiratesKing.fbx",
         "mera_mera": "assets/models/Mera Mera No Mi.fbx",
+        "fish": "assets/models/Fish.fbx",
       },
       "samplers": {
         "default": {
@@ -224,6 +229,33 @@
           "albedo_tint": [1, 1, 1],
           "specular_tint": [1, 1, 1],
           "roughness_multiplier": 0.3,
+          "sampler": "default",
+        },
+        "lit_fish": {
+          "type": "lit",
+          "shader": "lit",
+          "pipelineState": {
+            "faceCulling": { "enabled": false },
+            "depthTesting": { "enabled": true },
+          },
+          "albedo": "fish_albedo",
+          "normal": "fish_bump",
+          "albedo_tint": [1, 1, 1],
+          "specular_tint": [0.3, 0.3, 0.3],
+          "roughness_multiplier": 0.7,
+          "sampler": "default",
+        },
+        "lit_wood_resource": {
+          "type": "lit",
+          "shader": "lit",
+          "pipelineState": {
+            "faceCulling": { "enabled": false },
+            "depthTesting": { "enabled": true },
+          },
+          "albedo": "wood_resource_albedo",
+          "albedo_tint": [1, 1, 1],
+          "specular_tint": [0.1, 0.1, 0.1],
+          "roughness_multiplier": 1.0,
           "sampler": "default",
         },
         "minimap": {
@@ -933,12 +965,12 @@
       // },
       {
         "position": [2, 0.5, 8],
-        "scale": [0.5, 0.5, 0.5],
+        "scale": [0.05, 0.05, 0.05],
         "components": [
           {
             "type": "Mesh Renderer",
-            "mesh": "cube",
-            "material": "brown",
+            "mesh": "wood",
+            "material": "lit_wood_resource",
           },
           {
             "type": "Resource",
@@ -951,12 +983,12 @@
       },
       {
         "position": [-2, 0.5, 8],
-        "scale": [0.5, 0.5, 0.5],
+        "scale": [0.05, 0.05, 0.05],
         "components": [
           {
             "type": "Mesh Renderer",
-            "mesh": "cube",
-            "material": "brown",
+            "mesh": "wood",
+            "material": "lit_wood_resource",
           },
           {
             "type": "Resource",
@@ -969,12 +1001,16 @@
       },
       {
         "position": [0, 0.5, 6],
-        "scale": [0.5, 0.5, 0.5],
+        "scale": [1, 1, 1],
         "components": [
           {
             "type": "Mesh Renderer",
             "mesh": "cube",
-            "material": "blue",
+            "material": "lit_fish",
+          },
+          {
+            "type": "Animator",
+            "modelName": "fish",
           },
           {
             "type": "Resource",
@@ -987,12 +1023,16 @@
       },
       {
         "position": [1, 0.5, 7],
-        "scale": [0.5, 0.5, 0.5],
+        "scale": [0.05, 0.05, 0.05],
         "components": [
           {
             "type": "Mesh Renderer",
             "mesh": "cube",
-            "material": "blue",
+            "material": "lit_fish",
+          },
+          {
+            "type": "Animator",
+            "modelName": "fish",
           },
           {
             "type": "Resource",
