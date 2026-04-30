@@ -1253,8 +1253,12 @@ namespace our
                     minimapMat->setup();
                     minimapMat->shader->set("time", (float)glfwGetTime());
 
-                    // Get positions
+                    // Get positions and player yaw for radar rotation
                     glm::vec3 pPos = playerEntity->localTransform.position;
+                    float playerYaw = playerEntity->localTransform.rotation.y;
+                    float cosYaw = cosf(playerYaw);
+                    float sinYaw = sinf(playerYaw);
+                    const float radarScale = 0.004f; // Covers ~250 world units
 
                     int entityCount = 0;
                     for (auto entity : world->getEntities())
@@ -1279,7 +1283,12 @@ namespace our
                             continue; // Skip non-radar entities (raft, weapons, etc.)
 
                         glm::vec3 ePos = entity->localTransform.position;
-                        glm::vec2 relativePos = glm::vec2(ePos.x - pPos.x, ePos.z - pPos.z) * 0.05f;
+                        float dx = ePos.x - pPos.x;
+                        float dz = ePos.z - pPos.z;
+                        // Rotate so player's forward = radar up
+                        float rx = dx * cosYaw - dz * sinYaw;
+                        float ry = -dx * sinYaw - dz * cosYaw;
+                        glm::vec2 relativePos = glm::vec2(rx, ry) * radarScale;
 
                         if (glm::length(relativePos) < 1.0f)
                         {

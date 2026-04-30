@@ -182,7 +182,7 @@ class Playstate : public our::State
         if (!raft) return;
         glm::vec3 raftPos = raft->localTransform.position;
         float angle = static_cast<float>(rand() % 360) * glm::pi<float>() / 180.0f;
-        float spawnDist = 5.0f + static_cast<float>(rand() % 13);
+        float spawnDist = 10.0f + static_cast<float>(rand() % 40);
 
         our::Entity* fish = world->add();
         fish->name = "fish_" + std::to_string(fishSpawned);
@@ -217,7 +217,7 @@ class Playstate : public our::State
         if (!raft) return;
         glm::vec3 raftPos = raft->localTransform.position;
         float angle = static_cast<float>(rand() % 360) * glm::pi<float>() / 180.0f;
-        float spawnDist = 5.0f + static_cast<float>(rand() % 13);
+        float spawnDist = 10.0f + static_cast<float>(rand() % 40);
 
         our::Entity* wood = world->add();
         wood->name = "wood_" + std::to_string(woodSpawned);
