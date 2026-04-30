@@ -182,13 +182,13 @@ class Playstate : public our::State
         if (!raft) return;
         glm::vec3 raftPos = raft->localTransform.position;
         float angle = static_cast<float>(rand() % 360) * glm::pi<float>() / 180.0f;
-        float spawnDist = 10.0f + static_cast<float>(rand() % 40);
+        float spawnDist = 3.0f + static_cast<float>(rand() % 12);
 
         our::Entity* fish = world->add();
         fish->name = "fish_" + std::to_string(fishSpawned);
         fish->localTransform.position = glm::vec3(
             raftPos.x + cos(angle) * spawnDist,
-            0.0f,
+            -1.0f,
             raftPos.z + sin(angle) * spawnDist);
         fish->localTransform.scale = glm::vec3(0.1f);
         fish->localTransform.rotation = glm::vec3(0.0f);
@@ -217,13 +217,13 @@ class Playstate : public our::State
         if (!raft) return;
         glm::vec3 raftPos = raft->localTransform.position;
         float angle = static_cast<float>(rand() % 360) * glm::pi<float>() / 180.0f;
-        float spawnDist = 10.0f + static_cast<float>(rand() % 40);
+        float spawnDist = 3.0f + static_cast<float>(rand() % 12);
 
         our::Entity* wood = world->add();
         wood->name = "wood_" + std::to_string(woodSpawned);
         wood->localTransform.position = glm::vec3(
             raftPos.x + cos(angle) * spawnDist,
-            0.5f,
+            -1.0f,
             raftPos.z + sin(angle) * spawnDist);
         wood->localTransform.scale = glm::vec3(0.05f);
         wood->localTransform.rotation = glm::vec3(0.0f);
@@ -730,12 +730,12 @@ void main() {
 
             if (fishAlive < maxFishAlive && fishSpawnTimer >= fishSpawnInterval) {
                 fishSpawnTimer = 0.0f;
-                fishSpawnInterval = 5.0f + static_cast<float>(rand() % 4); // 5-8s
+                fishSpawnInterval = 3.0f + static_cast<float>(rand() % 3); // 3-5s (faster)
                 spawnFish(&world, raft);
             }
             if (woodAlive < maxWoodAlive && woodSpawnTimer >= woodSpawnInterval) {
                 woodSpawnTimer = 0.0f;
-                woodSpawnInterval = 5.0f + static_cast<float>(rand() % 4); // 5-8s
+                woodSpawnInterval = 6.0f + static_cast<float>(rand() % 4); // 6-9s (slower)
                 spawnWood(&world, raft);
             }
         }

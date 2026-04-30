@@ -42,13 +42,13 @@ void main()
         else bBrown = min(bBrown, blip);
     }
     
-    bRed = bRed + 0.02 - y * 0.01;
-    bBlue = bBlue + 0.02 - y * 0.01;
-    bBrown = bBrown + 0.02 - y * 0.01;
+    bRed = bRed + 0.04 - y * 0.02;
+    bBlue = bBlue + 0.04 - y * 0.02;
+    bBrown = bBrown + 0.04 - y * 0.02;
 
-    float blipIntensityRed = y < 4.5 && bRed < 0.03 ? (0.03 - bRed) * (18.0 - 4.0 * y) : 0.0;
-    float blipIntensityBlue = y < 4.5 && bBlue < 0.03 ? (0.03 - bBlue) * (18.0 - 4.0 * y) : 0.0;
-    float blipIntensityBrown = y < 4.5 && bBrown < 0.03 ? (0.03 - bBrown) * (18.0 - 4.0 * y) : 0.0;
+    float blipIntensityRed = y < 4.5 && bRed < 0.055 ? (0.055 - bRed) * (18.0 - 4.0 * y) : 0.0;
+    float blipIntensityBlue = y < 4.5 && bBlue < 0.055 ? (0.055 - bBlue) * (18.0 - 4.0 * y) : 0.0;
+    float blipIntensityBrown = y < 4.5 && bBrown < 0.055 ? (0.055 - bBrown) * (18.0 - 4.0 * y) : 0.0;
 
     vec4 O = vec4(
         // R channel: red blips + brown blips + base tint
