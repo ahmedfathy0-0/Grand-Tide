@@ -1,0 +1,16 @@
+Diffuse=Check_03
+Normal=Normal
+Other[0]=Check_NoSRGB
+Other[1]=BlendFunc_DefBase
+Other[2]=BlendFunc_DefBlend
+Other[3]=Good64x64TilingNoiseHighFreq
+Other[4]=T_WrappedDiffuse
+Other[5]=Black_NoSRGB
+Other[6]=Caustic_D
+Other[7]=Check02_NoSRGB
+Other[8]=Cursed_FX
+Other[9]=Emblem_bg0
+Other[10]=Emblem_Sample
+Other[11]=Gem_Nomal
+Other[12]=ss3
+Other[13]=White_NoSRGB

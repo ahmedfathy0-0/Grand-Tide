@@ -159,8 +159,6 @@ vec3 sky_eval(vec3 rd) {
     }
 }
 
-uniform vec3 camera_position;
-
 void main() {
     float iTime = u_time;
     // We already have the ray direction directly since it's mapped to a sphere!

@@ -39,6 +39,22 @@ namespace our
         Mesh* skySphere;
         Material* skyMaterial;
         Material* waterMaterial;
+        
+        // Radar Skull marker properties
+        GLuint skullTexture = 0;
+        GLuint skullShaderProgram = 0;
+        GLuint skullVAO = 0, skullVBO = 0;
+        float skullPulseTimer = 0.0f;
+
+        // Wave ring effect
+        GLuint waveShaderProgram = 0;
+        GLuint waveVAO = 0, waveVBO = 0;
+
+        // Screen water distortion
+        GLuint waterDistortionTexture = 0;
+        GLuint waterScreenVAO = 0, waterScreenVBO = 0;
+        GLuint waterScreenShader = 0;
+        
         // Objects used for Postprocessing
         GLuint postprocessFrameBuffer, postProcessVertexArray;
         Texture2D *colorTarget, *depthTarget;

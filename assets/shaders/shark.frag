@@ -23,6 +23,8 @@ uniform vec3 camera_position;
 uniform sampler2D albedo;
 uniform sampler2D specular;
 uniform sampler2D roughness;
+uniform sampler2D normal_map;
+uniform bool has_normal;
 
 uniform vec3 albedo_tint;
 uniform vec3 specular_tint;
@@ -33,9 +35,29 @@ void main() {
         discard;
     }
     vec3 normal = normalize(vs_normal);
+    
+    if (has_normal) {
+        vec3 dp1 = dFdx(vs_world);
+        vec3 dp2 = dFdy(vs_world);
+        vec2 duv1 = dFdx(vs_tex_coord);
+        vec2 duv2 = dFdy(vs_tex_coord);
+
+        vec3 dp2perp = cross(dp2, normal);
+        vec3 dp1perp = cross(normal, dp1);
+        vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;
+        vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;
+
+        float invmax = inversesqrt(max(dot(T,T), dot(B,B)));
+        mat3 TBN = mat3(T * invmax, B * invmax, normal);
+
+        vec3 mapNormal = texture(normal_map, vs_tex_coord).xyz;
+        mapNormal = mapNormal * 2.0 - 1.0;
+        normal = normalize(TBN * mapNormal);
+    }
+
     vec3 view_dir = normalize(camera_position - vs_world);
     
-    vec4 albedo_color = texture(albedo, vs_tex_coord) * vec4(albedo_tint, 1.0) * vs_color;
+    vec4 albedo_color = texture(albedo, vs_tex_coord) * vec4(albedo_tint, 1.0);
     vec3 specular_color = texture(specular, vs_tex_coord).rgb * specular_tint;
     float rgh = texture(roughness, vs_tex_coord).r * roughness_multiplier;
     

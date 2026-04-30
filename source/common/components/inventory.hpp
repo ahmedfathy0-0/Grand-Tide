@@ -9,6 +9,7 @@ namespace our {
         int activeSlot = 1; // 1 = Hammer, 2 = Net, 3 = Spear
         int woodCount = 0;
         int fishCount = 0;
+        bool hasDevilFruit = false;
 
         static std::string getID() { return "Inventory"; }
 

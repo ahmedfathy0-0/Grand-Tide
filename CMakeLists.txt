@@ -102,9 +102,25 @@ set(COMMON_SOURCES
         source/common/components/inventory.cpp
         source/common/components/resource.hpp
         source/common/components/resource.cpp
+        source/common/components/animator.hpp
+        source/common/components/animator.cpp
+        source/common/components/enemy.hpp
+        source/common/components/enemy.cpp
+        source/common/components/component-deserializer.hpp
+        source/common/components/musket-component.hpp
+        source/common/components/musket-component.cpp
+        source/common/components/marine-boat-component.hpp
         source/common/components/shark-component.hpp
         source/common/components/shark-component.cpp
+        source/common/components/octopus-component.hpp
+        source/common/components/octopus-component.cpp
         source/common/components/component-deserializer.hpp
+        source/common/components/fireball-component.hpp
+        source/common/components/fireball-component.cpp
+        source/common/components/projectile-component.hpp
+        source/common/components/projectile-component.cpp
+        source/common/components/burn-component.hpp
+        source/common/components/burn-component.cpp
 
         source/common/ecs/event-manager.hpp
         source/common/ecs/event-manager.cpp
@@ -119,8 +135,14 @@ set(COMMON_SOURCES
         source/common/systems/survival-system.cpp
         source/common/systems/animation-system.hpp
         source/common/systems/animation-system.cpp
-        source/common/systems/shark-system.hpp
-        source/common/systems/shark-system.cpp
+        source/common/systems/octopus-system.hpp
+        source/common/systems/octopus-system.cpp
+        source/common/systems/combat-system.hpp
+        source/common/systems/combat-system.cpp
+        source/common/systems/boss-health-bar.hpp
+        source/common/systems/boss-health-bar.cpp
+        source/common/systems/damage-flash.hpp
+        source/common/systems/damage-flash.cpp
 )
 
 set(STATES_SOURCES
