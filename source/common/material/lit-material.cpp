@@ -12,42 +12,31 @@ namespace our
 
         GLint loc = shader->getUniformLocation("albedo");
 
-        if (albedo)
-        {
+        if (albedo) {
             glActiveTexture(GL_TEXTURE0);
             albedo->bind();
-            // Temporarily disable sampler binding to test
-            // if (sampler)
-            //     sampler->bind(0);
+            if (sampler) sampler->bind(0);
             shader->set("albedo", 0);
-        } else {
-            std::cerr << "[LitMaterial] WARNING: albedo texture is null!" << std::endl;
         }
 
-        if (specular)
-        {
+        if (specular) {
             glActiveTexture(GL_TEXTURE1);
             specular->bind();
-            if (sampler)
-                sampler->bind(1);
+            if (sampler) sampler->bind(1);
             shader->set("specular", 1);
         }
 
-        if (roughness)
-        {
+        if (roughness) {
             glActiveTexture(GL_TEXTURE2);
             roughness->bind();
-            if (sampler)
-                sampler->bind(2);
+            if (sampler) sampler->bind(2);
             shader->set("roughness", 2);
         }
 
-        if (normal)
-        {
+        if (normal) {
             glActiveTexture(GL_TEXTURE3);
             normal->bind();
-            if (sampler)
-                sampler->bind(3);
+            if (sampler) sampler->bind(3);
             shader->set("normal_map", 3);
         }
         shader->set("has_normal", normal != nullptr);
@@ -88,11 +77,16 @@ namespace our
         if (!data.is_object())
             return;
 
-        albedo = AssetLoader<Texture2D>::get(data.value("albedo", ""));
-        specular = AssetLoader<Texture2D>::get(data.value("specular", ""));
+        albedo    = AssetLoader<Texture2D>::get(data.value("albedo", ""));
+        specular  = AssetLoader<Texture2D>::get(data.value("specular", ""));
         roughness = AssetLoader<Texture2D>::get(data.value("roughness", ""));
-        normal = AssetLoader<Texture2D>::get(data.value("normal", ""));
-        sampler = AssetLoader<Sampler>::get(data.value("sampler", ""));
+        normal    = AssetLoader<Texture2D>::get(data.value("normal", ""));
+        sampler   = AssetLoader<Sampler>::get(data.value("sampler", ""));
+
+        // Warn ONCE at load time, not every frame
+        if (!albedo && data.contains("albedo"))
+            std::cerr << "[LitMaterial] WARNING: albedo '"
+                      << data.value("albedo", "") << "' not found!\n";
 
         albedo_tint = data.value("albedo_tint", albedo_tint);
         specular_tint = data.value("specular_tint", specular_tint);
