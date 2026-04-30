@@ -96,6 +96,15 @@
         "fish_albedo": "assets/textures/fish_pez_02_difusa.jpg",
         "fish_bump": "assets/textures/fish_pez_02__bump_.jpg",
         "wood_resource_albedo": "assets/textures/Wood_diffuse.tga.png",
+        "hammer_albedo": "assets/textures/Hammer_LP_Albedo.tga.png",
+        "hammer_normal": "assets/textures/Hammer_LP_Normals.tga.png",
+        "hammer_roughness": "assets/textures/Hammer_LP_Roughness.tga.png",
+        "net_albedo": "assets/textures/rod06_Base_Color.png",
+        "net_normal": "assets/textures/rod06_Normal.png",
+        "net_roughness": "assets/textures/rod06_Roughness.png",
+        "spear_albedo": "assets/textures/spear_low_Spear_BaseColor.png",
+        "spear_normal": "assets/textures/spear_low_Spear_Normal.png",
+        "spear_roughness": "assets/textures/spear_low_Spear_Roughness.png",
       },
       "meshes": {
         "cube": "assets/models/cube.obj",
@@ -105,6 +114,7 @@
         "sphere": "assets/models/sphere.obj",
         "firefruitupload": "assets/models/firefruitupload.obj",
         "wood": "assets/models/Wood.obj",
+        "spear": "assets/models/spear.obj",
       },
       "animated_models": {
         "shark": "assets/models/shark/Shark.fbx",
@@ -115,6 +125,8 @@
         "octopus": "assets/models/octopus/PiratesKing.fbx",
         "mera_mera": "assets/models/Mera Mera No Mi.fbx",
         "fish": "assets/models/Fish.fbx",
+        "net": "assets/models/rod06.FBX",
+        "hammer": "assets/models/Hammer.fbx",
       },
       "samplers": {
         "default": {
@@ -680,6 +692,65 @@
           "sampler": "default",
           "isAnimated": true,
         },
+        "lit_hammer": {
+          "type": "lit",
+          "shader": "lit",
+          "pipelineState": {
+            "faceCulling": {
+              "enabled": false
+            },
+            "depthTesting": {
+              "enabled": true
+            }
+          },
+          "albedo": "hammer_albedo",
+          "normal": "hammer_normal",
+          "roughness": "hammer_roughness",
+          "albedo_tint": [1, 1, 1],
+          "specular_tint": [0.3, 0.3, 0.3],
+          "roughness_multiplier": 0.8,
+          "sampler": "default",
+          "isAnimated": true
+        },
+        "lit_net": {
+          "type": "lit",
+          "shader": "lit",
+          "pipelineState": {
+            "faceCulling": {
+              "enabled": false
+            },
+            "depthTesting": {
+              "enabled": true
+            }
+          },
+          "albedo": "net_albedo",
+          "normal": "net_normal",
+          "roughness": "net_roughness",
+          "albedo_tint": [1, 1, 1],
+          "specular_tint": [0.3, 0.3, 0.3],
+          "roughness_multiplier": 0.8,
+          "sampler": "default",
+          "isAnimated": true
+        },
+        "lit_spear": {
+          "type": "lit",
+          "shader": "lit",
+          "pipelineState": {
+            "faceCulling": {
+              "enabled": false
+            },
+            "depthTesting": {
+              "enabled": true
+            }
+          },
+          "albedo": "spear_albedo",
+          "normal": "spear_normal",
+          "roughness": "spear_roughness",
+          "albedo_tint": [1, 1, 1],
+          "specular_tint": [0.8, 0.8, 0.8],
+          "roughness_multiplier": 0.3,
+          "sampler": "default"
+        },
       },
     },
     "world": [
@@ -724,13 +795,14 @@
             "name": "weapon",
             "position": [1, -1, -1],
             "rotation": [45, 45, 0],
-            "scale": [0.1, 0.1, 1.0],
+            "scale": [1.0, 1.0, 1.0],
             "components": [
               {
                 "type": "Mesh Renderer",
-                "mesh": "cube",
-                "material": "metal",
+                "mesh": "hammer",
+                "material": "lit_hammer",
               },
+              { "type": "Animator", "modelName": "hammer" }
             ],
           },
           {

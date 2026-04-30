@@ -1,24 +1,34 @@
 #include "survival-system.hpp"
 #include "../asset-loader.hpp"
 #include "../components/enemy.hpp"
+#include "../components/animator.hpp"
 
 namespace our
 {
 
     namespace
     {
-        MeshRendererComponent *getWeaponRenderer(World *world, Entity *playerEntity)
+        struct WeaponComponents
         {
+            MeshRendererComponent *meshRenderer;
+            AnimatorComponent *animator;
+        };
+
+        WeaponComponents getWeaponComponents(World *world, Entity *playerEntity)
+        {
+            WeaponComponents wc = {nullptr, nullptr};
             if (!world || !playerEntity)
-                return nullptr;
+                return wc;
             for (auto entity : world->getEntities())
             {
                 if (entity->parent == playerEntity && entity->name == "weapon")
                 {
-                    return entity->getComponent<MeshRendererComponent>();
+                    wc.meshRenderer = entity->getComponent<MeshRendererComponent>();
+                    wc.animator = entity->getComponent<AnimatorComponent>();
+                    break;
                 }
             }
-            return nullptr;
+            return wc;
         }
     }
 
@@ -176,22 +186,55 @@ namespace our
         {
             inventory->activeSlot = 1;
             std::cout << "[Tool] Switched to Hammer\n";
-            if (auto meshR = getWeaponRenderer(world, playerEntity))
-                meshR->material = AssetLoader<Material>::get("brown");
+            auto wc = getWeaponComponents(world, playerEntity);
+            if (wc.meshRenderer)
+            {
+                wc.meshRenderer->mesh = AssetLoader<Mesh>::get("cube");
+                wc.meshRenderer->material = AssetLoader<Material>::get("lit_hammer");
+                
+                auto entity = wc.meshRenderer->getOwner();
+                entity->localTransform.position = glm::vec3(0.8f, -0.8f, -1.0f);
+                entity->localTransform.rotation = glm::vec3(glm::radians(45.0f), glm::radians(180.0f), 0.0f);
+                entity->localTransform.scale    = glm::vec3(0.015f); // Hammer FBX is often large
+            }
+            if (wc.animator)
+                wc.animator->modelName = "hammer";
         }
         if (keyboard.justPressed(GLFW_KEY_2))
         {
             inventory->activeSlot = 2;
             std::cout << "[Tool] Switched to Net\n";
-            if (auto meshR = getWeaponRenderer(world, playerEntity))
-                meshR->material = AssetLoader<Material>::get("green");
+            auto wc = getWeaponComponents(world, playerEntity);
+            if (wc.meshRenderer)
+            {
+                wc.meshRenderer->mesh = AssetLoader<Mesh>::get("cube");
+                wc.meshRenderer->material = AssetLoader<Material>::get("lit_net");
+
+                auto entity = wc.meshRenderer->getOwner();
+                entity->localTransform.position = glm::vec3(0.7f, -1.2f, -0.5f);
+                entity->localTransform.rotation = glm::vec3(glm::radians(-20.0f), glm::radians(180.0f), 0.0f);
+                entity->localTransform.scale    = glm::vec3(0.02f); // rod06 is usually CM based, need small scale or check units
+            }
+            if (wc.animator)
+                wc.animator->modelName = "net";
         }
         if (keyboard.justPressed(GLFW_KEY_3))
         {
             inventory->activeSlot = 3;
             std::cout << "[Tool] Switched to Spear\n";
-            if (auto meshR = getWeaponRenderer(world, playerEntity))
-                meshR->material = AssetLoader<Material>::get("silver");
+            auto wc = getWeaponComponents(world, playerEntity);
+            if (wc.meshRenderer)
+            {
+                wc.meshRenderer->mesh = AssetLoader<Mesh>::get("spear");
+                wc.meshRenderer->material = AssetLoader<Material>::get("lit_spear");
+
+                auto entity = wc.meshRenderer->getOwner();
+                entity->localTransform.position = glm::vec3(0.8f, -0.7f, -1.2f);
+                entity->localTransform.rotation = glm::vec3(glm::radians(10.0f), glm::radians(90.0f), 0.0f);
+                entity->localTransform.scale    = glm::vec3(0.15f);
+            }
+            if (wc.animator)
+                wc.animator->modelName = ""; // Static
         }
         if (keyboard.justPressed(GLFW_KEY_5))
         {

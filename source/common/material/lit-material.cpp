@@ -16,9 +16,8 @@ namespace our
         {
             glActiveTexture(GL_TEXTURE0);
             albedo->bind();
-            // Temporarily disable sampler binding to test
-            // if (sampler)
-            //     sampler->bind(0);
+            if (sampler)
+                sampler->bind(0);
             shader->set("albedo", 0);
         } else {
             std::cerr << "[LitMaterial] WARNING: albedo texture is null!" << std::endl;
