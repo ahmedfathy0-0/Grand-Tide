@@ -10,6 +10,7 @@
 #include <json/json.hpp>
 #include <glm/glm.hpp>
 #include <iostream>
+#include <unordered_set>
 
 namespace our
 {
@@ -20,6 +21,7 @@ namespace our
         int sharksToKill = 3;
         int sharksSpawned = 0;
         int sharksKilled = 0;
+        std::unordered_set<SharkComponent*> killedSharks;
         float sharkSpawnTimer = 0.0f;
         float sharkSpawnInterval = 8.0f;
 
@@ -29,6 +31,7 @@ namespace our
             config = cfg;
             sharksSpawned = 0;
             sharksKilled = 0;
+            killedSharks.clear();
             sharkSpawnTimer = 0.0f;
 
             if (config.contains("sharksToKill"))
@@ -42,14 +45,20 @@ namespace our
         // Returns true when phase is complete (all sharks killed)
         bool update(World *world, float deltaTime)
         {
-            // Count killed sharks
-            sharksKilled = 0;
+            // Count killed sharks (cumulative: only count newly dead ones)
             for (auto entity : world->getEntities())
             {
                 auto *enemy = entity->getComponent<EnemyComponent>();
                 auto *shark = entity->getComponent<SharkComponent>();
                 if (shark && enemy && enemy->state == EnemyState::DEAD)
-                    sharksKilled++;
+                {
+                    // Track this shark as killed (by pointer to avoid double-counting)
+                    if (killedSharks.find(shark) == killedSharks.end())
+                    {
+                        killedSharks.insert(shark);
+                        sharksKilled++;
+                    }
+                }
             }
 
             // Spawn sharks until we have enough
@@ -64,7 +73,11 @@ namespace our
             }
 
             // Phase complete when all sharks are killed
-            return (sharksKilled >= sharksToKill && sharksSpawned >= sharksToKill);
+            bool done = (sharksKilled >= sharksToKill && sharksSpawned >= sharksToKill);
+            if (sharksKilled > 0)
+                std::cout << "[SharkPhase] killed=" << sharksKilled << "/" << sharksToKill
+                          << " spawned=" << sharksSpawned << " done=" << done << std::endl;
+            return done;
         }
 
         void exit()

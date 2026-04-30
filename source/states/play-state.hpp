@@ -401,17 +401,28 @@ void main() {
 
         // --- Normal game update (not paused) ---
 
-        // === PHASE MANAGEMENT — delegate to phase handlers ===
+        // === SYSTEM UPDATES (always run, before phase logic) ===
+        movementSystem.update(&world, (float)deltaTime);
+        cameraController.update(&world, (float)deltaTime);
+        survivalSystem.update();
+        animationSystem.update(&world, (float)deltaTime);
+        combatSystem.update(&world, (float)deltaTime);
+        fireballSystem.update(&world, (float)deltaTime);
+
+        // === PHASE MANAGEMENT — after systems so deaths are visible this frame ===
         if (currentPhase == GamePhase::SHARKS) {
             bool sharksDone = sharkPhase.update(&world, (float)deltaTime);
             // Transition to MARINES when devil fruit spawns (means all sharks are dead)
-            if (sharksDone && fireballSystem.isDevilFruitSpawned() && !phaseTransitioning) {
+            bool fruitSpawned = fireballSystem.isDevilFruitSpawned();
+            if (sharksDone && fruitSpawned && !phaseTransitioning) {
                 phaseTransitioning = true;
                 sharkPhase.exit();
                 currentPhase = GamePhase::MARINES;
                 marinePhase.enter(&world, marinesConfig);
                 phaseTransitioning = false;
                 std::cout << "[Phase] === DEVIL FRUIT SPAWNED === Transitioning to MARINES phase!" << std::endl;
+            } else if (sharksDone && !fruitSpawned) {
+                std::cout << "[Phase] Sharks done but fruit not spawned yet" << std::endl;
             }
         }
         else if (currentPhase == GamePhase::MARINES) {
@@ -433,14 +444,6 @@ void main() {
                 // TODO: victory screen
             }
         }
-
-        // === SYSTEM UPDATES (always run) ===
-        movementSystem.update(&world, (float)deltaTime);
-        cameraController.update(&world, (float)deltaTime);
-        survivalSystem.update();
-        animationSystem.update(&world, (float)deltaTime);
-        combatSystem.update(&world, (float)deltaTime);
-        fireballSystem.update(&world, (float)deltaTime);
 
         world.deleteMarkedEntities();
 
