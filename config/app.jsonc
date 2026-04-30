@@ -618,6 +618,7 @@
             },
             "depthMask": false,
           },
+          "albedo": "red",
           "albedo_tint": [1, 1, 1],
           "specular_tint": [0.0, 0.0, 0.0],
           "roughness_multiplier": 1.0,
@@ -638,6 +639,7 @@
               "destinationFactor": "GL_ONE",
             },
           },
+          "albedo": "red",
           "albedo_tint": [1, 1, 1],
           "specular_tint": [0.0, 0.0, 0.0],
           "roughness_multiplier": 1.0,
@@ -799,7 +801,7 @@
             "components": [
               {
                 "type": "Mesh Renderer",
-                "mesh": "hammer",
+                "mesh": "cube",
                 "material": "lit_hammer",
               },
               { "type": "Animator", "modelName": "hammer" }

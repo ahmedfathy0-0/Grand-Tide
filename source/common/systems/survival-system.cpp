@@ -229,9 +229,9 @@ namespace our
                 wc.meshRenderer->material = AssetLoader<Material>::get("lit_spear");
 
                 auto entity = wc.meshRenderer->getOwner();
-                entity->localTransform.position = glm::vec3(0.8f, -0.7f, -1.2f);
-                entity->localTransform.rotation = glm::vec3(glm::radians(10.0f), glm::radians(90.0f), 0.0f);
-                entity->localTransform.scale    = glm::vec3(0.15f);
+                entity->localTransform.position = glm::vec3(0.5f, -0.5f, -1.5f);
+                entity->localTransform.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
+                entity->localTransform.scale    = glm::vec3(0.3f);
             }
             if (wc.animator)
                 wc.animator->modelName = ""; // Static
