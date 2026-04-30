@@ -95,7 +95,7 @@ namespace our
 
             const glm::vec3 resPos = glm::vec3(entity->getLocalToWorldMatrix()[3]);
             const float dist = glm::distance(playerPos, resPos);
-            if (dist >= 3.0f)
+            if (dist >= 8.0f)
                 continue;
 
             if (res->type == "wood")

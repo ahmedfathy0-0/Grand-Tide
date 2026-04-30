@@ -29,6 +29,7 @@
 #include <components/marine-boat-component.hpp>
 #include <components/mesh-renderer.hpp>
 #include <components/animator.hpp>
+#include <components/resource.hpp>
 #include <mesh/model.hpp>
 
 // This state shows how to use the ECS framework and deserialization.
@@ -72,6 +73,16 @@ class Playstate : public our::State
     float sharkSpawnTimer = 0.0f;
     float sharkSpawnInterval = 8.0f;   // Seconds between shark spawns
     bool phaseTransitioning = false;   // Prevent double-transition
+
+    // Resource spawning
+    int fishSpawned = 0;
+    int woodSpawned = 0;
+    float fishSpawnTimer = 0.0f;
+    float woodSpawnTimer = 0.0f;
+    float fishSpawnInterval = 5.0f;  // 5-8s randomized in update
+    float woodSpawnInterval = 5.0f;  // 5-8s randomized in update
+    int maxFishAlive = 5;
+    int maxWoodAlive = 5;
 
     // Store original scales for entities we hide/show
     std::unordered_map<our::Entity*, glm::vec3> hiddenEntityScales;
@@ -165,6 +176,72 @@ class Playstate : public our::State
         std::cout << "[Phase] Spawned shark #" << sharksSpawned << " at ("
                   << shark->localTransform.position.x << ","
                   << shark->localTransform.position.z << ")" << std::endl;
+    }
+
+    void spawnFish(our::World* world, our::Entity* raft) {
+        if (!raft) return;
+        glm::vec3 raftPos = raft->localTransform.position;
+        float angle = static_cast<float>(rand() % 360) * glm::pi<float>() / 180.0f;
+        float spawnDist = 5.0f + static_cast<float>(rand() % 13);
+
+        our::Entity* fish = world->add();
+        fish->name = "fish_" + std::to_string(fishSpawned);
+        fish->localTransform.position = glm::vec3(
+            raftPos.x + cos(angle) * spawnDist,
+            0.0f,
+            raftPos.z + sin(angle) * spawnDist);
+        fish->localTransform.scale = glm::vec3(0.1f);
+        fish->localTransform.rotation = glm::vec3(0.0f);
+
+        auto* mr = fish->addComponent<our::MeshRendererComponent>();
+        mr->mesh = our::AssetLoader<our::Mesh>::get("cube");
+        mr->material = our::AssetLoader<our::Material>::get("lit_fish");
+
+        auto* anim = fish->addComponent<our::AnimatorComponent>();
+        anim->modelName = "fish";
+        anim->currentAnimIndex = 0;
+
+        auto* res = fish->addComponent<our::ResourceComponent>();
+        res->type = "fish";
+        res->amount = 1;
+        res->lifetime = 60.0f;
+        res->elapsed = 0.0f;
+
+        fishSpawned++;
+        std::cout << "[Spawn] Spawned fish #" << fishSpawned << " at ("
+                  << fish->localTransform.position.x << ","
+                  << fish->localTransform.position.z << ")" << std::endl;
+    }
+
+    void spawnWood(our::World* world, our::Entity* raft) {
+        if (!raft) return;
+        glm::vec3 raftPos = raft->localTransform.position;
+        float angle = static_cast<float>(rand() % 360) * glm::pi<float>() / 180.0f;
+        float spawnDist = 5.0f + static_cast<float>(rand() % 13);
+
+        our::Entity* wood = world->add();
+        wood->name = "wood_" + std::to_string(woodSpawned);
+        wood->localTransform.position = glm::vec3(
+            raftPos.x + cos(angle) * spawnDist,
+            0.5f,
+            raftPos.z + sin(angle) * spawnDist);
+        wood->localTransform.scale = glm::vec3(0.05f);
+        wood->localTransform.rotation = glm::vec3(0.0f);
+
+        auto* mr = wood->addComponent<our::MeshRendererComponent>();
+        mr->mesh = our::AssetLoader<our::Mesh>::get("wood");
+        mr->material = our::AssetLoader<our::Material>::get("lit_wood_resource");
+
+        auto* res = wood->addComponent<our::ResourceComponent>();
+        res->type = "wood";
+        res->amount = 1;
+        res->lifetime = 60.0f;
+        res->elapsed = 0.0f;
+
+        woodSpawned++;
+        std::cout << "[Spawn] Spawned wood #" << woodSpawned << " at ("
+                  << wood->localTransform.position.x << ","
+                  << wood->localTransform.position.z << ")" << std::endl;
     }
 
     // Menu shader helper
@@ -626,6 +703,40 @@ void main() {
                 marineBoatSystem = our::MarineBoatSystem();
                 phaseTransitioning = false;  // Allow next phase transition
                 std::cout << "[Phase] === DEVIL FRUIT SPAWNED === Transitioning to MARINES phase!" << std::endl;
+            }
+        }
+
+        // === RESOURCE SPAWNING & LIFETIME ===
+        {
+            int fishAlive = 0;
+            int woodAlive = 0;
+            for (auto entity : world.getEntities()) {
+                auto res = entity->getComponent<our::ResourceComponent>();
+                if (!res) continue;
+                res->elapsed += (float)deltaTime;
+                if (res->elapsed >= res->lifetime) {
+                    std::cout << "[Expire] " << res->type << " expired at ("
+                              << entity->localTransform.position.x << ","
+                              << entity->localTransform.position.z << ")" << std::endl;
+                    world.markForRemoval(entity);
+                    continue;
+                }
+                if (res->type == "fish") fishAlive++;
+                else if (res->type == "wood") woodAlive++;
+            }
+
+            fishSpawnTimer += (float)deltaTime;
+            woodSpawnTimer += (float)deltaTime;
+
+            if (fishAlive < maxFishAlive && fishSpawnTimer >= fishSpawnInterval) {
+                fishSpawnTimer = 0.0f;
+                fishSpawnInterval = 5.0f + static_cast<float>(rand() % 4); // 5-8s
+                spawnFish(&world, raft);
+            }
+            if (woodAlive < maxWoodAlive && woodSpawnTimer >= woodSpawnInterval) {
+                woodSpawnTimer = 0.0f;
+                woodSpawnInterval = 5.0f + static_cast<float>(rand() % 4); // 5-8s
+                spawnWood(&world, raft);
             }
         }
 

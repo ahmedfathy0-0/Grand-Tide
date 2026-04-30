@@ -12,6 +12,8 @@
 
 #include "../components/health.hpp"
 #include "../components/inventory.hpp"
+#include "../components/resource.hpp"
+#include "../components/enemy.hpp"
 #include "../components/burn-component.hpp"
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -1262,12 +1264,27 @@ namespace our
                         if (entity->name == "ocean" || entity->name == "water" || entity->name == "sky" || entity->name == "moon" || entity->name.empty())
                             continue;
 
+                        // Determine radar blip type
+                        int typeIndex = -1;
+                        if (entity->getComponent<EnemyComponent>()) {
+                            typeIndex = 0; // enemy/shark = red
+                        } else {
+                            auto res = entity->getComponent<ResourceComponent>();
+                            if (res) {
+                                if (res->type == "fish") typeIndex = 1; // fish = blue
+                                else if (res->type == "wood") typeIndex = 2; // wood = brown
+                            }
+                        }
+                        if (typeIndex < 0)
+                            continue; // Skip non-radar entities (raft, weapons, etc.)
+
                         glm::vec3 ePos = entity->localTransform.position;
                         glm::vec2 relativePos = glm::vec2(ePos.x - pPos.x, ePos.z - pPos.z) * 0.05f;
 
                         if (glm::length(relativePos) < 1.0f)
                         {
                             minimapMat->shader->set("entities_pos[" + std::to_string(entityCount) + "]", relativePos);
+                            minimapMat->shader->set("entities_type[" + std::to_string(entityCount) + "]", (float)typeIndex);
                             entityCount++;
                             if (entityCount >= 32)
                                 break;
