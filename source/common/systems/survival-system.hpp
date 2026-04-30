@@ -8,9 +8,16 @@
 #include "../components/mesh-renderer.hpp"
 #include "../components/shark-component.hpp"
 #include "../application.hpp" // Assuming this gives access to Application and inputs
+#include <glm/glm.hpp>
 #include <iostream>
 
 namespace our {
+
+    struct WeaponTransform {
+        glm::vec3 position;
+        glm::vec3 rotation;
+        glm::vec3 scale;
+    };
 
     class SurvivalSystem {
         World* world;
@@ -18,6 +25,8 @@ namespace our {
         Entity* playerEntity;
         Entity* boatEntity;
         bool eventsSubscribed = false;
+        bool weaponTransformCaptured = false;
+        WeaponTransform defaultWeaponTransform;
 
         void handleBoatDamaged(int damage);
         void handleRepairAction();

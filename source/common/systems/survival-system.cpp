@@ -191,11 +191,17 @@ namespace our
             {
                 wc.meshRenderer->mesh = AssetLoader<Mesh>::get("cube");
                 wc.meshRenderer->material = AssetLoader<Material>::get("lit_hammer");
-                
+
                 auto entity = wc.meshRenderer->getOwner();
-                entity->localTransform.position = glm::vec3(0.8f, -0.8f, -1.0f);
-                entity->localTransform.rotation = glm::vec3(glm::radians(45.0f), glm::radians(180.0f), 0.0f);
-                entity->localTransform.scale    = glm::vec3(0.015f); // Hammer FBX is often large
+                if (!weaponTransformCaptured) {
+                    defaultWeaponTransform.position = entity->localTransform.position;
+                    defaultWeaponTransform.rotation = entity->localTransform.rotation;
+                    defaultWeaponTransform.scale    = entity->localTransform.scale;
+                    weaponTransformCaptured = true;
+                }
+                entity->localTransform.position = defaultWeaponTransform.position;
+                entity->localTransform.rotation = defaultWeaponTransform.rotation;
+                entity->localTransform.scale    = defaultWeaponTransform.scale;
             }
             if (wc.animator)
                 wc.animator->modelName = "hammer";
@@ -211,9 +217,15 @@ namespace our
                 wc.meshRenderer->material = AssetLoader<Material>::get("lit_net");
 
                 auto entity = wc.meshRenderer->getOwner();
-                entity->localTransform.position = glm::vec3(0.7f, -1.2f, -0.5f);
-                entity->localTransform.rotation = glm::vec3(glm::radians(-20.0f), glm::radians(180.0f), 0.0f);
-                entity->localTransform.scale    = glm::vec3(0.02f); // rod06 is usually CM based, need small scale or check units
+                if (!weaponTransformCaptured) {
+                    defaultWeaponTransform.position = entity->localTransform.position;
+                    defaultWeaponTransform.rotation = entity->localTransform.rotation;
+                    defaultWeaponTransform.scale    = entity->localTransform.scale;
+                    weaponTransformCaptured = true;
+                }
+                entity->localTransform.position = defaultWeaponTransform.position;
+                entity->localTransform.rotation = defaultWeaponTransform.rotation;
+                entity->localTransform.scale    = defaultWeaponTransform.scale;
             }
             if (wc.animator)
                 wc.animator->modelName = "net";
@@ -229,9 +241,15 @@ namespace our
                 wc.meshRenderer->material = AssetLoader<Material>::get("lit_spear");
 
                 auto entity = wc.meshRenderer->getOwner();
-                entity->localTransform.position = glm::vec3(0.5f, -0.5f, -1.5f);
-                entity->localTransform.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
-                entity->localTransform.scale    = glm::vec3(0.3f);
+                if (!weaponTransformCaptured) {
+                    defaultWeaponTransform.position = entity->localTransform.position;
+                    defaultWeaponTransform.rotation = entity->localTransform.rotation;
+                    defaultWeaponTransform.scale    = entity->localTransform.scale;
+                    weaponTransformCaptured = true;
+                }
+                entity->localTransform.position = defaultWeaponTransform.position;
+                entity->localTransform.rotation = defaultWeaponTransform.rotation;
+                entity->localTransform.scale    = defaultWeaponTransform.scale;
             }
             if (wc.animator)
                 wc.animator->modelName = ""; // Static
