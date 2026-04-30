@@ -16,9 +16,12 @@ namespace our
         {
             glActiveTexture(GL_TEXTURE0);
             albedo->bind();
-            if (sampler)
-                sampler->bind(0);
+            // Temporarily disable sampler binding to test
+            // if (sampler)
+            //     sampler->bind(0);
             shader->set("albedo", 0);
+        } else {
+            std::cerr << "[LitMaterial] WARNING: albedo texture is null!" << std::endl;
         }
 
         if (specular)
@@ -48,6 +51,9 @@ namespace our
             shader->set("normal_map", 3);
         }
         shader->set("has_normal", normal != nullptr);
+        shader->set("has_specular", specular != nullptr);
+        shader->set("has_roughness", roughness != nullptr);
+        shader->set("has_albedo", albedo != nullptr);
 
         shader->set("albedo_tint", albedo_tint);
         shader->set("specular_tint", specular_tint);

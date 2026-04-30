@@ -38,6 +38,7 @@ namespace our
         // Objects used for rendering a skybox
         Mesh* skySphere;
         Material* skyMaterial;
+        Material* waterMaterial;
         
         // Radar Skull marker properties
         GLuint skullTexture = 0;
@@ -58,6 +59,13 @@ namespace our
         GLuint postprocessFrameBuffer, postProcessVertexArray;
         Texture2D *colorTarget, *depthTarget;
         TexturedMaterial* postprocessMaterial;
+        // Shadow mapping objects
+        GLuint shadowMapFBO;
+        Texture2D* shadowMap;
+        Material* shadowMaterial;
+        // Reflection mapping objects
+        GLuint reflectionFBO;
+        Texture2D* reflectionColor;
     public:
         // Initialize the renderer including the sky and the Postprocessing objects.
         // windowSize is the width & height of the window (in pixels).

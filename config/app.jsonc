@@ -43,6 +43,10 @@
           "vs": "assets/shaders/textured.vert",
           "fs": "assets/shaders/toolbar.frag",
         },
+        "water": {
+                    "vs": "assets/shaders/water.vert",
+                    "fs": "assets/shaders/water.frag"
+        },
         "fire": {
           "vs": "assets/shaders/lit.vert",
           "fs": "assets/shaders/fire.frag",
@@ -109,8 +113,8 @@
       },
       "samplers": {
         "default": {
-          "MAG_FILTER": "GL_NEAREST",
-          "MIN_FILTER": "GL_NEAREST",
+          "MAG_FILTER": "GL_LINEAR",
+          "MIN_FILTER": "GL_LINEAR",
         },
         "pixelated": {
           "MAG_FILTER": "GL_NEAREST",
@@ -655,6 +659,14 @@
             "type": "Camera",
             "far": 1000.0,
           },
+           {
+            "type": "Light",
+            "lightType": "spot",
+            "color": [1, 1, 1],
+            "intensity": 5.0,
+            "direction": [0, 0, -1],
+            "cone_angles": [12.5, 17.5]
+           },
           {
             "type": "PlayerController",
             "speed": 5.0,
