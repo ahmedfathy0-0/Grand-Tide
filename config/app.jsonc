@@ -1,5 +1,5 @@
 {
-  "start-scene": "play",
+  "start-scene": "intro",
   "window": {
     "title": "Raft: The Once Piece Adventure",
     "size": {

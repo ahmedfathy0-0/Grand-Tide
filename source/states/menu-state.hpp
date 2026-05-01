@@ -1,183 +1,153 @@
 #pragma once
 
 #include <application.hpp>
-#include <shader/shader.hpp>
-#include <texture/texture2d.hpp>
-#include <texture/texture-utils.hpp>
-#include <material/material.hpp>
-#include <mesh/mesh.hpp>
+#include <glad/gl.h>
+#include <GLFW/glfw3.h>
+#include <stb/stb_image.h>
+#include <iostream>
 
-#include <functional>
-#include <array>
+// Start menu: arrow keys to select Play/Exit, Enter to confirm.
+// Comes after the video intro.
+class Menustate : public our::State {
+    int selectedItem = 0; // 0=PLAY, 1=EXIT
+    GLuint menuTextures[2] = {0, 0};
+    GLuint menuVAO = 0, menuVBO = 0;
+    GLuint menuShader = 0;
 
-// This struct is used to store the location and size of a button and the code it should execute when clicked
-struct Button {
-    // The position (of the top-left corner) of the button and its size in pixels
-    glm::vec2 position, size;
-    // The function that should be excuted when the button is clicked. It takes no arguments and returns nothing.
-    std::function<void()> action;
-
-    // This function returns true if the given vector v is inside the button. Otherwise, false is returned.
-    // This is used to check if the mouse is hovering over the button.
-    bool isInside(const glm::vec2& v) const {
-        return position.x <= v.x && position.y <= v.y &&
-            v.x <= position.x + size.x &&
-            v.y <= position.y + size.y;
+    static GLuint compileShader(const char* vert, const char* frag) {
+        auto compile = [](const char* src, GLenum type) -> GLuint {
+            GLuint sh = glCreateShader(type);
+            glShaderSource(sh, 1, &src, nullptr);
+            glCompileShader(sh);
+            int ok; glGetShaderiv(sh, GL_COMPILE_STATUS, &ok);
+            if (!ok) { char buf[512]; glGetShaderInfoLog(sh, 512, nullptr, buf);
+                std::cerr << "[Menu] shader error: " << buf << std::endl; glDeleteShader(sh); return 0; }
+            return sh;
+        };
+        GLuint vs = compile(vert, GL_VERTEX_SHADER);
+        GLuint fs = compile(frag, GL_FRAGMENT_SHADER);
+        if (!vs || !fs) { if(vs) glDeleteShader(vs); if(fs) glDeleteShader(fs); return 0; }
+        GLuint p = glCreateProgram();
+        glAttachShader(p, vs); glAttachShader(p, fs); glLinkProgram(p);
+        int ok; glGetProgramiv(p, GL_LINK_STATUS, &ok);
+        if (!ok) { char buf[512]; glGetProgramInfoLog(p, 512, nullptr, buf);
+            std::cerr << "[Menu] link error: " << buf << std::endl; glDeleteProgram(p); p = 0; }
+        glDeleteShader(vs); glDeleteShader(fs);
+        return p;
     }
-
-    // This function returns the local to world matrix to transform a rectangle of size 1x1
-    // (and whose top-left corner is at the origin) to be the button.
-    glm::mat4 getLocalToWorld() const {
-        return glm::translate(glm::mat4(1.0f), glm::vec3(position.x, position.y, 0.0f)) * 
-            glm::scale(glm::mat4(1.0f), glm::vec3(size.x, size.y, 1.0f));
-    }
-};
-
-// This state shows how to use some of the abstractions we created to make a menu.
-class Menustate: public our::State {
-
-    // A meterial holding the menu shader and the menu texture to draw
-    our::TexturedMaterial* menuMaterial;
-    // A material to be used to highlight hovered buttons (we will use blending to create a negative effect).
-    our::TintedMaterial * highlightMaterial;
-    // A rectangle mesh on which the menu material will be drawn
-    our::Mesh* rectangle;
-    // A variable to record the time since the state is entered (it will be used for the fading effect).
-    float time;
-    // An array of the button that we can interact with
-    std::array<Button, 2> buttons;
 
     void onInitialize() override {
-        // First, we create a material for the menu's background
-        menuMaterial = new our::TexturedMaterial();
-        // Here, we load the shader that will be used to draw the background
-        menuMaterial->shader = new our::ShaderProgram();
-        menuMaterial->shader->attach("assets/shaders/textured.vert", GL_VERTEX_SHADER);
-        menuMaterial->shader->attach("assets/shaders/textured.frag", GL_FRAGMENT_SHADER);
-        menuMaterial->shader->link();
-        // Then we load the menu texture
-        menuMaterial->texture = our::texture_utils::loadImage("assets/textures/menu.png");
-        menuMaterial->sampler = new our::Sampler();
-        // Initially, the menu material will be black, then it will fade in
-        menuMaterial->tint = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
+        selectedItem = 0;
 
-        // Second, we create a material to highlight the hovered buttons
-        highlightMaterial = new our::TintedMaterial();
-        // Since the highlight is not textured, we used the tinted material shaders
-        highlightMaterial->shader = new our::ShaderProgram();
-        highlightMaterial->shader->attach("assets/shaders/tinted.vert", GL_VERTEX_SHADER);
-        highlightMaterial->shader->attach("assets/shaders/tinted.frag", GL_FRAGMENT_SHADER);
-        highlightMaterial->shader->link();
-        // The tint is white since we will subtract the background color from it to create a negative effect.
-        highlightMaterial->tint = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-        // To create a negative effect, we enable blending, set the equation to be subtract,
-        // and set the factors to be one for both the source and the destination. 
-        highlightMaterial->pipelineState.blending.enabled = true;
-        highlightMaterial->pipelineState.blending.equation = GL_FUNC_SUBTRACT;
-        highlightMaterial->pipelineState.blending.sourceFactor = GL_ONE;
-        highlightMaterial->pipelineState.blending.destinationFactor = GL_ONE;
+        // Load 2 menu textures
+        const char* paths[2] = {
+            "assets/textures/game_play.png",
+            "assets/textures/game_exit.png"
+        };
+        for (int i = 0; i < 2; i++) {
+            int w, h, ch;
+            unsigned char* data = stbi_load(paths[i], &w, &h, &ch, 4);
+            if (data) {
+                glGenTextures(1, &menuTextures[i]);
+                glBindTexture(GL_TEXTURE_2D, menuTextures[i]);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                stbi_image_free(data);
+                glBindTexture(GL_TEXTURE_2D, 0);
+            } else {
+                std::cerr << "[Menu] Failed to load: " << paths[i] << std::endl;
+            }
+        }
 
-        // Then we create a rectangle whose top-left corner is at the origin and its size is 1x1.
-        // Note that the texture coordinates at the origin is (0.0, 1.0) since we will use the 
-        // projection matrix to make the origin at the the top-left corner of the screen.
-        rectangle = new our::Mesh({
-            {{0.0f, 0.0f, 0.0f}, {255, 255, 255, 255}, {0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
-            {{1.0f, 0.0f, 0.0f}, {255, 255, 255, 255}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
-            {{1.0f, 1.0f, 0.0f}, {255, 255, 255, 255}, {1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},
-            {{0.0f, 1.0f, 0.0f}, {255, 255, 255, 255}, {0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},
-        },{
-            0, 1, 2, 2, 3, 0,
-        });
+        // Compile menu shader
+        static const char* vert = R"(
+#version 330 core
+layout(location = 0) in vec2 aPos;
+out vec2 vUV;
+void main() {
+    vUV = vec2(aPos.x, 1.0 - aPos.y);
+    gl_Position = vec4(aPos * 2.0 - 1.0, 0.0, 1.0);
+}
+)";
+        static const char* frag = R"(
+#version 330 core
+uniform sampler2D uMenuTex;
+in vec2 vUV;
+out vec4 fragColor;
+void main() {
+    vec4 col = texture(uMenuTex, vUV);
+    fragColor = vec4(col.rgb, 1.0);
+}
+)";
+        menuShader = compileShader(vert, frag);
 
-        // Reset the time elapsed since the state is entered.
-        time = 0;
-
-        // Fill the positions, sizes and actions for the menu buttons
-        // Note that we use lambda expressions to set the actions of the buttons.
-        // A lambda expression consists of 3 parts:
-        // - The capture list [] which is the variables that the lambda should remember because it will use them during execution.
-        //      We store [this] in the capture list since we will use it in the action.
-        // - The argument list () which is the arguments that the lambda should receive when it is called.
-        //      We leave it empty since button actions receive no input.
-        // - The body {} which contains the code to be executed. 
-        buttons[0].position = {830.0f, 607.0f};
-        buttons[0].size = {400.0f, 33.0f};
-        buttons[0].action = [this](){this->getApp()->changeState("play");};
-
-        buttons[1].position = {830.0f, 644.0f};
-        buttons[1].size = {400.0f, 33.0f};
-        buttons[1].action = [this](){this->getApp()->close();};
+        // Create fullscreen quad VAO/VBO
+        float quad[12] = {
+            0.0f, 0.0f,  1.0f, 0.0f,  1.0f, 1.0f,
+            0.0f, 0.0f,  1.0f, 1.0f,  0.0f, 1.0f
+        };
+        glGenVertexArrays(1, &menuVAO);
+        glGenBuffers(1, &menuVBO);
+        glBindVertexArray(menuVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, menuVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+        glBindVertexArray(0);
     }
 
     void onDraw(double deltaTime) override {
-        // Get a reference to the keyboard object
         auto& keyboard = getApp()->getKeyboard();
 
-        if(keyboard.justPressed(GLFW_KEY_SPACE)){
-            // If the space key is pressed in this frame, go to the play state
-            getApp()->changeState("play");
-        } else if(keyboard.justPressed(GLFW_KEY_ESCAPE)) {
-            // If the escape key is pressed in this frame, exit the game
-            getApp()->close();
+        if (keyboard.justPressed(GLFW_KEY_UP)) {
+            selectedItem = (selectedItem - 1 + 2) % 2;
         }
-
-        // Get a reference to the mouse object and get the current mouse position
-        auto& mouse = getApp()->getMouse();
-        glm::vec2 mousePosition = mouse.getMousePosition();
-
-        // If the mouse left-button is just pressed, check if the mouse was inside
-        // any menu button. If it was inside a menu button, run the action of the button.
-        if(mouse.justPressed(0)){
-            for(auto& button: buttons){
-                if(button.isInside(mousePosition))
-                    button.action();
+        if (keyboard.justPressed(GLFW_KEY_DOWN)) {
+            selectedItem = (selectedItem + 1) % 2;
+        }
+        if (keyboard.justPressed(GLFW_KEY_ENTER)) {
+            if (selectedItem == 0) {
+                getApp()->changeState("play");
+                return;
+            } else {
+                getApp()->close();
+                return;
             }
         }
 
-        // Get the framebuffer size to set the viewport and the create the projection matrix.
-        glm::ivec2 size = getApp()->getFrameBufferSize();
-        // Make sure the viewport covers the whole size of the framebuffer.
-        glViewport(0, 0, size.x, size.y);
+        // Clear screen
+        glClearColor(0, 0, 0, 1);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // The view matrix is an identity (there is no camera that moves around).
-        // The projection matrix applys an orthographic projection whose size is the framebuffer size in pixels
-        // so that the we can define our object locations and sizes in pixels.
-        // Note that the top is at 0.0 and the bottom is at the framebuffer height. This allows us to consider the top-left
-        // corner of the window to be the origin which makes dealing with the mouse input easier. 
-        glm::mat4 VP = glm::ortho(0.0f, (float)size.x, (float)size.y, 0.0f, 1.0f, -1.0f);
-        // The local to world (model) matrix of the background which is just a scaling matrix to make the menu cover the whole
-        // window. Note that we defind the scale in pixels.
-        glm::mat4 M = glm::scale(glm::mat4(1.0f), glm::vec3(size.x, size.y, 1.0f));
+        // Draw menu fullscreen
+        if (menuShader && menuVAO && menuTextures[selectedItem]) {
+            glUseProgram(menuShader);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, menuTextures[selectedItem]);
+            glUniform1i(glGetUniformLocation(menuShader, "uMenuTex"), 0);
 
-        // First, we apply the fading effect.
-        time += (float)deltaTime;
-        menuMaterial->tint = glm::vec4(glm::smoothstep(0.00f, 2.00f, time));
-        // Then we render the menu background
-        // Notice that I don't clear the screen first, since I assume that the menu rectangle will draw over the whole
-        // window anyway.
-        menuMaterial->setup();
-        menuMaterial->shader->set("transform", VP*M);
-        rectangle->draw();
+            glDisable(GL_DEPTH_TEST);
+            glDisable(GL_CULL_FACE);
+            glDisable(GL_BLEND);
 
-        // For every button, check if the mouse is inside it. If the mouse is inside, we draw the highlight rectangle over it.
-        for(auto& button: buttons){
-            if(button.isInside(mousePosition)){
-                highlightMaterial->setup();
-                highlightMaterial->shader->set("transform", VP*button.getLocalToWorld());
-                rectangle->draw();
-            }
+            glBindVertexArray(menuVAO);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+            glBindVertexArray(0);
+
+            glEnable(GL_DEPTH_TEST);
+            glUseProgram(0);
         }
-        
     }
 
     void onDestroy() override {
-        // Delete all the allocated resources
-        delete rectangle;
-        delete menuMaterial->texture;
-        delete menuMaterial->sampler;
-        delete menuMaterial->shader;
-        delete menuMaterial;
-        delete highlightMaterial->shader;
-        delete highlightMaterial;
+        for (int i = 0; i < 2; i++) {
+            if (menuTextures[i]) glDeleteTextures(1, &menuTextures[i]);
+        }
+        if (menuVAO) glDeleteVertexArrays(1, &menuVAO);
+        if (menuVBO) glDeleteBuffers(1, &menuVBO);
+        if (menuShader) glDeleteProgram(menuShader);
     }
 };

@@ -9,6 +9,7 @@
 
 #include "states/menu-state.hpp"
 #include "states/play-state.hpp"
+#include "states/intro-state.hpp"
 
 static std::string removeTrailingCommas(std::string text)
 {
@@ -93,6 +94,7 @@ int main(int argc, char **argv)
     our::Application app(app_config);
 
     // Register all the states of the project in the application
+    app.registerState<Introstate>("intro");
     app.registerState<Menustate>("menu");
     app.registerState<Playstate>("play");
     // Then choose the state to run based on the option "start-scene" in the config
