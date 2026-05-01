@@ -1,24 +1,37 @@
 #include "survival-system.hpp"
 #include "../asset-loader.hpp"
 #include "../components/enemy.hpp"
+#include "../components/animator.hpp"
+
+#include <glm/gtx/euler_angles.hpp>
 
 namespace our
 {
 
     namespace
     {
-        MeshRendererComponent *getWeaponRenderer(World *world, Entity *playerEntity)
+        struct WeaponComponents
         {
-            if (!world || !playerEntity)
-                return nullptr;
+            MeshRendererComponent *meshRenderer;
+            AnimatorComponent *animator;
+        };
+
+        // Find weapon entity by name (world-level entity, not child of player)
+        WeaponComponents getWeaponComponents(World *world)
+        {
+            WeaponComponents wc = {nullptr, nullptr};
+            if (!world)
+                return wc;
             for (auto entity : world->getEntities())
             {
-                if (entity->parent == playerEntity && entity->name == "weapon")
+                if (entity->name == "weapon")
                 {
-                    return entity->getComponent<MeshRendererComponent>();
+                    wc.meshRenderer = entity->getComponent<MeshRendererComponent>();
+                    wc.animator = entity->getComponent<AnimatorComponent>();
+                    break;
                 }
             }
-            return nullptr;
+            return wc;
         }
     }
 
@@ -95,7 +108,7 @@ namespace our
 
             const glm::vec3 resPos = glm::vec3(entity->getLocalToWorldMatrix()[3]);
             const float dist = glm::distance(playerPos, resPos);
-            if (dist >= 3.0f)
+            if (dist >= 15.0f)
                 continue;
 
             if (res->type == "wood")
@@ -195,31 +208,82 @@ namespace our
         {
             inventory->activeSlot = 1;
             std::cout << "[Tool] Switched to Hammer\n";
-            if (auto meshR = getWeaponRenderer(world, playerEntity))
-                meshR->material = AssetLoader<Material>::get("brown");
+            auto wc = getWeaponComponents(world);
+            if (wc.meshRenderer)
+            {
+                wc.meshRenderer->mesh = AssetLoader<Mesh>::get("cube");
+                wc.meshRenderer->material = AssetLoader<Material>::get("lit_hammer");
+            }
+            if (wc.animator)
+                wc.animator->modelName = "hammer";
+            activeToolTransform = &hammerTransform;
+            if (weaponEntity)
+                weaponEntity->localTransform.scale = hammerTransform.scale;
         }
         if (keyboard.justPressed(GLFW_KEY_2))
         {
             inventory->activeSlot = 2;
             std::cout << "[Tool] Switched to Net\n";
-            if (auto meshR = getWeaponRenderer(world, playerEntity))
-                meshR->material = AssetLoader<Material>::get("green");
+            auto wc = getWeaponComponents(world);
+            if (wc.meshRenderer)
+            {
+                wc.meshRenderer->mesh = AssetLoader<Mesh>::get("cube");
+                wc.meshRenderer->material = AssetLoader<Material>::get("lit_net");
+            }
+            if (wc.animator)
+                wc.animator->modelName = "net";
+            activeToolTransform = &netTransform;
+            if (weaponEntity)
+                weaponEntity->localTransform.scale = netTransform.scale;
         }
         if (keyboard.justPressed(GLFW_KEY_3))
         {
             inventory->activeSlot = 3;
             std::cout << "[Tool] Switched to Spear\n";
-            if (auto meshR = getWeaponRenderer(world, playerEntity))
-                meshR->material = AssetLoader<Material>::get("silver");
+            auto wc = getWeaponComponents(world);
+            if (wc.meshRenderer)
+            {
+                wc.meshRenderer->mesh = AssetLoader<Mesh>::get("spear");
+                wc.meshRenderer->material = AssetLoader<Material>::get("lit_spear");
+            }
+            if (wc.animator)
+                wc.animator->modelName = ""; // Static
+            activeToolTransform = &spearTransform;
+            if (weaponEntity)
+                weaponEntity->localTransform.scale = spearTransform.scale;
         }
         if (keyboard.justPressed(GLFW_KEY_5))
         {
             if (inventory->hasDevilFruit) {
                 inventory->activeSlot = 5;
                 std::cout << "[Tool] Switched to Fireball\n";
-                // The weapon mesh is hidden by FireballSystem when slot 5 is active
+                // Hide weapon when using fireball slot
+                if (weaponEntity)
+                    weaponEntity->localTransform.scale = glm::vec3(0.0f);
             } else {
                 std::cout << "[Tool] You don't have devil fruit powers yet!\n";
+            }
+        }
+
+        // --- Weapon follow-player logic ---
+        // Make the weapon a child of the player entity so the ECS transform hierarchy
+        // automatically handles yaw + pitch composition (no manual euler angle math needed).
+        if (weaponEntity && playerEntity && activeToolTransform)
+        {
+            // Parent the weapon to the player (only needs to be set once)
+            if (weaponEntity->parent != playerEntity)
+                weaponEntity->parent = playerEntity;
+
+            // Don't move/show weapon if fireball slot is active
+            if (inventory->activeSlot != 5)
+            {
+                // Set local transform relative to the player — the hierarchy does the rest.
+                // Compensate for parent scale: divide desired world scale by parent scale
+                // so the final composed scale matches the ToolConfig values.
+                glm::vec3 parentScale = playerEntity->localTransform.scale;
+                weaponEntity->localTransform.position = activeToolTransform->localPosition;
+                weaponEntity->localTransform.rotation = activeToolTransform->localRotation;
+                weaponEntity->localTransform.scale    = activeToolTransform->scale / parentScale;
             }
         }
 

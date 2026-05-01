@@ -165,7 +165,8 @@ namespace our {
                 handEntity->localTransform.scale = isSlot5 ? glm::vec3(0.5f) : glm::vec3(0.0f);
             }
             if (weaponEntity) {
-                weaponEntity->localTransform.scale = isSlot5 ? glm::vec3(0.0f) : glm::vec3(0.1f, 0.1f, 1.0f);
+                if (isSlot5) weaponEntity->localTransform.scale = glm::vec3(0.0f);
+                // When not slot 5, survival system manages the weapon scale via ToolConfig
             }
 
             // Get the Animator on the hand so we can control the throw animation

@@ -15,7 +15,8 @@ namespace our
         if (albedo) {
             glActiveTexture(GL_TEXTURE0);
             albedo->bind();
-            if (sampler) sampler->bind(0);
+            if (sampler)
+                sampler->bind(0);
             shader->set("albedo", 0);
         }
 
