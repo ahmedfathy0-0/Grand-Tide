@@ -14,6 +14,7 @@
 #include <glm/gtx/euler_angles.hpp>
 #include "player-controller-system.hpp"
 #include "components/burn-component.hpp"
+#include <miniaudio.h>
 #include <iostream>
 
 namespace our
@@ -24,6 +25,9 @@ namespace our
         void update(World *world, float deltaTime);
 
     private:
+        ma_engine* soundEngine = nullptr;
+        void ensureSoundEngine();
+        void playSound(const char* path, float volume);
         void updateShark(World *world, Entity *entity, EnemyComponent *enemy, Entity *raft, float deltaTime);
         void updateMarineBoat(World *world, Entity *entity, MarineBoatComponent *boat, Entity *raft, float deltaTime);
         void updateMusket(World *world, Entity *entity, MusketComponent *musket, Entity *player, float deltaTime);

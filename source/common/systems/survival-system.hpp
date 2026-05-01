@@ -7,7 +7,8 @@
 #include "../components/resource.hpp"
 #include "../components/mesh-renderer.hpp"
 #include "../components/shark-component.hpp"
-#include "../application.hpp" // Assuming this gives access to Application and inputs
+#include "../application.hpp"
+#include <miniaudio.h>
 #include <iostream>
 
 namespace our {
@@ -18,6 +19,9 @@ namespace our {
         Entity* playerEntity;
         Entity* boatEntity;
         bool eventsSubscribed = false;
+
+        // Pain sound
+        ma_engine* painSoundEngine = nullptr;
 
         void handleBoatDamaged(int damage);
         void handleRepairAction();
@@ -41,6 +45,9 @@ namespace our {
         }
 
         void update();
+
+    private:
+        void playPainSound();
     };
 
 }

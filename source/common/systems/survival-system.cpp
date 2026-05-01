@@ -158,6 +158,19 @@ namespace our
         }
     }
 
+    void SurvivalSystem::playPainSound() {
+        if (!painSoundEngine) {
+            painSoundEngine = new ma_engine();
+            if (ma_engine_init(nullptr, painSoundEngine) != MA_SUCCESS) {
+                std::cerr << "[Survival] Pain sound engine init failed" << std::endl;
+                delete painSoundEngine;
+                painSoundEngine = nullptr;
+                return;
+            }
+        }
+        ma_engine_play_sound(painSoundEngine, "assets/audios/pain.mp3", nullptr);
+    }
+
     void SurvivalSystem::update()
     {
         if (!playerEntity || !boatEntity)
@@ -167,6 +180,12 @@ namespace our
         auto playerHealth = playerEntity->getComponent<HealthComponent>();
         if (!inventory || !playerHealth)
             return;
+
+        // Check if player was damaged this frame
+        if (playerHealth->justDamaged) {
+            playPainSound();
+            playerHealth->justDamaged = false;
+        }
 
         auto &keyboard = app->getKeyboard();
         auto &mouse = app->getMouse();
