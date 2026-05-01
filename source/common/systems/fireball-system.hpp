@@ -530,9 +530,17 @@ namespace our {
                             // Stun the octopus if this is an octopus entity
                             auto octopusComp = target->getComponent<OctopusComponent>();
                             if (octopusComp && !octopusComp->permanentlyDead) {
-                                octopusComp->stunTimer = octopusComp->stunDuration;
-                                std::cout << "[Fireball] Octopus STUNNED for "
-                                          << octopusComp->stunDuration << " seconds!" << std::endl;
+                                octopusComp->wasJustStunned = true;
+                                // Only apply stun if not immune (HP > 50% and not revived)
+                                auto targetHealth = target->getComponent<HealthComponent>();
+                                bool stunImmune = (targetHealth && targetHealth->currentHealth <= targetHealth->maxHealth * 0.5f) || octopusComp->hasRevived;
+                                if (!stunImmune) {
+                                    octopusComp->stunTimer = octopusComp->stunDuration;
+                                    std::cout << "[Fireball] Octopus STUNNED for "
+                                              << octopusComp->stunDuration << " seconds!" << std::endl;
+                                } else {
+                                    std::cout << "[Fireball] Octopus hit but STUN-IMMUNE (enraged/revived)" << std::endl;
+                                }
                             }
                         }
                     }

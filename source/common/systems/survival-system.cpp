@@ -1,6 +1,8 @@
 #include "survival-system.hpp"
 #include "../asset-loader.hpp"
 #include "../components/enemy.hpp"
+#include "../components/octopus-component.hpp"
+#include "../components/elgembellias-component.hpp"
 
 namespace our
 {
@@ -124,6 +126,8 @@ namespace our
         EventManager::emit("PLAYER_ATTACKED", 25);
 
         const glm::vec3 playerPos = glm::vec3(playerEntity->getLocalToWorldMatrix()[3]);
+        // Player's look direction (forward is -Z in local space)
+        glm::vec3 playerForward = glm::normalize(glm::vec3(playerEntity->getLocalToWorldMatrix() * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
 
         for (auto entity : world->getEntities())
         {
@@ -133,9 +137,6 @@ namespace our
                 continue;
 
             glm::vec3 targetPos = glm::vec3(entity->getLocalToWorldMatrix()[3]);
-
-            // Player's look direction (forward is -Z in local space)
-            glm::vec3 playerForward = glm::normalize(glm::vec3(playerEntity->getLocalToWorldMatrix() * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
 
             // Target bounding radius (Shark is very long, so we give it a large bounding bubble to cover snout to tail)
             float targetRadius = (enemy && enemy->type == EnemyType::SHARK) ? 10.0f : 2.0f;
@@ -154,6 +155,54 @@ namespace our
                 if (entity->getComponent<EnemyComponent>()->type == EnemyType::SHARK)
                     entity->getComponent<SharkComponent>()->damageFlashTimer = 0.5f;
                 std::cout << "[Combat] Hit entity for 25 damage! Health left: " << health->currentHealth << "\n";
+            }
+        }
+
+        // --- Boss hit detection (Octopus & Elgembellias) using sphere ---
+        for (auto entity : world->getEntities())
+        {
+            // Octopus
+            auto octopus = entity->getComponent<OctopusComponent>();
+            if (octopus && !octopus->permanentlyDead)
+            {
+                auto hp = entity->getComponent<HealthComponent>();
+                if (!hp || hp->isDead()) continue;
+
+                glm::vec3 targetPos = glm::vec3(entity->getLocalToWorldMatrix()[3]);
+                float bossRadius = 15.0f; // Octopus is large
+                float spearReach = 10.0f;
+
+                glm::vec3 diff = targetPos - playerPos;
+                float t = glm::clamp(glm::dot(diff, playerForward), 0.0f, spearReach);
+                glm::vec3 closestSpearPoint = playerPos + playerForward * t;
+                float distToTarget = glm::distance(closestSpearPoint, targetPos);
+
+                if (distToTarget <= bossRadius)
+                {
+                    hp->takeDamage(10.0f);
+                    std::cout << "[Combat] Hit OCTOPUS for 25 damage! HP: " << hp->currentHealth << " / " << hp->maxHealth << "\n";
+                }
+                continue;
+            }
+
+            // Elgembellias
+            auto elgem = entity->getComponent<ElgembelliasComponent>();
+            if (elgem && elgem->state != ElgembelliasState::HIDDEN && elgem->state != ElgembelliasState::DEATH)
+            {
+                glm::vec3 targetPos = glm::vec3(entity->getLocalToWorldMatrix()[3]);
+                float bossRadius = 10.0f;
+                float spearReach = 10.0f;
+
+                glm::vec3 diff = targetPos - playerPos;
+                float t = glm::clamp(glm::dot(diff, playerForward), 0.0f, spearReach);
+                glm::vec3 closestSpearPoint = playerPos + playerForward * t;
+                float distToTarget = glm::distance(closestSpearPoint, targetPos);
+
+                if (distToTarget <= bossRadius)
+                {
+                    elgem->currentHealth -=10.0f;
+                    std::cout << "[Combat] Hit ELGEMBELLIAS for 25 damage! HP: " << elgem->currentHealth << " / " << elgem->maxHealth << "\n";
+                }
             }
         }
     }

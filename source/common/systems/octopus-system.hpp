@@ -393,13 +393,17 @@ namespace our {
                 if (octopus->hitCooldownTimer > 0.0f) {
                     octopus->hitCooldownTimer -= deltaTime;
                 }
-                // Tick down stun timer
-                if (octopus->stunTimer > 0.0f) {
+                // Tick down stun timer (or clear if stun-immune)
+                bool stunImmune = (healthComp && healthComp->currentHealth <= healthComp->maxHealth * 0.5f) || octopus->hasRevived;
+                if (stunImmune) {
+                    octopus->stunTimer = 0.0f;
+                } else if (octopus->stunTimer > 0.0f) {
                     octopus->stunTimer -= deltaTime;
                 }
 
                 // If stunned, skip attack/move states and go to COMBAT_IDLE
-                if (octopus->stunTimer > 0.0f &&
+                // BUT: no stun idle when HP <= 50% or after revival (boss fights through damage)
+                if (octopus->stunTimer > 0.0f && !stunImmune &&
                     (octopus->state == OctopusState::ATTACKING ||
                      octopus->state == OctopusState::ENRAGED_COMBAT ||
                      octopus->state == OctopusState::MOVING)) {
@@ -409,6 +413,23 @@ namespace our {
                     setAnimation(animator, "Mon_PiratesKing_CombatIdle", true);
                     octopus->currentAnimDuration = queryAnimDuration(animator, "Mon_PiratesKing_CombatIdle");
                     std::cout << "[Octopus] STUNNED -- forced to COMBAT_IDLE" << std::endl;
+                }
+
+                // If stun-immune but was just hit by fireball during first 60% of attack, restart from 0%
+                if (stunImmune && octopus->wasJustStunned &&
+                    (octopus->state == OctopusState::ATTACKING ||
+                     octopus->state == OctopusState::ENRAGED_COMBAT)) {
+                    float normTime = (octopus->currentAnimDuration > 0.0f)
+                        ? octopus->animElapsedTime / octopus->currentAnimDuration : 1.0f;
+                    if (normTime < 0.7f) {
+                        // Restart the attack from the beginning
+                        octopus->animElapsedTime = 0.0f;
+                        if (animator) animator->currentAnimationTime = 0.0f;
+                        octopus->hitRegisteredThisSwing = false;
+                        octopus->isAttackActive = false;
+                        octopus->hitCooldownTimer = 0.0f;
+                        std::cout << "[Octopus] Hit during early attack -- RESTARTING attack" << std::endl;
+                    }
                 }
 
                 // ==============================================================
@@ -487,8 +508,9 @@ namespace our {
                     octopus->currentAnimIndex = OctopusAnimation::COMBAT_IDLE;
 
                     // Transition to ATTACKING when boss is ready and player is in range+cone
-                    // But NOT while stunned
-                    if (octopus->bossReady && player && octopus->stunTimer <= 0.0f) {
+                    // But NOT while stunned (unless stun-immune at HP <= 50% or after revival)
+                    bool stunImmuneIdle = (healthComp && healthComp->currentHealth <= healthComp->maxHealth * 0.5f) || octopus->hasRevived;
+                    if (octopus->bossReady && player && (octopus->stunTimer <= 0.0f || stunImmuneIdle)) {
                         glm::vec3 toPlayer = player->localTransform.position - pos;
                         toPlayer.y = 0.0f;
                         float dist = glm::length(toPlayer);
@@ -1069,6 +1091,9 @@ namespace our {
                     animator->currentAnimIndex = (int)octopus->currentAnimIndex;
                     animator->currentAnimationTime = 0.0f;
                 }
+
+                // Clear the just-stunned flag at end of frame
+                octopus->wasJustStunned = false;
             }
         }
     };
