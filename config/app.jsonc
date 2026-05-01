@@ -842,7 +842,28 @@
             "mesh": "cube",
             "material": "lit_hammer",
           },
-          { "type": "Animator", "modelName": "hammer" }
+          { "type": "Animator", "modelName": "hammer" },
+          {
+            "type": "ToolConfig",
+            // Position offset from player (in player's local space: right, up, forward)
+            // Rotation in degrees (pitch, yaw, roll) added on top of player's rotation
+            // Scale applied directly to the model
+            "hammer": {
+              "position": [1.0, -1.0, -5.0],
+              "rotation": [120.0, 90.0, 90.0],
+              "scale":    [0.1, 0.1, 0.1],
+            },
+            "net": {
+              "position": [1.0, -1.0, -5.0],
+              "rotation": [120.0, 90.0, 90.0],
+              "scale":    [0.1, 0.1, 0.1],
+            },
+            "spear": {
+              "position": [1.0, -1.0, -5.0],
+              "rotation": [120.0, 90.0, 90.0],
+              "scale":    [0.1, 0.1, 0.1],
+            },
+          },
         ],
       },
           {

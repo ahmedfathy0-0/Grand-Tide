@@ -253,15 +253,21 @@ namespace our
             // Don't move/show weapon if fireball slot is active
             if (inventory->activeSlot != 5)
             {
-                // Compute weapon world position from player's world matrix + local offset
-                glm::mat4 playerWorld = playerEntity->getLocalToWorldMatrix();
-                glm::vec3 weaponWorldPos = glm::vec3(playerWorld * glm::vec4(activeToolTransform->localPosition, 1.0f));
+                // Build a yaw-only matrix from the player's current yaw.
+                // This keeps the weapon anchored in front of the player as they
+                // turn left/right, WITHOUT being affected by camera pitch (look up/down).
+                float playerYaw = playerEntity->localTransform.rotation.y;
+                glm::mat4 yawOnlyMatrix = glm::translate(glm::mat4(1.0f), playerEntity->localTransform.position)
+                                        * glm::mat4(glm::yawPitchRoll(playerYaw, 0.0f, 0.0f));
+
+                // Position: offset in the player's yaw-only local space
+                glm::vec3 weaponWorldPos = glm::vec3(yawOnlyMatrix * glm::vec4(activeToolTransform->localPosition, 1.0f));
                 weaponEntity->localTransform.position = weaponWorldPos;
 
-                // Rotation: player rotation + tool-specific rotation offset
-                weaponEntity->localTransform.rotation = playerEntity->localTransform.rotation + activeToolTransform->localRotation;
+                // Rotation: yaw only + tool-specific rotation offset (no pitch)
+                weaponEntity->localTransform.rotation = glm::vec3(0.0f, playerYaw, 0.0f) + activeToolTransform->localRotation;
 
-                // Scale: tool-specific (already set on switch, but ensure it stays correct)
+                // Scale: tool-specific
                 weaponEntity->localTransform.scale = activeToolTransform->scale;
             }
         }
