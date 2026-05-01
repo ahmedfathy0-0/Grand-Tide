@@ -88,18 +88,12 @@ namespace our
     private:
         void spawnShark(World *world)
         {
-            // Find raft for spawn position
             Entity *raft = nullptr;
             for (auto entity : world->getEntities())
             {
-                if (entity->name == "raft")
-                {
-                    raft = entity;
-                    break;
-                }
+                if (entity->name == "raft") { raft = entity; break; }
             }
-            if (!raft)
-                return;
+            if (!raft) return;
 
             glm::vec3 raftPos = raft->localTransform.position;
             float angle = static_cast<float>(rand() % 360) * glm::pi<float>() / 180.0f;
@@ -114,59 +108,36 @@ namespace our
 
             float spawnDist = sharkData.value("spawnDistance", 150.0f) + static_cast<float>(rand() % 100);
             float spawnY = sharkData.value("spawnY", -10.0f);
-            float health = sharkData.value("health", 100.0f);
-            float speed = sharkData.value("speed", 12.0f);
-            float attackRange = sharkData.value("attackRange", 25.0f);
-            float attackDamage = sharkData.value("attackDamage", 100.0f);
-            std::string material = sharkData.value("material", "lit_shark");
-            std::string model = sharkData.value("model", "shark");
-            int animIndex = sharkData.value("animIndex", 0);
 
             Entity *shark = world->add();
             shark->name = "shark_" + std::to_string(sharksSpawned);
             shark->localTransform.position = glm::vec3(
-                raftPos.x + cos(angle) * spawnDist,
-                spawnY,
-                raftPos.z + sin(angle) * spawnDist);
+                raftPos.x + cos(angle) * spawnDist, spawnY, raftPos.z + sin(angle) * spawnDist);
 
-            // Scale from config or default
             if (sharkData.contains("scale") && sharkData["scale"].is_array())
-            {
-                shark->localTransform.scale = glm::vec3(
-                    sharkData["scale"][0].get<float>(),
-                    sharkData["scale"][1].get<float>(),
-                    sharkData["scale"][2].get<float>());
-            }
+                shark->localTransform.scale = glm::vec3(sharkData["scale"][0].get<float>(), sharkData["scale"][1].get<float>(), sharkData["scale"][2].get<float>());
             else
-            {
                 shark->localTransform.scale = glm::vec3(0.05f);
-            }
             shark->localTransform.rotation = glm::vec3(0.0f);
 
             auto *mr = shark->addComponent<MeshRendererComponent>();
             mr->mesh = nullptr;
-            mr->material = AssetLoader<Material>::get(material);
+            mr->material = AssetLoader<Material>::get(sharkData.value("material", "lit_shark"));
 
             auto *sc = shark->addComponent<SharkComponent>();
-            sc->health = health;
+            sc->deserialize(sharkData);
             sc->state = SharkState::APPROACHING;
-            sc->speed = speed;
-            sc->attackRange = attackRange;
 
             auto *anim = shark->addComponent<AnimatorComponent>();
-            anim->modelName = model;
-            anim->currentAnimIndex = animIndex;
+            anim->deserialize(sharkData);
 
             auto *enemy = shark->addComponent<EnemyComponent>();
+            enemy->deserialize(sharkData);
             enemy->type = EnemyType::SHARK;
-            std::string targetStr = sharkData.value("primaryTarget", "RAFT");
-            enemy->primaryTarget = (targetStr == "PLAYER") ? PrimaryTarget::PLAYER : PrimaryTarget::RAFT;
             enemy->state = EnemyState::ALIVE;
-            enemy->attackDamage = attackDamage;
 
             auto *hp = shark->addComponent<HealthComponent>();
-            hp->maxHealth = health;
-            hp->currentHealth = health;
+            hp->deserialize(sharkData);
 
             sharksSpawned++;
         }

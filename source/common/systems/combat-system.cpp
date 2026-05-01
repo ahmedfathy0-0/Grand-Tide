@@ -43,6 +43,11 @@ namespace our
                 raft = entity;
             if (entity->name == "player")
                 player = entity;
+            // Tick down damage flash timer
+            if (auto hp = entity->getComponent<HealthComponent>(); hp) {
+                if (hp->damageFlashTimer > 0.0f)
+                    hp->damageFlashTimer -= deltaTime;
+            }
         }
 
         for (auto entity : world->getEntities())
@@ -214,22 +219,25 @@ namespace our
         
         glm::vec3 diff = raft->localTransform.position - entity->localTransform.position;
         diff.y = 0;
-        float distSq = glm::length2(diff);
+        float dist = glm::length(diff);
 
-        if (distSq > boat->attackRange * boat->attackRange)
+        if (dist > boat->approachDistance)
         {
+            // Beyond approach distance: move toward raft
             glm::vec3 dir = glm::normalize(diff);
             entity->localTransform.position += dir * boat->speed * deltaTime;
-            // Keep wave height
             entity->localTransform.position.y = waveH;
 
             float targetYaw = atan2(dir.x, dir.z);
             entity->localTransform.rotation.y = targetYaw;
+
+            boat->state = MARINE_BOAT_STATE::APPROACHING;
         }
         else
         {
-            // In attack range: still bob on waves
+            // Within approach distance: stop moving, bob on waves
             entity->localTransform.position.y = waveH;
+            boat->state = MARINE_BOAT_STATE::IDLE;
         }
 
         // Wave tilting (marine-boat.fbx is already flat, no -90 offset needed)
@@ -250,6 +258,17 @@ namespace our
             entity->localTransform.scale.y == 0.0f &&
             entity->localTransform.scale.z == 0.0f)
             return;
+
+        // ── Approach distance check: only shoot when parent boat is close enough ──
+        bool boatApproaching = false;
+        if (entity->parent)
+        {
+            auto *boatComp = entity->parent->getComponent<MarineBoatComponent>();
+            if (boatComp && boatComp->state == MARINE_BOAT_STATE::APPROACHING)
+            {
+                boatApproaching = true;
+            }
+        }
 
         auto animator = entity->getComponent<AnimatorComponent>();
         auto health = entity->getComponent<HealthComponent>();
@@ -338,7 +357,12 @@ namespace our
         // ── State machine ────────────────────────────────────────────────────
         if (musket->state == MusketState::IDLE) // Idle — waiting to shoot
         {
-            if (musket->timer >= musket->fireRate)
+            if (boatApproaching)
+            {
+                // Boat still approaching — can't shoot, stay idle
+                musket->timer = 0.0f;
+            }
+            else if (musket->timer >= musket->fireRate)
             {
                 musket->state = MusketState::FIRING;
                 musket->timer = 0.0f;
@@ -353,6 +377,18 @@ namespace our
         }
         else if (musket->state == MusketState::FIRING) // Shooting — wait for animation to finish
         {
+            // If boat moved away, cancel the shot
+            if (boatApproaching) {
+                musket->state = MusketState::IDLE;
+                musket->timer = 0.0f;
+                if (animator) {
+                    animator->currentAnimIndex = 0;
+                    animator->playSpeed = 1.0f;
+                    animator->loopAnimation = true;
+                }
+            }
+            else
+            {
             float animDuration = 4.0f;
             if (ModelLoader::models.count("marine_musket"))
             {
@@ -387,6 +423,7 @@ namespace our
                     animator->loopAnimation = true;
                 }
             }
+            } // end else (not boatApproaching)
         }
     }
 

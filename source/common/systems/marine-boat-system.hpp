@@ -71,7 +71,6 @@ namespace our
             float startZInc = boatCfg.value("startZIncrement", 30.0f);
             float startZ = startZBase + (spawnedBoats * startZInc);
 
-            // Alternate startX from config array
             float startX;
             if (boatCfg.contains("startX") && boatCfg["startX"].is_array() && boatCfg["startX"].size() > 0) {
                 int idx = spawnedBoats % (int)boatCfg["startX"].size();
@@ -83,44 +82,31 @@ namespace our
             float rotY = boatCfg.value("rotationY", 45.0f);
             float boatScale = boatCfg.contains("scale") && boatCfg["scale"].is_array()
                 ? boatCfg["scale"][0].get<float>() : 0.05f;
-            std::string boatMaterial = boatCfg.value("material", "lit_boat");
-            std::string boatModel = boatCfg.value("model", "marine_boat");
-            float boatSpeed = boatCfg.value("speed", 2.0f);
-            float boatAttackRange = boatCfg.value("attackRange", 40.0f);
-            float boatHealth = boatCfg.value("health", 200.0f);
-            float boatAttackDamage = boatCfg.value("attackDamage", 0.0f);
-            std::string boatTarget = boatCfg.value("primaryTarget", "RAFT");
 
             Entity *boat = world->add();
             boat->name = "marine_boat_" + std::to_string(spawnedBoats);
             boat->parent = nullptr;
-
             boat->localTransform.position = glm::vec3(startX, 0.0f, startZ);
             boat->localTransform.scale = glm::vec3(boatScale);
             boat->localTransform.rotation = glm::vec3(0.0f, glm::radians(rotY), 0.0f);
 
             auto *mr = boat->addComponent<MeshRendererComponent>();
             mr->mesh = nullptr;
-            mr->material = AssetLoader<Material>::get(boatMaterial);
+            mr->material = AssetLoader<Material>::get(boatCfg.value("material", "lit_boat"));
 
             auto *boatComp = boat->addComponent<MarineBoatComponent>();
-            boatComp->modelName = boatModel;
-            boatComp->speed = boatSpeed;
-            boatComp->attackRange = boatAttackRange;
+            boatComp->deserialize(boatCfg);
 
             auto *boatAnim = boat->addComponent<AnimatorComponent>();
-            boatAnim->modelName = boatModel;
-            boatAnim->currentAnimIndex = 0;
+            boatAnim->deserialize(boatCfg);
 
             auto *boatEnemy = boat->addComponent<EnemyComponent>();
+            boatEnemy->deserialize(boatCfg);
             boatEnemy->type = EnemyType::MARINE_BOAT;
-            boatEnemy->primaryTarget = (boatTarget == "PLAYER") ? PrimaryTarget::PLAYER : PrimaryTarget::RAFT;
             boatEnemy->state = EnemyState::ALIVE;
-            boatEnemy->attackDamage = boatAttackDamage;
 
             auto *health = boat->addComponent<HealthComponent>();
-            health->maxHealth = boatHealth;
-            health->currentHealth = boatHealth;
+            health->deserialize(boatCfg);
 
             // Spawn muskets using the single template
             nlohmann::json musketCfg = config.value("musket", nlohmann::json::object());
@@ -142,7 +128,6 @@ namespace our
                     spawnMusket(world, boat, (int)i, localPos, localScale, musketCfg);
                 }
             } else {
-                // Default 2 muskets
                 spawnMusket(world, boat, 0, glm::vec3(20.0f, 10.0f, -50.0f), glm::vec3(50.0f, 50.0f, 50.0f), musketCfg);
                 spawnMusket(world, boat, 1, glm::vec3(-20.0f, 10.0f, 50.0f), glm::vec3(100.0f, 50.0f, 50.0f), musketCfg);
             }
@@ -158,44 +143,30 @@ namespace our
             Entity *musket = world->add();
             musket->parent = boat;
             musket->name = boat->name + "_musket_" + std::to_string(slot);
-
             musket->localTransform.position = localPos;
             musket->localTransform.scale = localScale;
             musket->localTransform.rotation = glm::vec3(0.0f);
 
-            std::string musketMaterial = mCfg.value("material", "lit_musket");
-            std::string musketModel = mCfg.value("model", "marine_musket");
-            float musketDamage = mCfg.value("damage", 10.0f);
-            float musketFireRate = mCfg.value("fireRate", 10.0f);
-            float musketHealth = mCfg.value("health", 100.0f);
-            float musketAttackDamage = mCfg.value("attackDamage", 10.0f);
-            std::string musketTarget = mCfg.value("primaryTarget", "PLAYER");
-
             auto *mr = musket->addComponent<MeshRendererComponent>();
             mr->mesh = nullptr;
-            mr->material = AssetLoader<Material>::get(musketMaterial);
+            mr->material = AssetLoader<Material>::get(mCfg.value("material", "lit_musket"));
 
             auto *musketComp = musket->addComponent<MusketComponent>();
-            musketComp->modelName = musketModel;
+            musketComp->deserialize(mCfg);
             musketComp->musketIndex = slot;
-            musketComp->damage = musketDamage;
-            musketComp->fireRate = musketFireRate;
             musketComp->timer = 0.0f;
             musketComp->state = MusketState::IDLE;
 
             auto *musketHealthComp = musket->addComponent<HealthComponent>();
-            musketHealthComp->maxHealth = musketHealth;
-            musketHealthComp->currentHealth = musketHealth;
+            musketHealthComp->deserialize(mCfg);
 
             auto *musketAnim = musket->addComponent<AnimatorComponent>();
-            musketAnim->modelName = musketModel;
-            musketAnim->currentAnimIndex = 0;
+            musketAnim->deserialize(mCfg);
 
             auto *musketEnemy = musket->addComponent<EnemyComponent>();
+            musketEnemy->deserialize(mCfg);
             musketEnemy->type = EnemyType::MUSKET;
-            musketEnemy->primaryTarget = (musketTarget == "RAFT") ? PrimaryTarget::RAFT : PrimaryTarget::PLAYER;
             musketEnemy->state = EnemyState::ALIVE;
-            musketEnemy->attackDamage = musketAttackDamage;
         }
     };
 }

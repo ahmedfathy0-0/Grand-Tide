@@ -18,18 +18,18 @@ namespace our
         std::string modelName = "marine_boat";
         float speed = 8.0f;
         float attackRange = 40.0f;
+        float approachDistance = 30.0f; // Distance at which boat stops and muskets can fire
         MARINE_BOAT_STATE state = MARINE_BOAT_STATE::IDLE;
 
         static std::string getID() { return "Marine Boat"; }
 
         void deserialize(const nlohmann::json &data) override
         {
-            if (data.contains("modelName"))
-                modelName = data["modelName"].get<std::string>();
-            if (data.contains("speed"))
-                speed = data["speed"].get<float>();
-            if (data.contains("attackRange"))
-                attackRange = data["attackRange"].get<float>();
+            if (!data.is_object()) return;
+            modelName = data.value("modelName", modelName);
+            speed = data.value("speed", speed);
+            attackRange = data.value("attackRange", attackRange);
+            approachDistance = data.value("approachDistance", approachDistance);
         }
     };
 }

@@ -82,21 +82,6 @@ namespace our
                 rotation = glm::vec3(octCfg["rotation"][0].get<float>(), octCfg["rotation"][1].get<float>(), octCfg["rotation"][2].get<float>());
 
             std::string material = octCfg.value("material", "lit_octopus");
-            std::string model = octCfg.value("model", "octopus");
-            float health = octCfg.value("health", 500.0f);
-            float attackDamage = octCfg.value("attackDamage", 10.0f);
-            float attackCooldown = octCfg.value("attackCooldown", 5.0f);
-            float idleDuration = octCfg.value("idleDuration", 5.0f);
-            float attackDuration = octCfg.value("attackDuration", 0.0f);
-            float emergeDelay = octCfg.value("emergeDelay", 10.0f);
-            float attackRange = octCfg.value("attackRange", 35.0f);
-            float chaseSpeed = octCfg.value("chaseSpeed", 8.0f);
-            float surfacedY = octCfg.value("surfacedY", -5.0f);
-            float submergedY = octCfg.value("submergedY", -150.0f);
-            float followDistance = octCfg.value("followDistance", 60.0f);
-            float minFollowDist = octCfg.value("minFollowDistance", 30.0f);
-            float maxFollowDist = octCfg.value("maxFollowDistance", 100.0f);
-            float speed = octCfg.value("speed", 1.0f);
 
             Entity *octopus = world->add();
             octopus->name = "octopus";
@@ -109,43 +94,16 @@ namespace our
             mr->material = AssetLoader<Material>::get(material);
 
             auto *octComp = octopus->addComponent<OctopusComponent>();
-            octComp->modelName = model;
-            octComp->health = health;
-            octComp->attackDamage = attackDamage;
-            octComp->attackCooldown = attackCooldown;
-            octComp->idleDuration = idleDuration;
-            octComp->attackDuration = attackDuration;
-            octComp->emergeDelay = emergeDelay;
-            octComp->attackRange = attackRange;
-            octComp->chaseSpeed = chaseSpeed;
-            octComp->surfacedY = surfacedY;
-            octComp->submergedY = submergedY;
-            octComp->followDistance = followDistance;
-            octComp->minFollowDistance = minFollowDist;
-            octComp->maxFollowDistance = maxFollowDist;
-            octComp->speed = speed;
-
-            // Read additional fields that were previously left at defaults
-            octComp->tentacleRadius = octCfg.value("tentacleRadius", octComp->tentacleRadius);
-            octComp->playerRadius = octCfg.value("playerRadius", octComp->playerRadius);
-            octComp->hitCooldownDuration = octCfg.value("hitCooldownDuration", octComp->hitCooldownDuration);
-            octComp->stunDuration = octCfg.value("stunDuration", octComp->stunDuration);
-            octComp->revivalHP = octCfg.value("revivalHP", octComp->revivalHP);
-            octComp->damageMultiplier = octCfg.value("damageMultiplier", octComp->damageMultiplier);
-            octComp->waveMaxRadius = octCfg.value("waveMaxRadius", octComp->waveMaxRadius);
-            octComp->waveExpandSpeed = octCfg.value("waveExpandSpeed", octComp->waveExpandSpeed);
-            octComp->waveDamage = octCfg.value("waveDamage", octComp->waveDamage);
+            octComp->deserialize(octCfg);
 
             auto *anim = octopus->addComponent<AnimatorComponent>();
-            anim->modelName = model;
-            anim->currentAnimIndex = 0;
+            anim->deserialize(octCfg);
 
             auto *hp = octopus->addComponent<HealthComponent>();
-            hp->maxHealth = health;
-            hp->currentHealth = health;
+            hp->deserialize(octCfg);
 
             octopusEntity = octopus;
-            std::cout << "[KrakenPhase] Spawned octopus (HP=" << health << ")" << std::endl;
+            std::cout << "[KrakenPhase] Spawned octopus (HP=" << hp->maxHealth << ")" << std::endl;
         }
     };
 }

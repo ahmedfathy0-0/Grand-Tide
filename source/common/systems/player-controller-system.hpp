@@ -3,12 +3,14 @@
 #include "../ecs/world.hpp"
 #include "../components/camera.hpp"
 #include "../components/player-controller.hpp"
+#include "../components/health.hpp"
 #include "../application.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
 #include <glm/trigonometric.hpp>
 #include <glm/gtx/fast_trigonometry.hpp>
+#include <iostream>
 
 namespace our
 {
@@ -456,6 +458,12 @@ namespace our
                 player->yVelocity = 0.0f;
                 player->isGrounded = true;
             } else if (!overRaft && !overBoat && playerPos.y <= waveHeight - 1.5f) { // Fall into water and submerge
+                // Lose 25 HP for falling in water
+                auto* hp = playerEntity->getComponent<HealthComponent>();
+                if (hp && hp->currentHealth > 0) {
+                    hp->takeDamage(25.0f);
+                    std::cout << "[Water] Player fell in water! -25 HP (now " << hp->currentHealth << ")" << std::endl;
+                }
                 // Reset position to center of the raft
                 playerPos.x = player->surfaceCenter.x;
                 playerPos.y = dynamicSurfaceHeight + 2.0f; // Drop them back from the sky slightly
