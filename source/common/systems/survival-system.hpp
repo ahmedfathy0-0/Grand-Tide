@@ -8,6 +8,7 @@
 #include "../components/mesh-renderer.hpp"
 #include "../components/shark-component.hpp"
 #include "../application.hpp"
+#include <miniaudio.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/euler_angles.hpp>
 #include "../deserialize-utils.hpp"
@@ -34,6 +35,9 @@ namespace our {
         ToolTransform netTransform;
         ToolTransform spearTransform;
         ToolTransform* activeToolTransform = nullptr;
+
+        // Pain sound
+        ma_engine* painSoundEngine = nullptr;
 
         void handleBoatDamaged(int damage);
         void handleRepairAction();
