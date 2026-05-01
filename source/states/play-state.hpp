@@ -129,6 +129,31 @@ class Playstate : public our::State
 
     void onImmediateGui() override
     {
+        // --- Crosshair ---
+        {
+            auto size = getApp()->getFrameBufferSize();
+            ImVec2 center = ImVec2(size.x * 0.5f, size.y * 0.5f);
+            ImU32 crosshairColor = IM_COL32(255, 255, 255, 255); // White by default
+
+            our::Entity *player = nullptr;
+            for (auto entity : world.getEntities()) {
+                if (entity->name == "player") {
+                    player = entity;
+                    break;
+                }
+            }
+
+            if (player) {
+                if (auto inv = player->getComponent<our::InventoryComponent>()) {
+                    auto& mouse = getApp()->getMouse();
+                    if ((inv->activeSlot == 3 || inv->activeSlot == 5) && mouse.isPressed(GLFW_MOUSE_BUTTON_1)) {
+                        crosshairColor = IM_COL32(255, 0, 0, 255); // Red when attacking
+                    }
+                }
+            }
+            ImGui::GetForegroundDrawList()->AddCircleFilled(center, 3.0f, crosshairColor);
+        }
+
         our::Entity *player = nullptr;
         for (auto entity : world.getEntities())
         {
