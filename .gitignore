@@ -43,5 +43,6 @@ Thumbs.db
 screenshots/
 errors/
 vendor/assimp
+vendor/FFmpeg
 
 Phase1/
