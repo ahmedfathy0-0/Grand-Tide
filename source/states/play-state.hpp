@@ -286,6 +286,9 @@ class Playstate : public our::State
         waitingForHeal = false;
         escPrev = false;
 
+        oceanAudio.stop();
+        oceanAudio.start();
+
         cameraController.enter(getApp());
         survivalSystem.setup(&world, getApp(), nullptr, nullptr);
         fireballSystem.enter(getApp());
@@ -422,6 +425,10 @@ class Playstate : public our::State
             if (krakenDone && !phaseTransitioning) {
                 phaseTransitioning = true;
                 krakenPhase.exit();
+                // Transition to end state (victory screen)
+                oceanAudio.stop();
+                getApp()->changeState("end");
+                return;
             }
         }
 
