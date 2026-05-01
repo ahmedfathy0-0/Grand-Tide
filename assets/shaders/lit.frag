@@ -56,11 +56,6 @@ vec3 render_sky_color(vec3 rd) {
     float time_blend = smoothstep(-0.2, 0.2, SUN_DIR.y);
     vec3  sky = mix(night_sky, day_sky, time_blend);
 
-    if(time_blend < 1.0 && rd.y > 0.0) {
-        float stars = pow(hash(dot(rd, vec3(12.9898, 78.233, 45.164))), 500.0);
-        sky += vec3(stars) * (1.0 - time_blend) * 3.0;
-    }
-
     vec3  sun_col   = get_sun_color();
     float sun_amount = max(dot(rd, SUN_DIR), 0.0);
     float sun_bloom  = pow(sun_amount,  8.0) * 0.5;
