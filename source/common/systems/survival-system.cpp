@@ -55,6 +55,22 @@ namespace our
                 meshR->material = AssetLoader<Material>::get("dark_broken");
             }
         }
+        else if (boatHealth->currentHealth < boatHealth->maxHealth * 0.25f)
+        {
+            auto meshR = boatEntity->getComponent<MeshRendererComponent>();
+            if (meshR)
+            {
+                meshR->material = AssetLoader<Material>::get("raft_corrupted2_mat");
+            }
+        }
+        else if (boatHealth->currentHealth < boatHealth->maxHealth * 0.5f)
+        {
+            auto meshR = boatEntity->getComponent<MeshRendererComponent>();
+            if (meshR)
+            {
+                meshR->material = AssetLoader<Material>::get("raft_corrupted_mat");
+            }
+        }
     }
 
     void SurvivalSystem::handleRepairAction()
