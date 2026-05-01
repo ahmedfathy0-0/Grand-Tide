@@ -3,6 +3,8 @@
 #include "../components/enemy.hpp"
 #include "../components/animator.hpp"
 
+#include <glm/gtx/euler_angles.hpp>
+
 namespace our
 {
 
@@ -14,14 +16,15 @@ namespace our
             AnimatorComponent *animator;
         };
 
-        WeaponComponents getWeaponComponents(World *world, Entity *playerEntity)
+        // Find weapon entity by name (world-level entity, not child of player)
+        WeaponComponents getWeaponComponents(World *world)
         {
             WeaponComponents wc = {nullptr, nullptr};
-            if (!world || !playerEntity)
+            if (!world)
                 return wc;
             for (auto entity : world->getEntities())
             {
-                if (entity->parent == playerEntity && entity->name == "weapon")
+                if (entity->name == "weapon")
                 {
                     wc.meshRenderer = entity->getComponent<MeshRendererComponent>();
                     wc.animator = entity->getComponent<AnimatorComponent>();
@@ -186,82 +189,80 @@ namespace our
         {
             inventory->activeSlot = 1;
             std::cout << "[Tool] Switched to Hammer\n";
-            auto wc = getWeaponComponents(world, playerEntity);
+            auto wc = getWeaponComponents(world);
             if (wc.meshRenderer)
             {
                 wc.meshRenderer->mesh = AssetLoader<Mesh>::get("cube");
                 wc.meshRenderer->material = AssetLoader<Material>::get("lit_hammer");
-
-                auto entity = wc.meshRenderer->getOwner();
-                if (!weaponTransformCaptured) {
-                    defaultWeaponTransform.position = entity->localTransform.position;
-                    defaultWeaponTransform.rotation = entity->localTransform.rotation;
-                    defaultWeaponTransform.scale    = entity->localTransform.scale;
-                    weaponTransformCaptured = true;
-                }
-                entity->localTransform.position = defaultWeaponTransform.position;
-                entity->localTransform.rotation = defaultWeaponTransform.rotation;
-                entity->localTransform.scale    = defaultWeaponTransform.scale;
             }
             if (wc.animator)
                 wc.animator->modelName = "hammer";
+            activeToolTransform = &hammerTransform;
+            if (weaponEntity)
+                weaponEntity->localTransform.scale = hammerTransform.scale;
         }
         if (keyboard.justPressed(GLFW_KEY_2))
         {
             inventory->activeSlot = 2;
             std::cout << "[Tool] Switched to Net\n";
-            auto wc = getWeaponComponents(world, playerEntity);
+            auto wc = getWeaponComponents(world);
             if (wc.meshRenderer)
             {
                 wc.meshRenderer->mesh = AssetLoader<Mesh>::get("cube");
                 wc.meshRenderer->material = AssetLoader<Material>::get("lit_net");
-
-                auto entity = wc.meshRenderer->getOwner();
-                if (!weaponTransformCaptured) {
-                    defaultWeaponTransform.position = entity->localTransform.position;
-                    defaultWeaponTransform.rotation = entity->localTransform.rotation;
-                    defaultWeaponTransform.scale    = entity->localTransform.scale;
-                    weaponTransformCaptured = true;
-                }
-                entity->localTransform.position = defaultWeaponTransform.position;
-                entity->localTransform.rotation = defaultWeaponTransform.rotation;
-                entity->localTransform.scale    = defaultWeaponTransform.scale;
             }
             if (wc.animator)
                 wc.animator->modelName = "net";
+            activeToolTransform = &netTransform;
+            if (weaponEntity)
+                weaponEntity->localTransform.scale = netTransform.scale;
         }
         if (keyboard.justPressed(GLFW_KEY_3))
         {
             inventory->activeSlot = 3;
             std::cout << "[Tool] Switched to Spear\n";
-            auto wc = getWeaponComponents(world, playerEntity);
+            auto wc = getWeaponComponents(world);
             if (wc.meshRenderer)
             {
                 wc.meshRenderer->mesh = AssetLoader<Mesh>::get("spear");
                 wc.meshRenderer->material = AssetLoader<Material>::get("lit_spear");
-
-                auto entity = wc.meshRenderer->getOwner();
-                if (!weaponTransformCaptured) {
-                    defaultWeaponTransform.position = entity->localTransform.position;
-                    defaultWeaponTransform.rotation = entity->localTransform.rotation;
-                    defaultWeaponTransform.scale    = entity->localTransform.scale;
-                    weaponTransformCaptured = true;
-                }
-                entity->localTransform.position = defaultWeaponTransform.position;
-                entity->localTransform.rotation = defaultWeaponTransform.rotation;
-                entity->localTransform.scale    = defaultWeaponTransform.scale;
             }
             if (wc.animator)
                 wc.animator->modelName = ""; // Static
+            activeToolTransform = &spearTransform;
+            if (weaponEntity)
+                weaponEntity->localTransform.scale = spearTransform.scale;
         }
         if (keyboard.justPressed(GLFW_KEY_5))
         {
             if (inventory->hasDevilFruit) {
                 inventory->activeSlot = 5;
                 std::cout << "[Tool] Switched to Fireball\n";
-                // The weapon mesh is hidden by FireballSystem when slot 5 is active
+                // Hide weapon when using fireball slot
+                if (weaponEntity)
+                    weaponEntity->localTransform.scale = glm::vec3(0.0f);
             } else {
                 std::cout << "[Tool] You don't have devil fruit powers yet!\n";
+            }
+        }
+
+        // --- Weapon follow-player logic ---
+        // The weapon is a world-level entity; we position it relative to the player each frame.
+        if (weaponEntity && playerEntity && activeToolTransform)
+        {
+            // Don't move/show weapon if fireball slot is active
+            if (inventory->activeSlot != 5)
+            {
+                // Compute weapon world position from player's world matrix + local offset
+                glm::mat4 playerWorld = playerEntity->getLocalToWorldMatrix();
+                glm::vec3 weaponWorldPos = glm::vec3(playerWorld * glm::vec4(activeToolTransform->localPosition, 1.0f));
+                weaponEntity->localTransform.position = weaponWorldPos;
+
+                // Rotation: player rotation + tool-specific rotation offset
+                weaponEntity->localTransform.rotation = playerEntity->localTransform.rotation + activeToolTransform->localRotation;
+
+                // Scale: tool-specific (already set on switch, but ensure it stays correct)
+                weaponEntity->localTransform.scale = activeToolTransform->scale;
             }
         }
 
