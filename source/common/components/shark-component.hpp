@@ -20,6 +20,7 @@ namespace our {
         float health = 100.0f;
      
         float damageFlashTimer = 0.0f; // > 0 means flash red
+        bool hasAttackedBefore = false; // First attack uses 15°, subsequent use 8°
         
         float stateTimer = 0.0f;
         float speed = 12.0;

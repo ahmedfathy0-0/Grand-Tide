@@ -28,7 +28,7 @@ namespace our
         ma_engine* soundEngine = nullptr;
         void ensureSoundEngine();
         void playSound(const char* path, float volume);
-        void updateShark(World *world, Entity *entity, EnemyComponent *enemy, Entity *raft, float deltaTime);
+        void updateShark(World *world, Entity *entity, EnemyComponent *enemy, Entity *raft, Entity *boat, float deltaTime);
         void updateMarineBoat(World *world, Entity *entity, MarineBoatComponent *boat, Entity *raft, float deltaTime);
         void updateMusket(World *world, Entity *entity, MusketComponent *musket, Entity *player, float deltaTime);
     };
