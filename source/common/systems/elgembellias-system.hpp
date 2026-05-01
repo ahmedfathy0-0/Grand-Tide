@@ -15,76 +15,61 @@ namespace our {
 
     class ElgembelliasSystem {
     public:
-        // Spawns the Elgembellias entity far from raft and away from octopus death position
-        // Returns the spawned entity, or nullptr if already spawned
-        our::Entity* spawn(World* world, Entity* raft, const glm::vec3& octopusDeathPos) {
-            if (!raft) return nullptr;
-
-            // Check if already spawned
+        // Activates the Elgembellias entity (already deserialized from JSON) by repositioning
+        // it away from the octopus death position and starting its surfacing/dance behavior.
+        // Returns the activated entity, or nullptr if not found.
+        our::Entity* activate(World* world, const glm::vec3& octopusDeathPos) {
             for (auto entity : world->getEntities()) {
-                if (entity->getComponent<ElgembelliasComponent>()) return nullptr;
-            }
+                auto comp = entity->getComponent<ElgembelliasComponent>();
+                if (!comp) continue;
 
-            glm::vec3 raftPos = raft->localTransform.position;
-            float spawnDist = 120.0f;
-            glm::vec3 spawnPos;
+                // Reposition away from octopus death position if too close
+                float distToOctopus = glm::length(glm::vec2(
+                    entity->localTransform.position.x - octopusDeathPos.x,
+                    entity->localTransform.position.z - octopusDeathPos.z));
+                if (distToOctopus < comp->minDistFromOctopus) {
+                    float angle = static_cast<float>(rand() % 360) * glm::pi<float>() / 180.0f;
+                    entity->localTransform.position.x = octopusDeathPos.x + cos(angle) * comp->spawnDistance;
+                    entity->localTransform.position.z = octopusDeathPos.z + sin(angle) * comp->spawnDistance;
+                }
+                // Keep it submerged initially
+                entity->localTransform.position.y = comp->submergedY;
+                comp->state = ElgembelliasState::HIDDEN;
+                comp->spawned = true;
 
-            // Try random angles until we find one far from both raft and octopus
-            for (int attempt = 0; attempt < 50; attempt++) {
-                float angle = static_cast<float>(rand() % 360) * glm::pi<float>() / 180.0f;
-                spawnPos = glm::vec3(
-                    raftPos.x + cos(angle) * spawnDist,
-                    -150.0f,  // Start submerged
-                    raftPos.z + sin(angle) * spawnDist);
-                float distToOctopus = glm::length(glm::vec2(spawnPos.x - octopusDeathPos.x, spawnPos.z - octopusDeathPos.z));
-                if (distToOctopus > 60.0f) break;
-            }
-
-            our::Entity* elgem = world->add();
-            elgem->name = "elgembellias";
-            elgem->localTransform.position = spawnPos;
-            elgem->localTransform.scale = glm::vec3(0.08f);
-            elgem->localTransform.rotation = glm::vec3(0.0f);
-
-            auto* mr = elgem->addComponent<MeshRendererComponent>();
-            mr->mesh = nullptr;
-            mr->material = AssetLoader<Material>::get("lit_elgembellias");
-
-            auto* anim = elgem->addComponent<AnimatorComponent>();
-            anim->modelName = "elgembellias";
-            anim->currentAnimIndex = 0;
-            anim->loopAnimation = true;
-
-            auto* comp = elgem->addComponent<ElgembelliasComponent>();
-            comp->state = ElgembelliasState::HIDDEN;
-            comp->spawned = true;
-
-            // Discover dance and kick animation indices from the model
-            Model* model = ModelLoader::models["elgembellias"];
-            if (model && model->getScene() && model->getScene()->HasAnimations()) {
-                std::cout << "[Elgembellias] Model has " << model->getScene()->mNumAnimations << " animations:" << std::endl;
-                for (unsigned int i = 0; i < model->getScene()->mNumAnimations; i++) {
-                    std::string animName = model->getScene()->mAnimations[i]->mName.C_Str();
-                    std::cout << "  [" << i << "] " << animName << std::endl;
-                    if (animName.find("Dance") != std::string::npos ||
-                        animName.find("dance") != std::string::npos ||
-                        animName.find("DANCE") != std::string::npos) {
-                        comp->danceAnimIndex = (int)i;
-                    }
-                    if (animName.find("Kick") != std::string::npos ||
-                        animName.find("kick") != std::string::npos ||
-                        animName.find("KICK") != std::string::npos) {
-                        comp->kickAnimIndex = (int)i;
+                // Discover dance/kick animation indices from the model
+                auto anim = entity->getComponent<AnimatorComponent>();
+                Model* model = ModelLoader::models["elgembellias"];
+                if (model && model->getScene() && model->getScene()->HasAnimations()) {
+                    std::cout << "[Elgembellias] Model has " << model->getScene()->mNumAnimations << " animations:" << std::endl;
+                    for (unsigned int i = 0; i < model->getScene()->mNumAnimations; i++) {
+                        std::string animName = model->getScene()->mAnimations[i]->mName.C_Str();
+                        std::cout << "  [" << i << "] " << animName << std::endl;
+                        if (animName.find("Dance") != std::string::npos ||
+                            animName.find("dance") != std::string::npos ||
+                            animName.find("DANCE") != std::string::npos) {
+                            comp->danceAnimIndex = (int)i;
+                        }
+                        if (animName.find("Kick") != std::string::npos ||
+                            animName.find("kick") != std::string::npos ||
+                            animName.find("KICK") != std::string::npos) {
+                            comp->kickAnimIndex = (int)i;
+                        }
                     }
                 }
-                comp->currentAnimIndex = (comp->danceAnimIndex >= 0) ? comp->danceAnimIndex : 0;
-                anim->currentAnimIndex = comp->currentAnimIndex;
-                std::cout << "[Elgembellias] Selected dance animation index: " << comp->danceAnimIndex << std::endl;
-            }
+                // Start dance animation
+                if (anim && comp->danceAnimIndex >= 0) {
+                    anim->currentAnimIndex = comp->danceAnimIndex;
+                    anim->loopAnimation = true;
+                }
 
-            std::cout << "[Phase] Spawned Elgembellias at ("
-                      << spawnPos.x << "," << spawnPos.y << "," << spawnPos.z << ")" << std::endl;
-            return elgem;
+                std::cout << "[Elgembellias] Activated at ("
+                          << entity->localTransform.position.x << ","
+                          << entity->localTransform.position.y << ","
+                          << entity->localTransform.position.z << ")" << std::endl;
+                return entity;
+            }
+            return nullptr;
         }
 
         void update(World* world, float deltaTime, Entity* player) {

@@ -68,9 +68,10 @@ class Playstate : public our::State
     // Loading screen (shown after Play, before phase select)
     bool isLoading = false;
     bool loadingDone = false;
-    int loadingStep = -1; // -1=display only, 0=assets, 1=world, 2=renderer, 3=done
+    int loadingStep = -1; // -1=display only, 0=assets, 1=world, 2=renderer, 3=hold_end, 4=done
     float loadingProgress = 0.0f;
-    GLuint loadingTexture = 0;
+    float loadingTimer = 0.0f; // Timer for minimum display duration
+    GLuint loadingTextures[3] = {0, 0, 0}; // [0]=loading_start, [1]=loading, [2]=loading_end
     GLuint loadingVAO = 0, loadingVBO = 0;
     GLuint loadingShader = 0;
 
@@ -233,6 +234,7 @@ class Playstate : public our::State
         loadingDone = false;
         loadingStep = -1;
         loadingProgress = 0.0f;
+        loadingTimer = 0.0f;
         isPhaseSelectMenu = false;
         selectedStartItem = 0;
         selectedPhaseIndex = 0;
@@ -449,20 +451,27 @@ void main() {
 
         // --- Loading Screen Initialization ---
         {
-            int w, h, ch;
-            unsigned char* data = stbi_load("assets/textures/loading.png", &w, &h, &ch, 4);
-            if (data) {
-                glGenTextures(1, &loadingTexture);
-                glBindTexture(GL_TEXTURE_2D, loadingTexture);
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                stbi_image_free(data);
-                glBindTexture(GL_TEXTURE_2D, 0);
-            } else {
-                std::cerr << "[LoadingScreen] Failed to load loading.png" << std::endl;
+            const char* loadingPaths[3] = {
+                "assets/textures/loading_start.png",
+                "assets/textures/loading.png",
+                "assets/textures/loading_end.png"
+            };
+            for (int i = 0; i < 3; i++) {
+                int w, h, ch;
+                unsigned char* data = stbi_load(loadingPaths[i], &w, &h, &ch, 4);
+                if (data) {
+                    glGenTextures(1, &loadingTextures[i]);
+                    glBindTexture(GL_TEXTURE_2D, loadingTextures[i]);
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                    stbi_image_free(data);
+                    glBindTexture(GL_TEXTURE_2D, 0);
+                } else {
+                    std::cerr << "[LoadingScreen] Failed to load " << loadingPaths[i] << std::endl;
+                }
             }
 
             static const char* loadingVert = R"(
@@ -684,10 +693,13 @@ void main() {
         if (isLoading && !loadingDone) {
             auto &config = getApp()->getConfig()["scene"];
 
-            // Step -1: First frame - just display loading image, no heavy work yet
+            loadingTimer += (float)deltaTime;
+
+            // Step -1: First frame - just display loading_start image
             if (loadingStep == -1) {
                 loadingProgress = 0.0f;
-                loadingStep = 0; // Next frame will start actual loading
+                loadingTimer = 0.0f;
+                loadingStep = 0;
             }
             // Step 0: Load assets (shaders, textures, meshes, models, materials)
             else if (loadingStep == 0) {
@@ -698,19 +710,21 @@ void main() {
                     assetsLoaded = true;
                 }
                 loadingStep = 1;
+                loadingTimer = 0.0f;
             }
             // Step 1: Deserialize world entities
             else if (loadingStep == 1) {
-                loadingProgress = 0.5f;
+                loadingProgress = 0.4f;
                 world.clear(); // Clear old entities before re-deserializing
                 if (config.contains("world"))
                     world.deserialize(config["world"]);
                 cameraController.enter(getApp());
                 loadingStep = 2;
+                loadingTimer = 0.0f;
             }
             // Step 2: Initialize renderer + UI
             else if (loadingStep == 2) {
-                loadingProgress = 0.8f;
+                loadingProgress = 0.7f;
                 auto size = getApp()->getFrameBufferSize();
                 if (!rendererInitialized) {
                     renderer.initialize(size, config["renderer"]);
@@ -727,22 +741,28 @@ void main() {
                 survivalSystem.setup(&world, getApp(), player, boat);
                 fireballSystem.enter(getApp());
                 loadingStep = 3;
+                loadingTimer = 0.0f;
             }
-            // Step 3: Done - transition to phase select
+            // Step 3: Hold loading_end image for at least 1.5 seconds
             else if (loadingStep == 3) {
-                loadingProgress = 1.0f;
-                loadingDone = true;
-                isLoading = false;
-                isPhaseSelectMenu = true;
+                loadingProgress = 0.85f + 0.15f * glm::min(loadingTimer / 1.5f, 1.0f);
+                if (loadingTimer >= 1.5f) {
+                    loadingProgress = 1.0f;
+                    loadingDone = true;
+                    isLoading = false;
+                    isPhaseSelectMenu = true;
+                }
             }
 
-            // Draw loading screen background (loading.png fullscreen)
+            // Draw loading screen background - pick image based on progress
+            int texIdx = (loadingProgress < 0.25f) ? 0 : (loadingProgress < 0.75f) ? 1 : 2;
+            GLuint activeTex = loadingTextures[texIdx];
             glClearColor(0, 0, 0, 1);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            if (loadingShader && loadingVAO && loadingTexture) {
+            if (loadingShader && loadingVAO && activeTex) {
                 glUseProgram(loadingShader);
                 glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, loadingTexture);
+                glBindTexture(GL_TEXTURE_2D, activeTex);
                 glUniform1i(glGetUniformLocation(loadingShader, "uLoadingTex"), 0);
                 glDisable(GL_DEPTH_TEST);
                 glDisable(GL_CULL_FACE);
@@ -880,6 +900,7 @@ void main() {
                     loadingDone = false;
                     loadingStep = -1;
                     loadingProgress = 0.0f;
+                    loadingTimer = 0.0f;
                     return;
                 } else if (selectedMenuItem == 2) {
                     getApp()->close();
@@ -1042,9 +1063,9 @@ void main() {
             }
         }
         else if (currentPhase == GamePhase::ELGEMBELLIAS) {
-            // Spawn Elgembellias entity if not yet spawned (using the system)
+            // Activate the Elgembellias entity (already deserialized from app.jsonc)
             if (!elgembelliasSpawned && raft) {
-                // Find octopus death position to avoid spawning there
+                // Find octopus death position
                 glm::vec3 octopusDeathPos = raft->localTransform.position;
                 for (auto entity : world.getEntities()) {
                     if (entity->getComponent<our::OctopusComponent>()) {
@@ -1052,7 +1073,7 @@ void main() {
                         break;
                     }
                 }
-                elgembelliasSystem.spawn(&world, raft, octopusDeathPos);
+                elgembelliasSystem.activate(&world, octopusDeathPos);
                 elgembelliasSpawned = true;
             }
         }
@@ -1151,7 +1172,9 @@ void main() {
         if (phaseVBO) glDeleteBuffers(1, &phaseVBO);
         if (phaseShader) glDeleteProgram(phaseShader);
         // Loading screen cleanup
-        if (loadingTexture) glDeleteTextures(1, &loadingTexture);
+        for (int i = 0; i < 3; i++) {
+            if (loadingTextures[i]) glDeleteTextures(1, &loadingTextures[i]);
+        }
         if (loadingVAO) glDeleteVertexArrays(1, &loadingVAO);
         if (loadingVBO) glDeleteBuffers(1, &loadingVBO);
         if (loadingShader) glDeleteProgram(loadingShader);
