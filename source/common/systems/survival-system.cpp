@@ -247,28 +247,24 @@ namespace our
         }
 
         // --- Weapon follow-player logic ---
-        // The weapon is a world-level entity; we position it relative to the player each frame.
+        // Make the weapon a child of the player entity so the ECS transform hierarchy
+        // automatically handles yaw + pitch composition (no manual euler angle math needed).
         if (weaponEntity && playerEntity && activeToolTransform)
         {
+            // Parent the weapon to the player (only needs to be set once)
+            if (weaponEntity->parent != playerEntity)
+                weaponEntity->parent = playerEntity;
+
             // Don't move/show weapon if fireball slot is active
             if (inventory->activeSlot != 5)
             {
-                // Build a yaw-only matrix from the player's current yaw.
-                // This keeps the weapon anchored in front of the player as they
-                // turn left/right, WITHOUT being affected by camera pitch (look up/down).
-                float playerYaw = playerEntity->localTransform.rotation.y;
-                glm::mat4 yawOnlyMatrix = glm::translate(glm::mat4(1.0f), playerEntity->localTransform.position)
-                                        * glm::mat4(glm::yawPitchRoll(playerYaw, 0.0f, 0.0f));
-
-                // Position: offset in the player's yaw-only local space
-                glm::vec3 weaponWorldPos = glm::vec3(yawOnlyMatrix * glm::vec4(activeToolTransform->localPosition, 1.0f));
-                weaponEntity->localTransform.position = weaponWorldPos;
-
-                // Rotation: yaw only + tool-specific rotation offset (no pitch)
-                weaponEntity->localTransform.rotation = glm::vec3(0.0f, playerYaw, 0.0f) + activeToolTransform->localRotation;
-
-                // Scale: tool-specific
-                weaponEntity->localTransform.scale = activeToolTransform->scale;
+                // Set local transform relative to the player — the hierarchy does the rest.
+                // Compensate for parent scale: divide desired world scale by parent scale
+                // so the final composed scale matches the ToolConfig values.
+                glm::vec3 parentScale = playerEntity->localTransform.scale;
+                weaponEntity->localTransform.position = activeToolTransform->localPosition;
+                weaponEntity->localTransform.rotation = activeToolTransform->localRotation;
+                weaponEntity->localTransform.scale    = activeToolTransform->scale / parentScale;
             }
         }
 
