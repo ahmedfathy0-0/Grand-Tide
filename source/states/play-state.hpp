@@ -30,6 +30,7 @@
 #include <components/mesh-renderer.hpp>
 #include <components/animator.hpp>
 #include <mesh/model.hpp>
+#include <miniaudio.h>
 
 // This state shows how to use the ECS framework and deserialization.
 class Playstate : public our::State
@@ -65,6 +66,24 @@ class Playstate : public our::State
     float sharkSpawnTimer = 0.0f;
     float sharkSpawnInterval = 8.0f;   // Seconds between shark spawns
     bool phaseTransitioning = false;   // Prevent double-transition
+
+    // Ocean background audio (looping)
+    ma_decoder oceanDecoder;
+    ma_device* oceanDevice = nullptr;
+    bool oceanAudioReady = false;
+
+    static void oceanAudioCallback(ma_device* pDevice, void* pOutput, const void*, ma_uint32 frameCount) {
+        auto* dec = static_cast<ma_decoder*>(pDevice->pUserData);
+        ma_uint64 framesRead = 0;
+        ma_decoder_read_pcm_frames(dec, pOutput, frameCount, &framesRead);
+        // Loop: if we didn't get enough frames, seek to start and read the rest
+        if (framesRead < frameCount) {
+            ma_decoder_seek_to_pcm_frame(dec, 0);
+            ma_uint64 remaining = frameCount - framesRead;
+            ma_uint64 framesRead2 = 0;
+            ma_decoder_read_pcm_frames(dec, (ma_uint8*)pOutput + framesRead * dec->outputChannels * sizeof(float), remaining, &framesRead2);
+        }
+    }
 
     // Store original scales for entities we hide/show
     std::unordered_map<our::Entity*, glm::vec3> hiddenEntityScales;
@@ -215,6 +234,28 @@ class Playstate : public our::State
                 boat = entity;
         }
         survivalSystem.setup(&world, getApp(), player, boat);
+
+        // --- Ocean Audio (looping) ---
+        if (ma_decoder_init_file("assets/audios/ocean.mp3", nullptr, &oceanDecoder) == MA_SUCCESS) {
+            oceanDevice = new ma_device();
+            ma_device_config devCfg = ma_device_config_init(ma_device_type_playback);
+            devCfg.playback.format = oceanDecoder.outputFormat;
+            devCfg.playback.channels = oceanDecoder.outputChannels;
+            devCfg.sampleRate = oceanDecoder.outputSampleRate;
+            devCfg.dataCallback = oceanAudioCallback;
+            devCfg.pUserData = &oceanDecoder;
+            if (ma_device_init(nullptr, &devCfg, oceanDevice) == MA_SUCCESS) {
+                ma_device_start(oceanDevice);
+                oceanAudioReady = true;
+                std::cerr << "[Play] Ocean audio started (looping)" << std::endl;
+            } else {
+                std::cerr << "[Play] Ocean audio device init failed" << std::endl;
+                delete oceanDevice; oceanDevice = nullptr;
+                ma_decoder_uninit(&oceanDecoder);
+            }
+        } else {
+            std::cerr << "[Play] Could not load ocean.mp3" << std::endl;
+        }
 
         // --- Pause Menu Initialization ---
         isPaused = false;
@@ -597,6 +638,13 @@ void main() {
         if (menuShader) glDeleteProgram(menuShader);
         // On exit, we call exit for the camera controller system to make sure that the mouse is unlocked
         cameraController.exit();
+        // Ocean audio cleanup
+        if (oceanDevice) {
+            ma_device_stop(oceanDevice);
+            ma_device_uninit(oceanDevice);
+            delete oceanDevice; oceanDevice = nullptr;
+        }
+        if (oceanAudioReady) { ma_decoder_uninit(&oceanDecoder); oceanAudioReady = false; }
         // Clear the world
         world.clear();
         // and we delete all the loaded assets to free memory on the RAM and the VRAM
