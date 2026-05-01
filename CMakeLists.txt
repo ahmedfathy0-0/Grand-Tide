@@ -113,6 +113,8 @@ set(COMMON_SOURCES
         source/common/components/shark-component.cpp
         source/common/components/octopus-component.hpp
         source/common/components/octopus-component.cpp
+        source/common/components/elgembellias-component.hpp
+        source/common/components/elgembellias-component.cpp
         source/common/components/component-deserializer.hpp
         source/common/components/fireball-component.hpp
         source/common/components/fireball-component.cpp
@@ -136,6 +138,7 @@ set(COMMON_SOURCES
         source/common/systems/animation-system.cpp
         source/common/systems/octopus-system.hpp
         source/common/systems/octopus-system.cpp
+        source/common/systems/elgembellias-system.hpp
         source/common/systems/combat-system.hpp
         source/common/systems/combat-system.cpp
         source/common/systems/boss-health-bar.hpp

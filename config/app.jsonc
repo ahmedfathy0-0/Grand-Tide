@@ -89,6 +89,7 @@
         "octopus_albedo": "assets/textures/octopus-tex/octopus_albedo.png",
         "octopus_normal": "assets/textures/octopus-tex/octopus_normal.png",
         "fruit_atlas": "assets/textures/fruit_atlas.png",
+        "elgembellias_albedo": "assets/textures/Elgembellias-tex/SkipperSkin.png",
       },
       "meshes": {
         "cube": "assets/models/cube.obj",
@@ -106,6 +107,7 @@
         "throw_arms": "assets/models/throw-Arms.fbx",
         "octopus": "assets/models/octopus/PiratesKing.fbx",
         "mera_mera": "assets/models/Mera Mera No Mi.fbx",
+        "elgembellias": "assets/models/Elgembellias/Elgembellias.fbx",
       },
       "samplers": {
         "default": {
@@ -183,6 +185,24 @@
           },
           "albedo": "octopus_albedo",
           "normal": "octopus_normal",
+          "albedo_tint": [1, 1, 1],
+          "specular_tint": [0.5, 0.5, 0.5],
+          "roughness_multiplier": 1.0,
+          "sampler": "default",
+          "isAnimated": true,
+        },
+        "lit_elgembellias": {
+          "type": "lit",
+          "shader": "lit",
+          "pipelineState": {
+            "faceCulling": {
+              "enabled": false,
+            },
+            "depthTesting": {
+              "enabled": true,
+            },
+          },
+          "albedo": "elgembellias_albedo",
           "albedo_tint": [1, 1, 1],
           "specular_tint": [0.5, 0.5, 0.5],
           "roughness_multiplier": 1.0,
@@ -795,6 +815,33 @@
             "type": "Health",
             "maxHealth": 500,
             "currentHealth": 500,
+          },
+        ],
+      },
+      {
+        "name": "elgembellias",
+        "position": [0, -150, 0],
+        "scale": [10, 10, 10],
+        "rotation": [0, 0, 0],
+        "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "cube",
+            "material": "lit_elgembellias",
+          },
+          {
+            "type": "Elgembellias",
+            "surfacedY": -5.0,
+            "submergedY": -150.0,
+            "surfaceSpeed": 5.0,
+            "spawnDistance": 120.0,
+            "minDistFromOctopus": 60.0,
+            "danceDuration": 15.0,
+            "kickDuration": 5.0,
+          },
+          {
+            "type": "Animator",
+            "modelName": "elgembellias",
           },
         ],
       },

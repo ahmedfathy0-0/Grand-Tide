@@ -961,7 +961,14 @@ namespace our {
                     octopus->currentAnimIndex = OctopusAnimation::DEATH;
                     if (animator) {
                         animator->loopAnimation = false;
-                        animator->currentAnimationTime = octopus->currentAnimDuration - 0.001f;
+                        // Freeze on last frame - must use ticks (not seconds!)
+                        Model* m = ModelLoader::models[animator->modelName];
+                        if (m && m->getScene() && m->getScene()->HasAnimations()) {
+                            int idx = animator->currentAnimIndex;
+                            if (idx >= 0 && idx < (int)m->getScene()->mNumAnimations) {
+                                animator->currentAnimationTime = m->getScene()->mAnimations[idx]->mDuration - 0.001f;
+                            }
+                        }
                     }
                 }
                 // ==============================================================
@@ -990,7 +997,14 @@ namespace our {
                             targetY = -20.0f;
                             if (animator) {
                                 animator->loopAnimation = false;
-                                animator->currentAnimationTime = octopus->currentAnimDuration - 0.001f;
+                                // Freeze on last frame - must use ticks (not seconds!)
+                                Model* m = ModelLoader::models[animator->modelName];
+                                if (m && m->getScene() && m->getScene()->HasAnimations()) {
+                                    int idx = animator->currentAnimIndex;
+                                    if (idx >= 0 && idx < (int)m->getScene()->mNumAnimations) {
+                                        animator->currentAnimationTime = m->getScene()->mAnimations[idx]->mDuration - 0.001f;
+                                    }
+                                }
                             }
                             std::cout << "[Octopus] PERMANENTLY DEAD" << std::endl;
                         }
