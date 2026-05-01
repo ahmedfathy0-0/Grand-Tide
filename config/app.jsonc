@@ -821,7 +821,7 @@
       {
         "name": "elgembellias",
         "position": [0, -150, 0],
-        "scale": [10, 10, 10],
+        "scale": [5, 5, 5],
         "rotation": [0, 0, 0],
         "components": [
           {
