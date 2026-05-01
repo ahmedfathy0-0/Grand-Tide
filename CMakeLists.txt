@@ -10,6 +10,12 @@ if(UNIX AND NOT APPLE)
                 libavcodec libavformat libswscale libswresample libavutil)
 endif()
 
+# Windows (MSYS2 UCRT64) FFmpeg
+if(WIN32)
+        set(FFMPEG_INCLUDE_DIR "C:/msys64/ucrt64/include")
+        set(FFMPEG_LIB_DIR "C:/msys64/ucrt64/lib")
+endif()
+
 # These are the options we select for building GLFW as a library
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)        # Don't build Documentation
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)       # Don't build Tests
@@ -198,6 +204,7 @@ target_include_directories(GAME_APPLICATION PRIVATE
         vendor/utils
         vendor/assimp/include
         vendor/miniaudio
+        ${FFMPEG_INCLUDE_DIR}
 )
 
 target_link_libraries(GAME_APPLICATION PRIVATE glfw assimp)
@@ -205,4 +212,11 @@ target_link_libraries(GAME_APPLICATION PRIVATE glfw assimp)
 if(UNIX AND NOT APPLE)
         target_link_libraries(GAME_APPLICATION PRIVATE OpenGL::GL PkgConfig::FFMPEG)
         target_link_libraries(GAME_APPLICATION PRIVATE pthread m asound)
+endif()
+
+if(WIN32)
+        target_link_directories(GAME_APPLICATION PRIVATE ${FFMPEG_LIB_DIR})
+        target_link_libraries(GAME_APPLICATION PRIVATE
+                avcodec avformat swscale swresample avutil
+                secur32 bcrypt ntdll)
 endif()
