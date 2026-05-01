@@ -35,7 +35,7 @@
       "name": "shark_2",
       "health": 150.0,
       "speed": 18.0,
-      "attackRange": 30.0,
+      "attackRange": 22.0,
       "attackDamage": 150.0,
       "primaryTarget": "RAFT",
       "scale": [0.06, 0.06, 0.06],

@@ -708,7 +708,7 @@
                 "aoeRadius": 5.0,
                 "burnDuration": 2.0,
                 "burnDamagePerSecond": 15.0,
-                "cooldown": 3.0,
+                "cooldown": 2.0,
               },
             ],
           },
