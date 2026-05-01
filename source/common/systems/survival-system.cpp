@@ -215,7 +215,10 @@ namespace our
                 wc.meshRenderer->material = AssetLoader<Material>::get("lit_hammer");
             }
             if (wc.animator)
+            {
                 wc.animator->modelName = "hammer";
+                wc.animator->currentAnimIndex = 0;
+            }
             activeToolTransform = &hammerTransform;
             if (weaponEntity)
                 weaponEntity->localTransform.scale = hammerTransform.scale;
@@ -231,7 +234,10 @@ namespace our
                 wc.meshRenderer->material = AssetLoader<Material>::get("lit_net");
             }
             if (wc.animator)
+            {
                 wc.animator->modelName = "net";
+                wc.animator->currentAnimIndex = -1;
+            }
             activeToolTransform = &netTransform;
             if (weaponEntity)
                 weaponEntity->localTransform.scale = netTransform.scale;
