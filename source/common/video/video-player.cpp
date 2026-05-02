@@ -1,4 +1,7 @@
 #include "video-player.hpp"
+
+#ifdef USE_FFMPEG
+
 #include <miniaudio.h>
 #include <iostream>
 #include <cstring>
@@ -334,4 +337,6 @@ void VideoPlayer::uploadFrameToTexture() {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-}
+} // namespace our
+
+#endif // USE_FFMPEG
