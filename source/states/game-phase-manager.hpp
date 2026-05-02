@@ -216,8 +216,25 @@ namespace our {
                     elgembelliasSystem.activate(&world, pos);
                     elgembelliasSpawned = true;
                 }
+                // Check if Elgembellias is dead -> victory
+                for (auto entity : world.getEntities()) {
+                    auto elgComp = entity->getComponent<ElgembelliasComponent>();
+                    if (elgComp && elgComp->state == ElgembelliasState::DEATH) {
+                        return false; // don't hold, let play-state detect win
+                    }
+                }
             }
 
+            return false;
+        }
+
+        // Check if Elgembellias is in DEATH state (win condition)
+        bool isElgembelliasDead(World &world) {
+            for (auto entity : world.getEntities()) {
+                auto elgComp = entity->getComponent<ElgembelliasComponent>();
+                if (elgComp && elgComp->state == ElgembelliasState::DEATH)
+                    return true;
+            }
             return false;
         }
 

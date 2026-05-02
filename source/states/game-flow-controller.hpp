@@ -55,6 +55,7 @@ namespace our {
         bool isPhaseSelectMenu = false;
 
         bool gameOver = false;
+        bool gameWon = false;
         std::string loseReason;
 
         // ESC tracking (bypasses ImGui keyboard capture)
@@ -79,6 +80,7 @@ namespace our {
             loadingTimer = 0.0f;
             isPhaseSelectMenu = false;
             gameOver = false;
+            gameWon = false;
             loseReason.clear();
             escPrev = false;
             fireballSystem.reset();
@@ -107,6 +109,7 @@ namespace our {
                 world.deserialize(config["world"]);
 
             gameOver = false;
+            gameWon = false;
             loseReason.clear();
             escPrev = false;
 

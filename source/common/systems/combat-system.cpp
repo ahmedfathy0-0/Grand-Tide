@@ -211,6 +211,16 @@ namespace our
         // --- Sinking when dead ---
         if (health && health->currentHealth <= 0.0f)
         {
+            // Mark musket children as DEAD immediately so phase completion detects it
+            for (auto child : world->getEntities()) {
+                if (child->parent == entity) {
+                    auto childEnemy = child->getComponent<EnemyComponent>();
+                    if (childEnemy && childEnemy->state != EnemyState::DEAD) {
+                        childEnemy->state = EnemyState::DEAD;
+                    }
+                }
+            }
+
             entity->localTransform.position.y -= 1.5f * deltaTime; // sink slowly
             // After fully submerged, remove boat and its muskets
             if (entity->localTransform.position.y < -5.0f)

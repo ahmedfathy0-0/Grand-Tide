@@ -160,7 +160,7 @@ class Playstate : public our::State
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        //  GAME OVER
+        //  GAME OVER / VICTORY
         // ═══════════════════════════════════════════════════════════════════
         if (flow.gameOver) {
             flow.renderer.render(&world);
@@ -171,6 +171,12 @@ class Playstate : public our::State
             if (flow.escJustPressed(getApp()->getWindow())) {
                 getApp()->close();
             }
+            return;
+        }
+
+        // Victory: transition to end state
+        if (flow.gameWon) {
+            getApp()->changeState("end");
             return;
         }
 
@@ -214,6 +220,13 @@ class Playstate : public our::State
         //  PHASE MANAGEMENT
         // ═══════════════════════════════════════════════════════════════════
         bool healHold = phaseMgr.update(world, dt, flow.fireballSystem, elgembelliasSystem, getApp());
+
+        // Win condition: Elgembellias killed
+        if (!flow.gameWon && phaseMgr.currentPhase == our::GamePhaseManager::Phase::ELGEMBELLIAS &&
+            phaseMgr.isElgembelliasDead(world)) {
+            flow.gameWon = true;
+            std::cout << "[Win] Elgembellias defeated! YOU WIN!" << std::endl;
+        }
 
         // ═══════════════════════════════════════════════════════════════════
         //  RESOURCE SPAWNING & CLEANUP
