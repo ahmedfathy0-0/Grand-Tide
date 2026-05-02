@@ -539,9 +539,8 @@ namespace our {
                                 burn->damagePerSecond = proj->burnDamagePerSecond;
                                 burn->burnIntensity = 1.0f;
                             } else {
-                                // Refresh burn duration
-                                existingBurn->remainingTime = proj->burnDuration;
-                                existingBurn->burnIntensity = 1.0f;
+                                // Don't refresh burn — let existing burn run its course
+                                // This prevents permanent burn-lock from repeated fireball hits
                             }
 
                             // Stun the octopus if this is an octopus entity

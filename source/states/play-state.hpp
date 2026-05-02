@@ -36,9 +36,13 @@ class Playstate : public our::State
         int screenW = size.x, screenH = size.y;
         auto &world = flow.world;
 
-        // Don't draw game UI while loading
+        // Don't draw game UI while loading or in phase-select
         if (flow.isLoading && !flow.loadingDone)
             return;
+        if (flow.isPhaseSelectMenu) {
+            flow.phaseSelectMenu.renderImGuiOverlay((float)screenW, (float)screenH);
+            return;
+        }
 
         // Crosshair
         ui.drawCrosshair(world, getApp()->getWindow(), screenW, screenH);
@@ -49,11 +53,6 @@ class Playstate : public our::State
         // Marine timer
         if (phaseMgr.currentPhase == our::GamePhaseManager::Phase::MARINES && !flow.pauseMenu.paused()) {
             ui.drawMarineTimer(phaseMgr.marinePhase.getRemainingTime(), screenW);
-        }
-
-        // Phase select overlay
-        if (flow.isPhaseSelectMenu) {
-            flow.phaseSelectMenu.renderImGuiOverlay((float)screenW, (float)screenH);
         }
 
         // Game over
