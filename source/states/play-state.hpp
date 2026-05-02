@@ -11,224 +11,160 @@
 #include <systems/octopus-system.hpp>
 #include <systems/elgembellias-system.hpp>
 #include <systems/combat-system.hpp>
-#include <systems/marine-boat-system.hpp>
 #include <systems/boss-health-bar.hpp>
 #include <systems/damage-flash.hpp>
-#include <components/health.hpp>
 #include <systems/fireball-system.hpp>
-
-#include <asset-loader.hpp>
-#include <glad/gl.h>
-#include <GLFW/glfw3.h>
-#include <stb/stb_image.h>
-#include <iostream>
-#include <unordered_map>
-#include <components/shark-component.hpp>
-#include <components/enemy.hpp>
+#include <systems/resource-spawner.hpp>
+#include <systems/ocean-audio.hpp>
+#include <components/health.hpp>
 #include <components/octopus-component.hpp>
 #include <components/elgembellias-component.hpp>
 #include <components/musket-component.hpp>
 #include <components/marine-boat-component.hpp>
 #include <components/mesh-renderer.hpp>
 #include <components/animator.hpp>
+#include <components/enemy.hpp>
 #include <mesh/model.hpp>
+#include <asset-loader.hpp>
+#include <start-menu.hpp>
+#include <loading-screen.hpp>
+#include <phase-select-menu.hpp>
+#include <pause-menu.hpp>
+#include <json-utils.hpp>
+#include <GLFW/glfw3.h>
+#include <imgui.h>
+#include <iostream>
+#include <unordered_map>
 
-// This state shows how to use the ECS framework and deserialization.
+// Phase handlers
+#include "shark-state.hpp"
+#include "marine-state.hpp"
+#include "kraken-state.hpp"
+
 class Playstate : public our::State
 {
-
     our::World world;
     our::ForwardRenderer renderer;
-    our::PlayerControllerSystem cameraController; // Now utilizing Player Controller explicitly
+    our::PlayerControllerSystem cameraController;
     our::MovementSystem movementSystem;
     our::SurvivalSystem survivalSystem;
     our::AnimationSystem animationSystem;
     our::CombatSystem combatSystem;
-    our::MarineBoatSystem marineBoatSystem;
-    our::OctopusSystem octopusSystem;
+    our::FireballSystem fireballSystem;
+    our::ResourceSpawner resourceSpawner;
+    our::OceanAudio oceanAudio;
     our::ElgembelliasSystem elgembelliasSystem;
+
+    // UI overlays (each self-contained)
+    our::StartMenu startMenu;
+    our::LoadingScreen loadingScreen;
+    our::PhaseSelectMenu phaseSelectMenu;
+    our::PauseMenu pauseMenu;
     our::BossHealthBar bossHealthBar;
     our::DamageFlash damageFlash;
-    our::FireballSystem fireballSystem;
 
-    // Pause menu
-    bool isPaused = false;
-    int selectedMenuItem = 0; // 0=CONTINUE, 1=RESTART, 2=EXIT
-    GLuint menuTextures[3] = {0, 0, 0};
-    GLuint menuVAO = 0, menuVBO = 0;
-    GLuint menuShader = 0;
+    // ===== Game Phase Management =====
+    enum class GamePhase { COOLDOWN, SHARKS, MARINES, OCTOPUS, ELGEMBELLIAS };
+    GamePhase currentPhase = GamePhase::COOLDOWN;
+    bool phaseTransitioning = false;
 
-    // Start menu
+    our::SharkPhase sharkPhase;
+    our::MarinePhase marinePhase;
+    our::KrakenPhase krakenPhase;
+
+    nlohmann::json sharksConfig;
+    nlohmann::json marinesConfig;
+    nlohmann::json krakenConfig;
+
+    // ===== Game State =====
+    bool gameOver = false;
+    std::string loseReason;
+    bool elgembelliasSpawned = false;
+
+    // Healing gate: phase transition waits until player & raft are at 100% HP
+    bool waitingForHeal = false;
+    GamePhase nextPhaseAfterHeal = GamePhase::SHARKS;
+
+    // ===== Menu State =====
     bool isStartMenu = true;
-    int selectedStartItem = 0; // 0=START, 1=EXIT
-    GLuint startTextures[2] = {0, 0};
-    GLuint startVAO = 0, startVBO = 0;
-    GLuint startShader = 0;
-
-    // Loading screen (shown after Play, before phase select)
     bool isLoading = false;
     bool loadingDone = false;
-    int loadingStep = -1; // -1=display only, 0=assets, 1=world, 2=renderer, 3=hold_end, 4=done
+    int loadingStep = -1; // -1=display only, 0=assets, 1=world, 2=renderer, 3=hold_end
     float loadingProgress = 0.0f;
-    float loadingTimer = 0.0f; // Timer for minimum display duration
-    GLuint loadingTextures[3] = {0, 0, 0}; // [0]=loading_start, [1]=loading, [2]=loading_end
-    GLuint loadingVAO = 0, loadingVBO = 0;
-    GLuint loadingShader = 0;
-
-    // Phase selection menu (after pressing Play)
+    float loadingTimer = 0.0f;
     bool isPhaseSelectMenu = false;
-    int selectedPhaseIndex = 0; // 0=SHARKS, 1=MARINES, 2=OCTOPUS
-    GLuint phaseTextures[3] = {0, 0, 0};
-    GLuint phaseVAO = 0, phaseVBO = 0;
-    GLuint phaseShader = 0;
-    GLuint arrowTexture = 0; // arrow indicator texture
-
-    // Game phases
-    enum class GamePhase { SHARKS, MARINES, OCTOPUS, ELGEMBELLIAS };
-    GamePhase currentPhase = GamePhase::SHARKS;
-    float phaseTimer = 0.0f;          // Used in MARINES phase for 5-min survival timer
-    int sharksKilled = 0;
-    int sharksToKill = 1;
-    int sharksSpawned = 0;
-    float sharkSpawnTimer = 0.0f;
-    float sharkSpawnInterval = 8.0f;   // Seconds between shark spawns
-    bool phaseTransitioning = false;   // Prevent double-transition
 
     // Track whether assets have been loaded (skip re-loading on restart for speed)
     static inline bool assetsLoaded = false;
     static inline bool rendererInitialized = false;
 
-    // Elgembellias phase tracking
-    bool elgembelliasSpawned = false;
-
     // Store original scales for entities we hide/show
     std::unordered_map<our::Entity*, glm::vec3> hiddenEntityScales;
 
+    // Direct ESC tracking (bypasses ImGui keyboard capture)
+    bool escPrev = false;
+    bool escJustPressed() {
+        bool cur = glfwGetKey(getApp()->getWindow(), GLFW_KEY_ESCAPE) == GLFW_PRESS;
+        bool just = cur && !escPrev;
+        escPrev = cur;
+        return just;
+    }
 
+    // ===== Entity show/hide helpers =====
     void hideEntity(our::Entity* e) {
-        if (e && hiddenEntityScales.find(e) == hiddenEntityScales.end()) {
+        if (hiddenEntityScales.find(e) == hiddenEntityScales.end())
             hiddenEntityScales[e] = e->localTransform.scale;
-            e->localTransform.scale = glm::vec3(0.0f);
-        }
+        e->localTransform.scale = {0, 0, 0};
     }
     void showEntity(our::Entity* e) {
         auto it = hiddenEntityScales.find(e);
         if (it != hiddenEntityScales.end()) {
             e->localTransform.scale = it->second;
             hiddenEntityScales.erase(it);
-        } else if (e) {
-            // Entity was never hidden via our system but scale might be 0 — force restore from config
-            // This handles entities spawned by MarineBoatSystem that weren't in hiddenEntityScales
-            if (e->localTransform.scale.x == 0.0f && e->localTransform.scale.y == 0.0f && e->localTransform.scale.z == 0.0f) {
-                // Check if it has a MarineBoatComponent — default scale is 0.05
-                if (e->getComponent<our::MarineBoatComponent>()) {
-                    e->localTransform.scale = glm::vec3(0.05f);
-                    std::cout << "[Phase] Force-restored scale for boat: " << e->name << std::endl;
-                } else if (e->getComponent<our::MusketComponent>()) {
-                    // Musket children have varying scales, try 50.0 as default
-                    if (e->parent) {
-                        e->localTransform.scale = glm::vec3(50.0f);
-                        std::cout << "[Phase] Force-restored scale for musket child: " << e->name << std::endl;
-                    } else {
-                        e->localTransform.scale = glm::vec3(2.0f);
-                        std::cout << "[Phase] Force-restored scale for standalone musket: " << e->name << std::endl;
-                    }
-                }
-            }
         }
     }
     void hideEntityTree(our::Entity* e, our::World* w) {
         hideEntity(e);
-        for (auto entity : w->getEntities()) {
-            if (entity->parent == e) hideEntityTree(entity, w);
+        for (auto child : w->getEntities()) {
+            if (child->parent == e) hideEntity(child);
         }
     }
     void showEntityTree(our::Entity* e, our::World* w) {
         showEntity(e);
-        for (auto entity : w->getEntities()) {
-            if (entity->parent == e) showEntityTree(entity, w);
+        for (auto child : w->getEntities()) {
+            if (child->parent == e) showEntity(child);
         }
     }
 
-    void spawnShark(our::World* world, our::Entity* raft) {
-        if (!raft) return;
-        glm::vec3 raftPos = raft->localTransform.position;
-        float angle = static_cast<float>(rand() % 360) * glm::pi<float>() / 180.0f;
-        float spawnDist = 150.0f + static_cast<float>(rand() % 100);
-
-        our::Entity* shark = world->add();
-        shark->name = "shark_" + std::to_string(sharksSpawned);
-        shark->localTransform.position = glm::vec3(
-            raftPos.x + cos(angle) * spawnDist,
-            -10.0f,
-            raftPos.z + sin(angle) * spawnDist);
-        shark->localTransform.scale = glm::vec3(0.05f);
-        shark->localTransform.rotation = glm::vec3(0.0f);
-
-        auto* mr = shark->addComponent<our::MeshRendererComponent>();
-        mr->mesh = nullptr;
-        mr->material = our::AssetLoader<our::Material>::get("lit_shark");
-
-        auto* sc = shark->addComponent<our::SharkComponent>();
-        sc->health = 100.0f;
-        sc->state = our::SharkState::APPROACHING;
-        sc->speed = 12.0f + static_cast<float>(rand() % 6); // 12-18 speed variety
-        sc->attackRange = 25.0f;
-
-        auto* anim = shark->addComponent<our::AnimatorComponent>();
-        anim->modelName = "shark";
-        anim->currentAnimIndex = 0;
-
-        auto* enemy = shark->addComponent<our::EnemyComponent>();
-        enemy->type = our::EnemyType::SHARK;
-        enemy->primaryTarget = our::PrimaryTarget::RAFT;
-        enemy->state = our::EnemyState::ALIVE;
-        enemy->attackDamage = 100.0f;
-
-        auto* hp = shark->addComponent<our::HealthComponent>();
-        hp->maxHealth = 100.0f;
-        hp->currentHealth = 100.0f;
-
-        sharksSpawned++;
-        std::cout << "[Phase] Spawned shark #" << sharksSpawned << " at ("
-                  << shark->localTransform.position.x << ","
-                  << shark->localTransform.position.z << ")" << std::endl;
+    // Check if both player and raft are at full health
+    bool isFullyHealed() {
+        our::Entity *player = nullptr, *raft = nullptr;
+        for (auto entity : world.getEntities()) {
+            if (entity->name == "player") player = entity;
+            if (entity->name == "raft") raft = entity;
+        }
+        if (!player || !raft) return false;
+        auto *ph = player->getComponent<our::HealthComponent>();
+        auto *rh = raft->getComponent<our::HealthComponent>();
+        if (!ph || !rh) return false;
+        return ph->currentHealth >= ph->maxHealth && rh->currentHealth >= rh->maxHealth;
     }
 
-    // Menu shader helper
-    static GLuint compileMenuShader(const char* vert, const char* frag) {
-        auto compile = [](const char* src, GLenum type) -> GLuint {
-            GLuint sh = glCreateShader(type);
-            glShaderSource(sh, 1, &src, nullptr);
-            glCompileShader(sh);
-            int ok; glGetShaderiv(sh, GL_COMPILE_STATUS, &ok);
-            if (!ok) { char buf[512]; glGetShaderInfoLog(sh, 512, nullptr, buf);
-                std::cerr << "[PauseMenu] shader error: " << buf << std::endl; glDeleteShader(sh); return 0; }
-            return sh;
-        };
-        GLuint vs = compile(vert, GL_VERTEX_SHADER);
-        GLuint fs = compile(frag, GL_FRAGMENT_SHADER);
-        if (!vs || !fs) { if(vs) glDeleteShader(vs); if(fs) glDeleteShader(fs); return 0; }
-        GLuint p = glCreateProgram();
-        glAttachShader(p, vs); glAttachShader(p, fs); glLinkProgram(p);
-        int ok; glGetProgramiv(p, GL_LINK_STATUS, &ok);
-        if (!ok) { char buf[512]; glGetProgramInfoLog(p, 512, nullptr, buf);
-            std::cerr << "[PauseMenu] link error: " << buf << std::endl; glDeleteProgram(p); p = 0; }
-        glDeleteShader(vs); glDeleteShader(fs);
-        return p;
-    }
-    void
-    onInitialize() override
+    void onInitialize() override
     {
-        // Reset all game state on restart
-        currentPhase = GamePhase::SHARKS;
-        phaseTimer = 0.0f;
-        sharksKilled = 0;
-        sharksSpawned = 0;
-        sharkSpawnTimer = 0.0f;
+        // Reset all game state
+        currentPhase = GamePhase::COOLDOWN;
         phaseTransitioning = false;
+        gameOver = false;
+        loseReason.clear();
+        waitingForHeal = false;
         elgembelliasSpawned = false;
-        isPaused = false;
+        escPrev = false;
+        hiddenEntityScales.clear();
+        fireballSystem.reset();
+        cameraController.reset();
+
+        // Menu state
         isStartMenu = true;
         isLoading = false;
         loadingDone = false;
@@ -236,286 +172,51 @@ class Playstate : public our::State
         loadingProgress = 0.0f;
         loadingTimer = 0.0f;
         isPhaseSelectMenu = false;
-        selectedStartItem = 0;
-        selectedPhaseIndex = 0;
-        hiddenEntityScales.clear();
-        fireballSystem.reset();
-        cameraController.reset();
 
-        // NOTE: Heavy loading (assets, world, renderer) is deferred to the loading screen.
-        // Both first launch and restart go through the loading screen.
+        // Heavy loading (assets, world, renderer) is deferred to the loading screen.
+        // Only load lightweight configs and UI overlays here so the start menu appears instantly.
 
-        // --- Pause Menu Initialization ---
-        isPaused = false;
-        selectedMenuItem = 0;
+        // Load phase configs (lightweight JSON reads)
+        sharksConfig = our::loadJsonFile("config/sharks-phase.json");
+        marinesConfig = our::loadJsonFile("config/marines-phase.json");
+        krakenConfig = our::loadJsonFile("config/kraken-phase.json");
 
-        // Load 3 menu textures
-        stbi_set_flip_vertically_on_load(false);
-        const char* menuPaths[3] = {
-            "assets/textures/menu_continue.png",
-            "assets/textures/menu_restart.png",
-            "assets/textures/menu_exit.png"
-        };
-        for (int i = 0; i < 3; i++) {
-            int w, h, ch;
-            unsigned char* data = stbi_load(menuPaths[i], &w, &h, &ch, 4);
-            if (data) {
-                glGenTextures(1, &menuTextures[i]);
-                glBindTexture(GL_TEXTURE_2D, menuTextures[i]);
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                stbi_image_free(data);
-                glBindTexture(GL_TEXTURE_2D, 0);
-            } else {
-                std::cerr << "[PauseMenu] Failed to load: " << menuPaths[i] << std::endl;
-            }
-        }
-
-        // Compile menu shader
-        static const char* menuVert = R"(
-#version 330 core
-layout(location = 0) in vec2 aPos;
-out vec2 vUV;
-void main() {
-    vUV = vec2(aPos.x, 1.0 - aPos.y);
-    gl_Position = vec4(aPos * 2.0 - 1.0, 0.0, 1.0);
-}
-)";
-        static const char* menuFrag = R"(
-#version 330 core
-uniform sampler2D uMenuTex;
-uniform float uAlpha;
-in vec2 vUV;
-out vec4 fragColor;
-void main() {
-    vec4 col = texture(uMenuTex, vUV);
-    float brightness = (col.r + col.g + col.b) / 3.0;
-    float darkMask = smoothstep(0.08, 0.20, brightness);
-    fragColor = vec4(col.rgb, col.a * darkMask * uAlpha);
-    if (fragColor.a < 0.02) discard;
-}
-)";
-        menuShader = compileMenuShader(menuVert, menuFrag);
-
-        // Create fullscreen quad VAO/VBO
-        float menuQuad[12] = {
-            0.0f, 0.0f,  1.0f, 0.0f,  1.0f, 1.0f,
-            0.0f, 0.0f,  1.0f, 1.0f,  0.0f, 1.0f
-        };
-        glGenVertexArrays(1, &menuVAO);
-        glGenBuffers(1, &menuVBO);
-        glBindVertexArray(menuVAO);
-        glBindBuffer(GL_ARRAY_BUFFER, menuVBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(menuQuad), menuQuad, GL_STATIC_DRAW);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-        glBindVertexArray(0);
-        fireballSystem.enter(getApp());
-
-        // --- Start Menu Initialization ---
-        isStartMenu = true;
-        selectedStartItem = 0;
-
-        // Load 2 start menu textures
-        const char* startPaths[2] = {
-            "assets/textures/game_play.png",
-            "assets/textures/game_exit.png"
-        };
-        for (int i = 0; i < 2; i++) {
-            int w, h, ch;
-            unsigned char* data = stbi_load(startPaths[i], &w, &h, &ch, 4);
-            if (data) {
-                glGenTextures(1, &startTextures[i]);
-                glBindTexture(GL_TEXTURE_2D, startTextures[i]);
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                stbi_image_free(data);
-                glBindTexture(GL_TEXTURE_2D, 0);
-            } else {
-                std::cerr << "[StartMenu] Failed to load: " << startPaths[i] << std::endl;
-            }
-        }
-
-        // Compile start menu shader (no transparency, UV flipped on Y)
-        static const char* startVert = R"(
-#version 330 core
-layout(location = 0) in vec2 aPos;
-out vec2 vUV;
-void main() {
-    vUV = vec2(aPos.x, 1.0 - aPos.y);
-    gl_Position = vec4(aPos * 2.0 - 1.0, 0.0, 1.0);
-}
-)";
-        static const char* startFrag = R"(
-#version 330 core
-uniform sampler2D uStartTex;
-in vec2 vUV;
-out vec4 fragColor;
-void main() {
-    vec4 col = texture(uStartTex, vUV);
-    fragColor = vec4(col.rgb, 1.0);
-}
-)";
-        startShader = compileMenuShader(startVert, startFrag);
-
-        // Create fullscreen quad VAO/VBO for start menu
-        float startQuad[12] = {
-            0.0f, 0.0f,  1.0f, 0.0f,  1.0f, 1.0f,
-            0.0f, 0.0f,  1.0f, 1.0f,  0.0f, 1.0f
-        };
-        glGenVertexArrays(1, &startVAO);
-        glGenBuffers(1, &startVBO);
-        glBindVertexArray(startVAO);
-        glBindBuffer(GL_ARRAY_BUFFER, startVBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(startQuad), startQuad, GL_STATIC_DRAW);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-        glBindVertexArray(0);
-
-        // --- Phase Selection Menu Initialization ---
-        isPhaseSelectMenu = false;
-        selectedPhaseIndex = 0;
-
-        // Load 3 phase textures
-        const char* phasePaths[3] = {
-            "assets/textures/sharks_phase.png",
-            "assets/textures/marine_phase.png",
-            "assets/textures/kraken_phase.png"
-        };
-        for (int i = 0; i < 3; i++) {
-            int w, h, ch;
-            unsigned char* data = stbi_load(phasePaths[i], &w, &h, &ch, 4);
-            if (data) {
-                glGenTextures(1, &phaseTextures[i]);
-                glBindTexture(GL_TEXTURE_2D, phaseTextures[i]);
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                stbi_image_free(data);
-                glBindTexture(GL_TEXTURE_2D, 0);
-            } else {
-                std::cerr << "[PhaseSelect] Failed to load: " << phasePaths[i] << std::endl;
-            }
-        }
-
-        // Phase selection shader (supports transparency + highlight tint)
-        static const char* phaseVert = R"(
-#version 330 core
-layout(location = 0) in vec2 aPos;
-uniform vec2 uOffset;
-uniform vec2 uScale;
-out vec2 vUV;
-void main() {
-    vUV = vec2(aPos.x, 1.0 - aPos.y);
-    vec2 pos = aPos * uScale + uOffset;
-    gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
-}
-)";
-        static const char* phaseFrag = R"(
-#version 330 core
-uniform sampler2D uPhaseTex;
-uniform float uHighlight;  // 1.0 = selected (bright), 0.0 = dimmed
-in vec2 vUV;
-out vec4 fragColor;
-void main() {
-    vec4 col = texture(uPhaseTex, vUV);
-    if (col.a < 0.02) discard;
-    // Dim unselected items, brighten selected
-    float brightness = mix(0.4, 1.0, uHighlight);
-    fragColor = vec4(col.rgb * brightness, col.a);
-}
-)";
-        phaseShader = compileMenuShader(phaseVert, phaseFrag);
-
-        // Create quad VAO/VBO for phase selection (same quad geometry)
-        float phaseQuad[12] = {
-            0.0f, 0.0f,  1.0f, 0.0f,  1.0f, 1.0f,
-            0.0f, 0.0f,  1.0f, 1.0f,  0.0f, 1.0f
-        };
-        glGenVertexArrays(1, &phaseVAO);
-        glGenBuffers(1, &phaseVBO);
-        glBindVertexArray(phaseVAO);
-        glBindBuffer(GL_ARRAY_BUFFER, phaseVBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(phaseQuad), phaseQuad, GL_STATIC_DRAW);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-        glBindVertexArray(0);
-
-        // --- Loading Screen Initialization ---
-        {
-            const char* loadingPaths[3] = {
-                "assets/textures/loading_start.png",
-                "assets/textures/loading.png",
-                "assets/textures/loading_end.png"
-            };
-            for (int i = 0; i < 3; i++) {
-                int w, h, ch;
-                unsigned char* data = stbi_load(loadingPaths[i], &w, &h, &ch, 4);
-                if (data) {
-                    glGenTextures(1, &loadingTextures[i]);
-                    glBindTexture(GL_TEXTURE_2D, loadingTextures[i]);
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                    stbi_image_free(data);
-                    glBindTexture(GL_TEXTURE_2D, 0);
-                } else {
-                    std::cerr << "[LoadingScreen] Failed to load " << loadingPaths[i] << std::endl;
-                }
-            }
-
-            static const char* loadingVert = R"(
-#version 330 core
-layout(location = 0) in vec2 aPos;
-out vec2 vUV;
-void main() {
-    vUV = vec2(aPos.x, 1.0 - aPos.y);
-    gl_Position = vec4(aPos * 2.0 - 1.0, 0.0, 1.0);
-}
-)";
-            static const char* loadingFrag = R"(
-#version 330 core
-uniform sampler2D uLoadingTex;
-in vec2 vUV;
-out vec4 fragColor;
-void main() {
-    fragColor = texture(uLoadingTex, vUV);
-}
-)";
-            loadingShader = compileMenuShader(loadingVert, loadingFrag);
-
-            float loadingQuad[12] = {
-                0.0f, 0.0f,  1.0f, 0.0f,  1.0f, 1.0f,
-                0.0f, 0.0f,  1.0f, 1.0f,  0.0f, 1.0f
-            };
-            glGenVertexArrays(1, &loadingVAO);
-            glGenBuffers(1, &loadingVBO);
-            glBindVertexArray(loadingVAO);
-            glBindBuffer(GL_ARRAY_BUFFER, loadingVBO);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(loadingQuad), loadingQuad, GL_STATIC_DRAW);
-            glEnableVertexAttribArray(0);
-            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-            glBindVertexArray(0);
-        }
-
-
+        // Initialize self-contained UI overlays (each loads its own textures/shaders)
+        // Note: oceanAudio.start() is deferred until gameplay actually begins (after phase selection)
+        startMenu.init();
+        loadingScreen.init();
+        phaseSelectMenu.init();
+        pauseMenu.init();
     }
 
     void onImmediateGui() override
     {
         // --- Loading Screen Overlay ---
-        if (isLoading && !loadingDone) {
+        if (isLoading && !loadingDone) 
             return; // Don't draw game UI while loading
+        // --- Crosshair ---
+        {
+            auto size = getApp()->getFrameBufferSize();
+            ImVec2 center = ImVec2(size.x * 0.5f, size.y * 0.5f);
+            ImU32 crosshairColor = IM_COL32(255, 255, 255, 255); // White by default
+
+            our::Entity *player = nullptr;
+            for (auto entity : world.getEntities()) {
+                if (entity->name == "player") {
+                    player = entity;
+                    break;
+                }
+            }
+
+            if (player) {
+                if (auto inv = player->getComponent<our::InventoryComponent>()) {
+                    auto& mouse = getApp()->getMouse();
+                    if ((inv->activeSlot == 3 || inv->activeSlot == 5) && mouse.isPressed(GLFW_MOUSE_BUTTON_1)) {
+                        crosshairColor = IM_COL32(255, 0, 0, 255); // Red when attacking
+                    }
+                }
+            }
+            ImGui::GetForegroundDrawList()->AddCircleFilled(center, 3.0f, crosshairColor);
         }
 
         our::Entity *player = nullptr;
@@ -570,10 +271,9 @@ void main() {
         }
 
         // --- Phase Timer (MARINES phase only, hidden when paused) ---
-        if (currentPhase == GamePhase::MARINES && !isPaused) {
+        if (currentPhase == GamePhase::MARINES && !pauseMenu.paused()) {
             auto size = getApp()->getFrameBufferSize();
-            float remaining = 300.0f - phaseTimer;
-            if (remaining < 0.0f) remaining = 0.0f;
+            float remaining = marinePhase.getRemainingTime();
             int mins = (int)remaining / 60;
             int secs = (int)remaining % 60;
 
@@ -589,119 +289,119 @@ void main() {
         // --- Phase Selection Menu ImGui overlay ---
         if (isPhaseSelectMenu) {
             auto size = getApp()->getFrameBufferSize();
-            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255));
+            phaseSelectMenu.renderImGuiOverlay((float)size.x, (float)size.y);
+        }
 
-            // Title
-            ImGui::SetNextWindowPos(ImVec2(size.x * 0.5f, size.y * 0.08f), 0, ImVec2(0.5f, 0.0f));
-            ImGui::SetNextWindowBgAlpha(0.0f);
-            ImGui::Begin("PhaseSelectTitle", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize);
-            ImGui::Text("SELECT STARTING PHASE");
+        // --- YOU LOSE overlay ---
+        if (gameOver) {
+            auto size = getApp()->getFrameBufferSize();
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 30, 30, 255));
+            ImGui::SetNextWindowPos(ImVec2(size.x * 0.5f, size.y * 0.35f), 0, ImVec2(0.5f, 0.5f));
+            ImGui::SetNextWindowBgAlpha(0.6f);
+            ImGui::Begin("YouLose", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize);
+            ImGui::SetWindowFontScale(3.0f);
+            ImGui::Text("YOU LOSE");
+            ImGui::SetWindowFontScale(1.5f);
+            ImGui::Text("%s", loseReason.c_str());
+            ImGui::SetWindowFontScale(1.0f);
+            ImGui::Text("Press R to restart or ESC to quit");
             ImGui::End();
+            ImGui::PopStyleColor();
+        }
 
-            // Compute card positions
-            float cardW_px = size.x * 0.20f;
-            float gap_px = size.x * 0.05f;
-            float totalW_px = 3.0f * cardW_px + 2.0f * gap_px;
-            float startX_px = size.x * 0.5f - totalW_px / 2.0f;
-            float selCenterX = startX_px + selectedPhaseIndex * (cardW_px + gap_px) + cardW_px * 0.5f;
-            float cardTopY = size.y * 0.5f - size.y * 0.25f;
-
-            // Left arrow
-            ImGui::SetNextWindowPos(ImVec2(selCenterX - cardW_px * 0.6f, cardTopY + size.y * 0.25f * 0.5f - 15), 0, ImVec2(0.5f, 0.5f));
-            ImGui::SetNextWindowBgAlpha(0.0f);
-            ImGui::Begin("ArrowLeft", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize);
-            ImGui::Text("<<");
+        // --- HEAL TO CONTINUE overlay ---
+        if (waitingForHeal && !gameOver) {
+            auto size = getApp()->getFrameBufferSize();
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 220, 50, 255));
+            ImGui::SetNextWindowPos(ImVec2(size.x * 0.5f, size.y * 0.25f), 0, ImVec2(0.5f, 0.5f));
+            ImGui::SetNextWindowBgAlpha(0.5f);
+            ImGui::Begin("HealGate", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize);
+            ImGui::SetWindowFontScale(1.8f);
+            ImGui::Text("HEAL TO CONTINUE!");
+            ImGui::SetWindowFontScale(1.0f);
+            ImGui::Text("Player and Raft must be at full health");
+            ImGui::Text("Eat fish (R) and repair raft (1 + Left Click)");
             ImGui::End();
+            ImGui::PopStyleColor();
+        }
 
-            // Right arrow
-            ImGui::SetNextWindowPos(ImVec2(selCenterX + cardW_px * 0.6f, cardTopY + size.y * 0.25f * 0.5f - 15), 0, ImVec2(0.5f, 0.5f));
-            ImGui::SetNextWindowBgAlpha(0.0f);
-            ImGui::Begin("ArrowRight", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize);
-            ImGui::Text(">>");
+        // --- COOLDOWN overlay (initial phase before sharks, only when starting from sharks) ---
+        if (currentPhase == GamePhase::COOLDOWN && !gameOver) {
+            auto size = getApp()->getFrameBufferSize();
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(100, 200, 255, 255));
+            ImGui::SetNextWindowPos(ImVec2(size.x * 0.5f, size.y * 0.25f), 0, ImVec2(0.5f, 0.5f));
+            ImGui::SetNextWindowBgAlpha(0.5f);
+            ImGui::Begin("CooldownGate", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize);
+            ImGui::SetWindowFontScale(1.8f);
+            ImGui::Text("PREPARE YOURSELF!");
+            ImGui::SetWindowFontScale(1.0f);
+            ImGui::Text("Heal up before the sharks arrive");
+            ImGui::Text("Player and Raft must be at full health");
             ImGui::End();
-
-            // Phase name under selected card
-            const char* phaseNames[3] = {"SHARKS", "MARINES", "KRAKEN"};
-            ImGui::SetNextWindowPos(ImVec2(selCenterX, cardTopY + size.y * 0.25f + 20), 0, ImVec2(0.5f, 0.0f));
-            ImGui::SetNextWindowBgAlpha(0.0f);
-            ImGui::Begin("PhaseName", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize);
-            ImGui::Text("%s", phaseNames[selectedPhaseIndex]);
-            ImGui::End();
-
-            // Instructions
-            ImGui::SetNextWindowPos(ImVec2(size.x * 0.5f, size.y * 0.92f), 0, ImVec2(0.5f, 0.5f));
-            ImGui::SetNextWindowBgAlpha(0.0f);
-            ImGui::Begin("PhaseSelectHelp", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize);
-            ImGui::Text("LEFT/RIGHT to select  |  ENTER to start  |  ESC to go back");
-            ImGui::End();
-
             ImGui::PopStyleColor();
         }
 
     }
 
+    void resetGame() {
+        // Reset game state without reloading assets
+        world.clear();
+        auto &config = getApp()->getConfig()["scene"];
+        if (config.contains("world"))
+            world.deserialize(config["world"]);
+
+        currentPhase = GamePhase::COOLDOWN;
+        phaseTransitioning = false;
+        gameOver = false;
+        loseReason.clear();
+        waitingForHeal = false;
+        elgembelliasSpawned = false;
+        escPrev = false;
+        hiddenEntityScales.clear();
+
+        cameraController.enter(getApp());
+        fireballSystem.enter(getApp());
+
+        our::Entity *player = nullptr, *boat = nullptr;
+        for (auto entity : world.getEntities()) {
+            if (entity->name == "player") player = entity;
+            if (entity->name == "raft") boat = entity;
+        }
+        survivalSystem.setup(&world, getApp(), player, boat);
+    }
+
     void onDraw(double deltaTime) override
     {
-        // Cap deltaTime to prevent huge jumps after unpausing or menu transitions
-   
         auto &keyboard = getApp()->getKeyboard();
 
-        // --- Start Menu (shown at game launch) ---
+        // ===== START MENU =====
         if (isStartMenu) {
-            if (keyboard.justPressed(GLFW_KEY_UP)) {
-                selectedStartItem = (selectedStartItem - 1 + 2) % 2;
+            int action = startMenu.handleInput(keyboard);
+            if (action == 1) { // Play
+                isStartMenu = false;
+                isLoading = true;
+                loadingStep = -1;
+                loadingProgress = 0.0f;
+                loadingTimer = 0.0f;
+                loadingDone = false;
+            } else if (action == 2) { // Exit
+                getApp()->close();
+                return;
             }
-            if (keyboard.justPressed(GLFW_KEY_DOWN)) {
-                selectedStartItem = (selectedStartItem + 1) % 2;
-            }
-            if (keyboard.justPressed(GLFW_KEY_ENTER)) {
-                if (selectedStartItem == 0) {
-                    isStartMenu = false;
-                    isLoading = true; // Show loading screen (fast on restart since assets already loaded)
-                } else if (selectedStartItem == 1) {
-                    getApp()->close();
-                    return;
-                }
-            }
-
-            // Clear screen with black
-            glClearColor(0, 0, 0, 1);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-            // Draw start menu fullscreen
-            if (startShader && startVAO && startTextures[selectedStartItem]) {
-                glUseProgram(startShader);
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, startTextures[selectedStartItem]);
-                glUniform1i(glGetUniformLocation(startShader, "uStartTex"), 0);
-
-                glDisable(GL_DEPTH_TEST);
-                glDisable(GL_CULL_FACE);
-                glDisable(GL_BLEND);
-
-                glBindVertexArray(startVAO);
-                glDrawArrays(GL_TRIANGLES, 0, 6);
-                glBindVertexArray(0);
-
-                glEnable(GL_DEPTH_TEST);
-                glUseProgram(0);
-            }
-            return; // Don't run any game logic
+            startMenu.render();
+            return;
         }
 
-        // --- Loading Screen (after pressing Play, before phase select) ---
+        // ===== LOADING SCREEN =====
         if (isLoading && !loadingDone) {
             auto &config = getApp()->getConfig()["scene"];
-
             loadingTimer += (float)deltaTime;
 
-            // Step -1: First frame - just display loading_start image
             if (loadingStep == -1) {
                 loadingProgress = 0.0f;
                 loadingTimer = 0.0f;
                 loadingStep = 0;
             }
-            // Step 0: Load assets (shaders, textures, meshes, models, materials)
             else if (loadingStep == 0) {
                 loadingProgress = 0.1f;
                 if (!assetsLoaded) {
@@ -712,17 +412,15 @@ void main() {
                 loadingStep = 1;
                 loadingTimer = 0.0f;
             }
-            // Step 1: Deserialize world entities
             else if (loadingStep == 1) {
                 loadingProgress = 0.4f;
-                world.clear(); // Clear old entities before re-deserializing
+                world.clear();
                 if (config.contains("world"))
                     world.deserialize(config["world"]);
                 cameraController.enter(getApp());
                 loadingStep = 2;
                 loadingTimer = 0.0f;
             }
-            // Step 2: Initialize renderer + UI
             else if (loadingStep == 2) {
                 loadingProgress = 0.7f;
                 auto size = getApp()->getFrameBufferSize();
@@ -732,8 +430,7 @@ void main() {
                 }
                 bossHealthBar.init(size.x, size.y);
                 damageFlash.init();
-                our::Entity *player = nullptr;
-                our::Entity *boat = nullptr;
+                our::Entity *player = nullptr, *boat = nullptr;
                 for (auto entity : world.getEntities()) {
                     if (entity->name == "player") player = entity;
                     if (entity->name == "raft") boat = entity;
@@ -743,7 +440,6 @@ void main() {
                 loadingStep = 3;
                 loadingTimer = 0.0f;
             }
-            // Step 3: Hold loading_end image for at least 1.5 seconds
             else if (loadingStep == 3) {
                 loadingProgress = 0.85f + 0.15f * glm::min(loadingTimer / 1.5f, 1.0f);
                 if (loadingTimer >= 1.5f) {
@@ -754,306 +450,193 @@ void main() {
                 }
             }
 
-            // Draw loading screen background - pick image based on progress
-            int texIdx = (loadingProgress < 0.25f) ? 0 : (loadingProgress < 0.75f) ? 1 : 2;
-            GLuint activeTex = loadingTextures[texIdx];
-            glClearColor(0, 0, 0, 1);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            if (loadingShader && loadingVAO && activeTex) {
-                glUseProgram(loadingShader);
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, activeTex);
-                glUniform1i(glGetUniformLocation(loadingShader, "uLoadingTex"), 0);
-                glDisable(GL_DEPTH_TEST);
-                glDisable(GL_CULL_FACE);
-                glDisable(GL_BLEND);
-                glBindVertexArray(loadingVAO);
-                glDrawArrays(GL_TRIANGLES, 0, 6);
-                glBindVertexArray(0);
-                glEnable(GL_DEPTH_TEST);
-                glUseProgram(0);
-            }
-            return; // Don't run game logic while loading
+            loadingScreen.render(loadingProgress);
+            return;
         }
 
-        // --- Phase Selection Menu (after pressing Play) ---
+        // ===== PHASE SELECTION MENU =====
         if (isPhaseSelectMenu) {
-            if (keyboard.justPressed(GLFW_KEY_LEFT)) {
-                selectedPhaseIndex = (selectedPhaseIndex - 1 + 3) % 3;
-            }
-            if (keyboard.justPressed(GLFW_KEY_RIGHT)) {
-                selectedPhaseIndex = (selectedPhaseIndex + 1) % 3;
-            }
-            if (keyboard.justPressed(GLFW_KEY_ENTER)) {
+            int action = phaseSelectMenu.handleInput(keyboard);
+            if (action == 1) { // Phase selected
                 isPhaseSelectMenu = false;
-                // Set starting phase based on selection
-                switch (selectedPhaseIndex) {
-                    case 0: currentPhase = GamePhase::SHARKS; break;
+                int idx = phaseSelectMenu.getSelectedIndex();
+                // Start ocean audio only when gameplay begins
+                oceanAudio.start();
+                switch (idx) {
+                    case 0:
+                        currentPhase = GamePhase::COOLDOWN; // Sharks goes through cooldown first
+                        break;
                     case 1:
                         currentPhase = GamePhase::MARINES;
-                        marineBoatSystem = our::MarineBoatSystem(); // Initialize marine spawner
-                        fireballSystem.grantDevilFruit(&world); // Give devil fruit directly
+                        marinePhase.enter(&world, marinesConfig);
+                        fireballSystem.grantDevilFruit(&world);
                         break;
                     case 2:
                         currentPhase = GamePhase::OCTOPUS;
-                        fireballSystem.grantDevilFruit(&world); // Give devil fruit directly
+                        krakenPhase.enter(&world, krakenConfig);
+                        fireballSystem.grantDevilFruit(&world);
                         break;
                 }
-                phaseTimer = 0.0f;
                 phaseTransitioning = false;
-                std::cout << "[Phase] Starting from phase: " << selectedPhaseIndex << std::endl;
-            }
-            if (keyboard.justPressed(GLFW_KEY_ESCAPE)) {
+                std::cout << "[Phase] Starting from phase: " << idx << std::endl;
+            } else if (action == -1) { // ESC — go back
                 isPhaseSelectMenu = false;
-                isStartMenu = true; // Go back to start menu
+                isStartMenu = true;
             }
-
-            // Clear screen with dark background
-            glClearColor(0.05f, 0.05f, 0.1f, 1);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-            // Draw 3 phase images in a horizontal row
-            if (phaseShader && phaseVAO) {
-                glUseProgram(phaseShader);
-                glDisable(GL_DEPTH_TEST);
-                glDisable(GL_CULL_FACE);
-                glEnable(GL_BLEND);
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-                // Each card: 20% of screen width, 50% of screen height
-                // Centered vertically, spaced evenly across center
-                float cardW = 0.38f;  // width in NDC (0..1)
-                float cardH = 0.38f;  // height in NDC (0..1)
-                float gap = 0.0005f;    // gap between cards
-                float totalW = 3.0f * cardW + 2.0f * gap;
-                float startX = 0.5f - totalW / 2.0f;  // center horizontally
-                float startY = 0.5f - cardH / 2.0f;    // center vertically
-
-                GLint offsetLoc = glGetUniformLocation(phaseShader, "uOffset");
-                GLint scaleLoc = glGetUniformLocation(phaseShader, "uScale");
-                GLint texLoc = glGetUniformLocation(phaseShader, "uPhaseTex");
-                GLint highlightLoc = glGetUniformLocation(phaseShader, "uHighlight");
-
-                glUniform1i(texLoc, 0);
-
-                for (int i = 0; i < 3; i++) {
-                    float x = startX + i * (cardW + gap);
-                    float y = startY;
-                    float highlight = (i == selectedPhaseIndex) ? 1.0f : 0.0f;
-
-                    glUniform2f(offsetLoc, x, y);
-                    glUniform2f(scaleLoc, cardW, cardH);
-                    glUniform1f(highlightLoc, highlight);
-
-                    glActiveTexture(GL_TEXTURE0);
-                    glBindTexture(GL_TEXTURE_2D, phaseTextures[i]);
-
-                    glBindVertexArray(phaseVAO);
-                    glDrawArrays(GL_TRIANGLES, 0, 6);
-                }
-
-                glBindVertexArray(0);
-                glDisable(GL_BLEND);
-                glEnable(GL_DEPTH_TEST);
-                glUseProgram(0);
-            }
-
-            return; // Don't run any game logic
+            phaseSelectMenu.render();
+            return;
         }
 
-        // --- Pause Menu Input (always checked, even when paused) ---
-     if (keyboard.justPressed(GLFW_KEY_ESCAPE)) {
-            isPaused = !isPaused;
-            if (isPaused) selectedMenuItem = 0;
-        }
-
-        if (isPaused) {
-            // Arrow key navigation
-            if (keyboard.justPressed(GLFW_KEY_UP)) {
-                selectedMenuItem = (selectedMenuItem - 1 + 3) % 3;
-            }
-            if (keyboard.justPressed(GLFW_KEY_DOWN)) {
-                selectedMenuItem = (selectedMenuItem + 1) % 3;
-            }
-            if (keyboard.justPressed(GLFW_KEY_ENTER)) {
-                if (selectedMenuItem == 0) {
-                    isPaused = false;
-                } else if (selectedMenuItem == 1) {
-                    // Restart: go back to start menu, loading happens when Play is pressed
-                    isPaused = false;
-                    isStartMenu = true;
-                    selectedStartItem = 0;
-                    // Reset game state but keep assets/renderer loaded
-                    currentPhase = GamePhase::SHARKS;
-                    phaseTimer = 0.0f;
-                    sharksKilled = 0;
-                    sharksSpawned = 0;
-                    sharkSpawnTimer = 0.0f;
-                    phaseTransitioning = false;
-                    elgembelliasSpawned = false;
-                    isPhaseSelectMenu = false;
-                    selectedPhaseIndex = 0;
-                    hiddenEntityScales.clear();
-                    fireballSystem.reset();
-                    cameraController.reset();
-                    isLoading = false;
-                    loadingDone = false;
-                    loadingStep = -1;
-                    loadingProgress = 0.0f;
-                    loadingTimer = 0.0f;
-                    return;
-                } else if (selectedMenuItem == 2) {
-                    getApp()->close();
-                    return;
-                }
-            }
-
-            // Still render the scene (frozen) but skip all game logic
+        // ===== GAME OVER =====
+        if (gameOver) {
             renderer.render(&world);
-
-            // Draw pause menu overlay on top
-            if (menuShader && menuVAO && menuTextures[selectedMenuItem]) {
-                glUseProgram(menuShader);
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, menuTextures[selectedMenuItem]);
-                glUniform1i(glGetUniformLocation(menuShader, "uMenuTex"), 0);
-                glUniform1f(glGetUniformLocation(menuShader, "uAlpha"), 1.0f);
-
-                glEnable(GL_BLEND);
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                glDisable(GL_DEPTH_TEST);
-                glDisable(GL_CULL_FACE);
-
-                glBindVertexArray(menuVAO);
-                glDrawArrays(GL_TRIANGLES, 0, 6);
-                glBindVertexArray(0);
-
-                glEnable(GL_DEPTH_TEST);
-                glDisable(GL_BLEND);
-                glUseProgram(0);
+            if (keyboard.justPressed(GLFW_KEY_R)) {
+                resetGame();
             }
-            return; // Freeze: skip all game logic
+            if (escJustPressed()) {
+                getApp()->close();
+            }
+            return;
         }
 
-        // --- Normal game update (not paused) ---
+        // ===== PAUSE MENU =====
+        if (escJustPressed()) {
+            pauseMenu.togglePause();
+        }
+        int menuAction = pauseMenu.handleInput(keyboard);
+        if (menuAction == 2) { resetGame(); return; }
+        if (menuAction == 3) { getApp()->close(); return; }
+        if (pauseMenu.paused()) {
+            renderer.render(&world);
+            pauseMenu.renderOverlay();
+            return;
+        }
 
-        // === PHASE MANAGEMENT ===
-        our::Entity* raft = nullptr;
-        our::Entity* player = nullptr;
+        // ===== LOSE CONDITION CHECK =====
+        our::Entity *player = nullptr, *raft = nullptr;
         for (auto entity : world.getEntities()) {
-            if (entity->name == "raft") raft = entity;
             if (entity->name == "player") player = entity;
+            if (entity->name == "raft") raft = entity;
+        }
+        if (player) {
+            auto *ph = player->getComponent<our::HealthComponent>();
+            if (ph && ph->isDead()) {
+                gameOver = true;
+                loseReason = "The pirate has fallen!";
+                std::cout << "[Lose] Player died!" << std::endl;
+                return;
+            }
+        }
+        if (raft) {
+            auto *rh = raft->getComponent<our::HealthComponent>();
+            if (rh && rh->isDead()) {
+                gameOver = true;
+                loseReason = "The raft has been destroyed!";
+                std::cout << "[Lose] Raft destroyed!" << std::endl;
+                return;
+            }
         }
 
-        if (currentPhase == GamePhase::SHARKS) {
-            // Hide octopus and all marines
+        // ===== ENTITY VISIBILITY (phase-aware) =====
+        // COOLDOWN/SHARKS: hide marines, octopus, elgembellias
+        if (currentPhase == GamePhase::COOLDOWN || currentPhase == GamePhase::SHARKS) {
             for (auto entity : world.getEntities()) {
                 if (entity->getComponent<our::OctopusComponent>()) hideEntity(entity);
                 if (entity->getComponent<our::MarineBoatComponent>()) hideEntityTree(entity, &world);
                 if (entity->name == "debug_marine") hideEntity(entity);
                 if (entity->getComponent<our::MusketComponent>() && !entity->parent) hideEntity(entity);
-            }
-
-            // Spawn sharks until we have enough
-            if (sharksSpawned < sharksToKill) {
-                sharkSpawnTimer += (float)deltaTime;
-                if (sharkSpawnTimer >= sharkSpawnInterval) {
-                    sharkSpawnTimer = 0.0f;
-                    spawnShark(&world, raft);
-                }
+                if (entity->getComponent<our::ElgembelliasComponent>()) hideEntity(entity);
             }
         }
         else if (currentPhase == GamePhase::MARINES) {
-            // Show marines, hide octopus
             for (auto entity : world.getEntities()) {
                 if (entity->getComponent<our::OctopusComponent>()) hideEntity(entity);
                 if (entity->getComponent<our::MarineBoatComponent>()) showEntityTree(entity, &world);
                 if (entity->name == "debug_marine") showEntity(entity);
                 if (entity->getComponent<our::MusketComponent>() && !entity->parent) showEntity(entity);
+                if (entity->getComponent<our::ElgembelliasComponent>()) hideEntity(entity);
             }
-
-            phaseTimer += (float)deltaTime;
-
-            // Check if all marines are dead (only if at least one boat has spawned)
-            bool anyMarineAlive = false;
-            bool anyMarineExists = false;
-            for (auto entity : world.getEntities()) {
-                auto boat = entity->getComponent<our::MarineBoatComponent>();
-                auto musket = entity->getComponent<our::MusketComponent>();
-                auto enemy = entity->getComponent<our::EnemyComponent>();
-                if (boat || musket) anyMarineExists = true;
-                if ((boat || musket) && enemy && enemy->state != our::EnemyState::DEAD) {
-                    anyMarineAlive = true;
-                }
-            }
-
-            // Transition: survived 5 minutes, OR all marines dead (but only if marines have spawned)
-            if ((phaseTimer >= 300.0f || (anyMarineExists && !anyMarineAlive)) && !phaseTransitioning) {
-                phaseTransitioning = true;
-                currentPhase = GamePhase::OCTOPUS;
-                std::cout << "[Phase] === MARINES PHASE OVER === ("
-                          << (anyMarineAlive ? "survived 5 min" : "all marines killed")
-                          << ") Transitioning to OCTOPUS phase!" << std::endl;
-                // If marines survived, they stay. If all dead, nothing to do.
-            }
-        }
-        else if (currentPhase == GamePhase::OCTOPUS) {
-            // Show octopus, hide all marines (even if they survived from a MARINES phase)
+        } else if (currentPhase == GamePhase::OCTOPUS) {
             for (auto entity : world.getEntities()) {
                 if (entity->getComponent<our::OctopusComponent>()) showEntity(entity);
                 if (entity->getComponent<our::MarineBoatComponent>()) hideEntityTree(entity, &world);
                 if (entity->name == "debug_marine") hideEntity(entity);
                 if (entity->getComponent<our::MusketComponent>() && !entity->parent) hideEntity(entity);
+                if (entity->getComponent<our::ElgembelliasComponent>()) hideEntity(entity);
             }
-        }
-        else if (currentPhase == GamePhase::ELGEMBELLIAS) {
-            // Show Elgembellias, keep dead octopus visible
+        } else if (currentPhase == GamePhase::ELGEMBELLIAS) {
             for (auto entity : world.getEntities()) {
                 if (entity->getComponent<our::ElgembelliasComponent>()) showEntity(entity);
             }
         }
 
-        // === SYSTEM UPDATES (phase-aware) ===
-    movementSystem.update(&world, (float)deltaTime);
-    cameraController.update(&world, (float)deltaTime);
+        // ===== SYSTEM UPDATES =====
+        movementSystem.update(&world, (float)deltaTime);
+        cameraController.update(&world, (float)deltaTime);
         survivalSystem.update();
         animationSystem.update(&world, (float)deltaTime);
         combatSystem.update(&world, (float)deltaTime);
         fireballSystem.update(&world, (float)deltaTime);
 
-        // Only run marine boat system in MARINES phase (not OCTOPUS - no new marines spawn then)
-        if (currentPhase == GamePhase::MARINES) {
-            marineBoatSystem.update(&world, (float)deltaTime);
+        // ===== HEALING GATE =====
+        if (waitingForHeal) {
+            if (isFullyHealed()) {
+                waitingForHeal = false;
+                currentPhase = nextPhaseAfterHeal;
+                if (currentPhase == GamePhase::MARINES) {
+                    marinePhase.enter(&world, marinesConfig);
+                    std::cout << "[Phase] === HEALED === Entering MARINES phase!" << std::endl;
+                } else if (currentPhase == GamePhase::OCTOPUS) {
+                    krakenPhase.enter(&world, krakenConfig);
+                    std::cout << "[Phase] === HEALED === Entering OCTOPUS phase!" << std::endl;
+                }
+            }
+            // Still update resources and render while waiting
+            resourceSpawner.update(&world, (float)deltaTime);
+            world.deleteMarkedEntities();
+            renderer.render(&world);
+            return;
         }
 
-        // Only run octopus system in OCTOPUS phase
-        if (currentPhase == GamePhase::OCTOPUS) {
-            octopusSystem.update(&world, (float)deltaTime, getApp());
+        // ===== PHASE MANAGEMENT =====
+        if (currentPhase == GamePhase::COOLDOWN) {
+            if (isFullyHealed()) {
+                currentPhase = GamePhase::SHARKS;
+                sharkPhase.enter(&world, sharksConfig);
+                std::cout << "[Phase] === HEALED === Entering SHARKS phase!" << std::endl;
+            }
         }
-
-        // Only run elgembellias system in ELGEMBELLIAS phase
-        if (currentPhase == GamePhase::ELGEMBELLIAS) {
-            elgembelliasSystem.update(&world, (float)deltaTime, player);
-        }
-
-        // === POST-SYSTEM PHASE CHECKS (after combat, before entity deletion) ===
-        if (currentPhase == GamePhase::SHARKS) {
-            // Transition to MARINES when devil fruit spawns (means all sharks are dead)
-            if (fireballSystem.isDevilFruitSpawned() && !phaseTransitioning) {
+        else if (currentPhase == GamePhase::SHARKS) {
+            bool sharksDone = sharkPhase.update(&world, (float)deltaTime);
+            bool fruitSpawned = fireballSystem.isDevilFruitSpawned();
+            if (sharksDone && fruitSpawned && !phaseTransitioning) {
                 phaseTransitioning = true;
-                currentPhase = GamePhase::MARINES;
-                phaseTimer = 0.0f;
-                marineBoatSystem = our::MarineBoatSystem();
-                phaseTransitioning = false;  // Allow next phase transition
-                std::cout << "[Phase] === DEVIL FRUIT SPAWNED === Transitioning to MARINES phase!" << std::endl;
+                sharkPhase.exit();
+                waitingForHeal = true;
+                nextPhaseAfterHeal = GamePhase::MARINES;
+                phaseTransitioning = false;
+                std::cout << "[Phase] === DEVIL FRUIT SPAWNED === Heal to enter MARINES!" << std::endl;
+            }
+        }
+        else if (currentPhase == GamePhase::MARINES) {
+            bool marinesDone = marinePhase.update(&world, (float)deltaTime);
+            if (marinesDone && !phaseTransitioning) {
+                phaseTransitioning = true;
+                marinePhase.exit();
+                waitingForHeal = true;
+                nextPhaseAfterHeal = GamePhase::OCTOPUS;
+                phaseTransitioning = false;
+                std::cout << "[Phase] === MARINES PHASE OVER === Heal to enter OCTOPUS!" << std::endl;
             }
         }
         else if (currentPhase == GamePhase::OCTOPUS) {
-            // Check if octopus is permanently dead -> transition to ELGEMBELLIAS phase
+            bool krakenDone = krakenPhase.update(&world, (float)deltaTime, getApp());
+            // Check if octopus is permanently dead -> transition to ELGEMBELLIAS
             for (auto entity : world.getEntities()) {
                 auto octComp = entity->getComponent<our::OctopusComponent>();
                 if (octComp && octComp->permanentlyDead && !phaseTransitioning) {
                     phaseTransitioning = true;
+                    krakenPhase.exit();
                     currentPhase = GamePhase::ELGEMBELLIAS;
                     elgembelliasSpawned = false;
                     phaseTransitioning = false;
@@ -1063,9 +646,9 @@ void main() {
             }
         }
         else if (currentPhase == GamePhase::ELGEMBELLIAS) {
+            elgembelliasSystem.update(&world, (float)deltaTime, player);
             // Activate the Elgembellias entity (already deserialized from app.jsonc)
             if (!elgembelliasSpawned && raft) {
-                // Find octopus death position
                 glm::vec3 octopusDeathPos = raft->localTransform.position;
                 for (auto entity : world.getEntities()) {
                     if (entity->getComponent<our::OctopusComponent>()) {
@@ -1078,13 +661,14 @@ void main() {
             }
         }
 
+        // ===== RESOURCE SPAWNING & LIFETIME =====
+        resourceSpawner.update(&world, (float)deltaTime);
         world.deleteMarkedEntities();
 
-        // And finally we use the renderer system to draw the scene
+        // ===== RENDER =====
         renderer.render(&world);
 
-        // Damage flash overlay (before HUD)
-        // Check if player was just damaged and trigger red screen flash
+        // Damage flash overlay
         for (auto entity : world.getEntities()) {
             if (entity->name == "player") {
                 auto hp = entity->getComponent<our::HealthComponent>();
@@ -1101,29 +685,15 @@ void main() {
             damageFlash.render(size.x, size.y);
         }
 
-        // Find octopus health and draw boss bar (only in OCTOPUS phase)
+        // Boss health bar (OCTOPUS phase only)
         if (currentPhase == GamePhase::OCTOPUS) {
-        our::HealthComponent* octopusHealth = nullptr;
-        our::OctopusComponent* octopusComp = nullptr;
-        for (auto entity : world.getEntities()) {
-            if (entity->name == "octopus") {
-                octopusHealth = entity->getComponent<our::HealthComponent>();
-                octopusComp = entity->getComponent<our::OctopusComponent>();
-                break;
-            }
-        }
-        if (octopusHealth && octopusComp && !octopusComp->permanentlyDead) {
             auto size = getApp()->getFrameBufferSize();
-            bossHealthBar.setRevived(octopusComp->hasRevived);
             bossHealthBar.resize(size.x, size.y);
-            bossHealthBar.update(octopusHealth->currentHealth, octopusHealth->maxHealth, (float)deltaTime);
-            bossHealthBar.render();
+            krakenPhase.onGui(&world, bossHealthBar, (float)deltaTime);
         }
-        } // end if (currentPhase == GamePhase::OCTOPUS)
 
-        // DEBUG: F1 deals 50 damage to octopus for enrage testing
-        if (keyboard.justPressed(GLFW_KEY_F1))
-        {
+        // DEBUG: F1 deals 50 damage to octopus
+        if (keyboard.justPressed(GLFW_KEY_F1)) {
             for (auto entity : world.getEntities()) {
                 if (entity->name == "octopus") {
                     auto hp = entity->getComponent<our::HealthComponent>();
@@ -1146,46 +716,16 @@ void main() {
 
     void onDestroy() override
     {
-        // Don't destroy renderer on restart - it's expensive and reusable
-        // Only destroy UI-specific resources that get recreated in onEnter/onInitialize
+        startMenu.destroy();
+        loadingScreen.destroy();
+        phaseSelectMenu.destroy();
+        pauseMenu.destroy();
         bossHealthBar.destroy();
         damageFlash.destroy();
-        // Pause menu cleanup
-        for (int i = 0; i < 3; i++) {
-            if (menuTextures[i]) glDeleteTextures(1, &menuTextures[i]);
-        }
-        if (menuVAO) glDeleteVertexArrays(1, &menuVAO);
-        if (menuVBO) glDeleteBuffers(1, &menuVBO);
-        if (menuShader) glDeleteProgram(menuShader);
-        // Start menu cleanup
-        for (int i = 0; i < 2; i++) {
-            if (startTextures[i]) glDeleteTextures(1, &startTextures[i]);
-        }
-        if (startVAO) glDeleteVertexArrays(1, &startVAO);
-        if (startVBO) glDeleteBuffers(1, &startVBO);
-        if (startShader) glDeleteProgram(startShader);
-        // Phase selection menu cleanup
-        for (int i = 0; i < 3; i++) {
-            if (phaseTextures[i]) glDeleteTextures(1, &phaseTextures[i]);
-        }
-        if (phaseVAO) glDeleteVertexArrays(1, &phaseVAO);
-        if (phaseVBO) glDeleteBuffers(1, &phaseVBO);
-        if (phaseShader) glDeleteProgram(phaseShader);
-        // Loading screen cleanup
-        for (int i = 0; i < 3; i++) {
-            if (loadingTextures[i]) glDeleteTextures(1, &loadingTextures[i]);
-        }
-        if (loadingVAO) glDeleteVertexArrays(1, &loadingVAO);
-        if (loadingVBO) glDeleteBuffers(1, &loadingVBO);
-        if (loadingShader) glDeleteProgram(loadingShader);
-        // On exit, we call exit for the camera controller system to make sure that the mouse is unlocked
+        renderer.destroy();
         cameraController.exit();
-        // Clear the world
+        oceanAudio.stop();
         world.clear();
-        // Note: we do NOT clear assets on restart (clearAllAssets) because reloading
-        // all models/textures/shaders from disk is very slow. Assets are reused across
-        // restarts. They will be cleared when the application exits instead.
     }
 };
 
-// Force build 2

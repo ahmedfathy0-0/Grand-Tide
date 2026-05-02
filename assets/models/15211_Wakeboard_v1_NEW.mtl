@@ -1,0 +1,7 @@
+# MTL file for boat.obj
+newmtl _15211_Wakeboard_v1default
+Ka 1.0 1.0 1.0
+Kd 1.0 1.0 1.0
+Ks 0.0 0.0 0.0
+d 1.0
+illum 2

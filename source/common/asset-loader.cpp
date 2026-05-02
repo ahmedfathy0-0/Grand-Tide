@@ -1,5 +1,5 @@
 #include "asset-loader.hpp"
-
+#include <iostream>  
 #include "shader/shader.hpp"
 #include "texture/texture2d.hpp"
 #include "texture/texture-utils.hpp"
@@ -38,7 +38,13 @@ namespace our {
         if(data.is_object()){
             for(auto& [name, desc] : data.items()){
                 std::string path = desc.get<std::string>();
-                assets[name] = texture_utils::loadImage(path);
+                auto tex = texture_utils::loadImage(path);
+                if (tex) {
+                    assets[name] = tex;
+                    std::cerr << "[TextureLoader] Loaded texture '" << name << "' from " << path << std::endl;
+                } else {
+                    std::cerr << "[TextureLoader] FAILED to load texture '" << name << "' from " << path << std::endl;
+                }
             }
         }
     };

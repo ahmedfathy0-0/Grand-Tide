@@ -42,6 +42,13 @@ namespace our {
         waitBeforeFightDuration = data.value("waitBeforeFightDuration", waitBeforeFightDuration);
         revivalHP = data.value("revivalHP", revivalHP);
         damageMultiplier = data.value("damageMultiplier", damageMultiplier);
+        tentacleRadius = data.value("tentacleRadius", tentacleRadius);
+        playerRadius = data.value("playerRadius", playerRadius);
+        hitCooldownDuration = data.value("hitCooldownDuration", hitCooldownDuration);
+        stunDuration = data.value("stunDuration", stunDuration);
+        waveMaxRadius = data.value("waveMaxRadius", waveMaxRadius);
+        waveExpandSpeed = data.value("waveExpandSpeed", waveExpandSpeed);
+        waveDamage = data.value("waveDamage", waveDamage);
     }
 
 }

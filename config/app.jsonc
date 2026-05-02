@@ -1,5 +1,5 @@
 {
-  "start-scene": "play",
+  "start-scene": "intro",
   "window": {
     "title": "Raft: The Once Piece Adventure",
     "size": {
@@ -43,6 +43,10 @@
           "vs": "assets/shaders/textured.vert",
           "fs": "assets/shaders/toolbar.frag",
         },
+        "water": {
+                    "vs": "assets/shaders/water.vert",
+                    "fs": "assets/shaders/water.frag"
+        },
         "fire": {
           "vs": "assets/shaders/lit.vert",
           "fs": "assets/shaders/fire.frag",
@@ -65,6 +69,8 @@
         "glass": "assets/textures/glass-panels.png",
         "monkey": "assets/textures/monkey.png",
         "wood_albedo": "assets/textures/wood_planks_12_2k/wood_planks_12_color_2k.png",
+        "wood_albedo_corrupted": "assets/textures/wood_planks_12_2k/wood_planks_12_color_corrupted1_2k.png",
+        "wood_albedo_corrupted2": "assets/textures/wood_planks_12_2k/wood_planks_12_color_corrupted2_2k.png",
         "wood_roughness": "assets/textures/wood_planks_12_2k/wood_planks_12_roughness_2k.png",
         "wood_specular": "assets/textures/wood_planks_12_2k/wood_planks_12_ambient_occlusion_2k.png",
         "hammer_icon": "assets/icons/hammer.png",
@@ -90,6 +96,18 @@
         "octopus_normal": "assets/textures/octopus-tex/octopus_normal.png",
         "fruit_atlas": "assets/textures/fruit_atlas.png",
         "elgembellias_albedo": "assets/textures/Elgembellias-tex/SkipperSkin.png",
+        "fish_albedo": "assets/textures/fish_pez_02_difusa.jpg",
+        "fish_bump": "assets/textures/fish_pez_02__bump_.jpg",
+        "wood_resource_albedo": "assets/textures/Wood_diffuse.tga.png",
+        "hammer_albedo": "assets/textures/Hammer_LP_Albedo.tga.png",
+        "hammer_normal": "assets/textures/Hammer_LP_Normals.tga.png",
+        "hammer_roughness": "assets/textures/Hammer_LP_Roughness.tga.png",
+        "net_albedo": "assets/textures/rod06_Base_Color.png",
+        "net_normal": "assets/textures/rod06_Normal.png",
+        "net_roughness": "assets/textures/rod06_Roughness.png",
+        "spear_albedo": "assets/textures/spear_low_Spear_BaseColor.png",
+        "spear_normal": "assets/textures/spear_low_Spear_Normal.png",
+        "spear_roughness": "assets/textures/spear_low_Spear_Roughness.png",
       },
       "meshes": {
         "cube": "assets/models/cube.obj",
@@ -98,6 +116,8 @@
         "plane": "assets/models/plane.obj",
         "sphere": "assets/models/sphere.obj",
         "firefruitupload": "assets/models/firefruitupload.obj",
+        "wood": "assets/models/Wood.obj",
+        "spear": "assets/models/spear.obj",
       },
       "animated_models": {
         "shark": "assets/models/shark/Shark.fbx",
@@ -108,11 +128,14 @@
         "octopus": "assets/models/octopus/PiratesKing.fbx",
         "mera_mera": "assets/models/Mera Mera No Mi.fbx",
         "elgembellias": "assets/models/Elgembellias/Elgembellias.fbx",
+        "fish": "assets/models/Fish.fbx",
+        "net": "assets/models/rod06.FBX",
+        "hammer": "assets/models/Hammer.fbx",
       },
       "samplers": {
         "default": {
-          "MAG_FILTER": "GL_NEAREST",
-          "MIN_FILTER": "GL_NEAREST",
+          "MAG_FILTER": "GL_LINEAR",
+          "MIN_FILTER": "GL_LINEAR",
         },
         "pixelated": {
           "MAG_FILTER": "GL_NEAREST",
@@ -228,6 +251,44 @@
           "roughness_multiplier": 1.0,
           "sampler": "default",
         },
+        "raft_corrupted_mat": {
+          "type": "lit",
+          "shader": "lit",
+          "pipelineState": {
+            "faceCulling": {
+              "enabled": false,
+            },
+            "depthTesting": {
+              "enabled": true,
+            },
+          },
+          "albedo": "wood_albedo_corrupted",
+          "specular": "wood_specular",
+          "roughness": "wood_roughness",
+          "albedo_tint": [1, 1, 1],
+          "specular_tint": [0.05, 0.05, 0.05],
+          "roughness_multiplier": 1.0,
+          "sampler": "default",
+        },
+        "raft_corrupted2_mat": {
+          "type": "lit",
+          "shader": "lit",
+          "pipelineState": {
+            "faceCulling": {
+              "enabled": false,
+            },
+            "depthTesting": {
+              "enabled": true,
+            },
+          },
+          "albedo": "wood_albedo_corrupted2",
+          "specular": "wood_specular",
+          "roughness": "wood_roughness",
+          "albedo_tint": [1, 1, 1],
+          "specular_tint": [0.05, 0.05, 0.05],
+          "roughness_multiplier": 1.0,
+          "sampler": "default",
+        },
 
         "devil_fruit_mat": {
           "type": "lit",
@@ -240,6 +301,33 @@
           "albedo_tint": [1, 1, 1],
           "specular_tint": [1, 1, 1],
           "roughness_multiplier": 0.3,
+          "sampler": "default",
+        },
+        "lit_fish": {
+          "type": "lit",
+          "shader": "lit",
+          "pipelineState": {
+            "faceCulling": { "enabled": false },
+            "depthTesting": { "enabled": true },
+          },
+          "albedo": "fish_albedo",
+          "normal": "fish_bump",
+          "albedo_tint": [1, 1, 1],
+          "specular_tint": [0.3, 0.3, 0.3],
+          "roughness_multiplier": 0.7,
+          "sampler": "default",
+        },
+        "lit_wood_resource": {
+          "type": "lit",
+          "shader": "lit",
+          "pipelineState": {
+            "faceCulling": { "enabled": false },
+            "depthTesting": { "enabled": true },
+          },
+          "albedo": "wood_resource_albedo",
+          "albedo_tint": [1, 1, 1],
+          "specular_tint": [0.1, 0.1, 0.1],
+          "roughness_multiplier": 1.0,
           "sampler": "default",
         },
         "minimap": {
@@ -590,6 +678,7 @@
             },
             "depthMask": false,
           },
+          "albedo": "red",
           "albedo_tint": [1, 1, 1],
           "specular_tint": [0.0, 0.0, 0.0],
           "roughness_multiplier": 1.0,
@@ -610,6 +699,7 @@
               "destinationFactor": "GL_ONE",
             },
           },
+          "albedo": "red",
           "albedo_tint": [1, 1, 1],
           "specular_tint": [0.0, 0.0, 0.0],
           "roughness_multiplier": 1.0,
@@ -664,6 +754,66 @@
           "sampler": "default",
           "isAnimated": true,
         },
+        "lit_hammer": {
+          "type": "lit",
+          "shader": "lit",
+          "pipelineState": {
+            "faceCulling": {
+              "enabled": false
+            },
+            "depthTesting": {
+              "enabled": true
+            }
+          },
+          "albedo": "hammer_albedo",
+          "normal": "hammer_normal",
+          "roughness": "hammer_roughness",
+          "albedo_tint": [1, 1, 1],
+          "specular_tint": [0.3, 0.3, 0.3],
+          "roughness_multiplier": 0.8,
+          "uv_multiplier": [1.0, -1.0],
+          "sampler": "default",
+          "isAnimated": true
+        },
+        "lit_net": {
+          "type": "lit",
+          "shader": "lit",
+          "pipelineState": {
+            "faceCulling": {
+              "enabled": false
+            },
+            "depthTesting": {
+              "enabled": true
+            }
+          },
+          "albedo": "net_albedo",
+          "normal": "net_normal",
+          "roughness": "net_roughness",
+          "albedo_tint": [1, 1, 1],
+          "specular_tint": [0.3, 0.3, 0.3],
+          "roughness_multiplier": 0.8,
+          "sampler": "default",
+          "isAnimated": true
+        },
+        "lit_spear": {
+          "type": "lit",
+          "shader": "lit",
+          "pipelineState": {
+            "faceCulling": {
+              "enabled": false
+            },
+            "depthTesting": {
+              "enabled": true
+            }
+          },
+          "albedo": "spear_albedo",
+          "normal": "spear_normal",
+          "roughness": "spear_roughness",
+          "albedo_tint": [1, 1, 1],
+          "specular_tint": [0.8, 0.8, 0.8],
+          "roughness_multiplier": 0.3,
+          "sampler": "default"
+        },
       },
     },
     "world": [
@@ -675,6 +825,14 @@
             "type": "Camera",
             "far": 1000.0,
           },
+           {
+            "type": "Light",
+            "lightType": "spot",
+            "color": [1, 1, 1],
+            "intensity": 5.0,
+            "direction": [0, 0, -1],
+            "cone_angles": [12.5, 17.5]
+           },
           {
             "type": "PlayerController",
             "speed": 5.0,
@@ -697,19 +855,6 @@
         ],
         "children": [
           {
-            "name": "weapon",
-            "position": [1, -1, -1],
-            "rotation": [45, 45, 0],
-            "scale": [0.1, 0.1, 1.0],
-            "components": [
-              {
-                "type": "Mesh Renderer",
-                "mesh": "cube",
-                "material": "metal",
-              },
-            ],
-          },
-          {
             "name": "throw_hand",
             "position": [-0.08, -0.7, 0.1],
             "rotation": [0, 180, 0],
@@ -728,7 +873,7 @@
                 "aoeRadius": 5.0,
                 "burnDuration": 2.0,
                 "burnDamagePerSecond": 15.0,
-                "cooldown": 3.0,
+                "cooldown": 2.0,
               },
             ],
           },
@@ -743,6 +888,41 @@
                 "material": "flames_mat",
               },
             ],
+          },
+        ],
+      },
+      {
+        "name": "weapon",
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1],
+        "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "cube",
+            "material": "lit_hammer",
+          },
+          { "type": "Animator", "modelName": "hammer" },
+          {
+            "type": "ToolConfig",
+            // Position offset from player (in player's local space: right, up, forward)
+            // Rotation in degrees (pitch, yaw, roll) added on top of player's rotation
+            // Scale applied directly to the model
+            "hammer": {
+              "position": [1.0, -1.0, -1.0],
+              "rotation": [45, 180, 90],
+              "scale":    [0.1, 0.1, 0.1],
+            },
+            "net": {
+              "position": [-2.0, -3.0, 3.0],
+              "rotation": [135, 160, 45],
+              "scale":    [0.02, 0.02, 0.02],
+            },
+            "spear": {
+              "position": [1.0, 0.0, 0.0],
+              "rotation": [120.0, 270.0, 90.0],
+              "scale":    [0.025, 0.025, 0.025],
+            },
           },
         ],
       },
@@ -776,48 +956,48 @@
           },
         ],
       },
-      {
-        "name": "octopus",
-        "position": [80, -150, 10],
-        "scale": [0.08, 0.08, 0.08],
-        "rotation": [0, 0, 0],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "cube",
-            "material": "lit_octopus",
-          },
-          {
-            "type": "Octopus",
-            "modelName": "octopus",
-            "state": "IDLE",
-            "health": 500,
-            "attackDamage": 10.0,
-            "attackCooldown": 5.0,
-            "idleDuration": 5.0,
-            "attackDuration": 0.0,
-            "currentAnimIndex": 0,
-            "emergeDelay": 10.0,
-            "attackRange": 35.0,
-            "chaseSpeed": 8.0,
-            "surfacedY": -5.0,
-            "submergedY": -150.0,
-            "followDistance": 60.0,
-            "minFollowDistance": 30.0,
-            "maxFollowDistance": 100.0,
-            "speed": 1.0,
-          },
-          {
-            "type": "Animator",
-            "modelName": "octopus",
-          },
-          {
-            "type": "Health",
-            "maxHealth": 500,
-            "currentHealth": 500,
-          },
-        ],
-      },
+      // {
+      //   "name": "octopus",
+      //   "position": [80, -150, 10],
+      //   "scale": [0.08, 0.08, 0.08],
+      //   "rotation": [0, 0, 0],
+      //   "components": [
+      //     {
+      //       "type": "Mesh Renderer",
+      //       "mesh": "cube",
+      //       "material": "lit_octopus",
+      //     },
+      //     {
+      //       "type": "Octopus",
+      //       "modelName": "octopus",
+      //       "state": "IDLE",
+      //       "health": 500,
+      //       "attackDamage": 10.0,
+      //       "attackCooldown": 5.0,
+      //       "idleDuration": 5.0,
+      //       "attackDuration": 0.0,
+      //       "currentAnimIndex": 0,
+      //       "emergeDelay": 10.0,
+      //       "attackRange": 35.0,
+      //       "chaseSpeed": 8.0,
+      //       "surfacedY": -5.0,
+      //       "submergedY": -150.0,
+      //       "followDistance": 60.0,
+      //       "minFollowDistance": 30.0,
+      //       "maxFollowDistance": 100.0,
+      //       "speed": 1.0,
+      //     },
+      //     {
+      //       "type": "Animator",
+      //       "modelName": "octopus",
+      //     },
+      //     {
+      //       "type": "Health",
+      //       "maxHealth": 500,
+      //       "currentHealth": 500,
+      //     },
+      //   ],
+      // },
       {
         "name": "elgembellias",
         "position": [0, -150, 0],
@@ -968,12 +1148,12 @@
       // },
       {
         "position": [2, 0.5, 8],
-        "scale": [0.5, 0.5, 0.5],
+        "scale": [0.05, 0.05, 0.05],
         "components": [
           {
             "type": "Mesh Renderer",
-            "mesh": "cube",
-            "material": "brown",
+            "mesh": "wood",
+            "material": "lit_wood_resource",
           },
           {
             "type": "Resource",
@@ -986,12 +1166,12 @@
       },
       {
         "position": [-2, 0.5, 8],
-        "scale": [0.5, 0.5, 0.5],
+        "scale": [0.05, 0.05, 0.05],
         "components": [
           {
             "type": "Mesh Renderer",
-            "mesh": "cube",
-            "material": "brown",
+            "mesh": "wood",
+            "material": "lit_wood_resource",
           },
           {
             "type": "Resource",
@@ -1003,13 +1183,17 @@
         ],
       },
       {
-        "position": [0, 0.5, 6],
-        "scale": [0.5, 0.5, 0.5],
+        "position": [0, 2.0, 6],
+        "scale": [0.1, 0.1, 0.1],
         "components": [
           {
             "type": "Mesh Renderer",
             "mesh": "cube",
-            "material": "blue",
+            "material": "lit_fish",
+          },
+          {
+            "type": "Animator",
+            "modelName": "fish",
           },
           {
             "type": "Resource",
@@ -1021,13 +1205,17 @@
         ],
       },
       {
-        "position": [1, 0.5, 7],
-        "scale": [0.5, 0.5, 0.5],
+        "position": [1, 2.0, 7],
+        "scale": [0.1, 0.1, 0.1],
         "components": [
           {
             "type": "Mesh Renderer",
             "mesh": "cube",
-            "material": "blue",
+            "material": "lit_fish",
+          },
+          {
+            "type": "Animator",
+            "modelName": "fish",
           },
           {
             "type": "Resource",

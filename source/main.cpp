@@ -1,66 +1,13 @@
 #include <iostream>
 #include <fstream>
-#include <sstream>
-#include <cctype>
 #include <flags/flags.h>
-#include <json/json.hpp>
 
 #include <application.hpp>
+#include <json-utils.hpp>
 
 #include "states/menu-state.hpp"
 #include "states/play-state.hpp"
-
-static std::string removeTrailingCommas(std::string text)
-{
-    std::string cleaned;
-    cleaned.reserve(text.size());
-
-    bool inString = false;
-    bool escaping = false;
-
-    for (size_t i = 0; i < text.size(); i++)
-    {
-        char current = text[i];
-
-        if (escaping)
-        {
-            escaping = false;
-            cleaned.push_back(current);
-            continue;
-        }
-
-        if (current == '\\')
-        {
-            escaping = true;
-            cleaned.push_back(current);
-            continue;
-        }
-
-        if (current == '"')
-        {
-            inString = !inString;
-            cleaned.push_back(current);
-            continue;
-        }
-
-        if (!inString && current == ',')
-        {
-            size_t next = i + 1;
-            while (next < text.size() && std::isspace(static_cast<unsigned char>(text[next])))
-            {
-                next++;
-            }
-            if (next < text.size() && (text[next] == '}' || text[next] == ']'))
-            {
-                continue;
-            }
-        }
-
-        cleaned.push_back(current);
-    }
-
-    return cleaned;
-}
+#include "states/intro-state.hpp"
 
 int main(int argc, char **argv)
 {
@@ -75,24 +22,14 @@ int main(int argc, char **argv)
     int run_for_frames = args.get<int>("f", 0);
 
     // Open the config file and exit if failed
-    std::ifstream file_in(config_path);
-    if (!file_in)
-    {
-        std::cerr << "Couldn't open file: " << config_path << std::endl;
-        return -1;
-    }
-    std::stringstream buffer;
-    buffer << file_in.rdbuf();
-    std::string config_content = removeTrailingCommas(buffer.str());
-
-    // Read the file into a json object then close the file
-    nlohmann::json app_config = nlohmann::json::parse(config_content, nullptr, true, true);
-    file_in.close();
+    nlohmann::json app_config = our::loadJsonFile(config_path);
+    if (app_config.is_null()) return -1;
 
     // Create the application
     our::Application app(app_config);
 
     // Register all the states of the project in the application
+    app.registerState<Introstate>("intro");
     app.registerState<Menustate>("menu");
     app.registerState<Playstate>("play");
     // Then choose the state to run based on the option "start-scene" in the config

@@ -10,9 +10,13 @@ namespace our {
             auto res = data["Resource"];
             type = res.value("type", type);
             amount = res.value("amount", amount);
+            lifetime = res.value("lifetime", lifetime);
+            elapsed = res.value("elapsed", elapsed);
         } else {
             type = data.value("resourceType", data.value("type", type));
             amount = data.value("amount", amount);
+            lifetime = data.value("lifetime", lifetime);
+            elapsed = data.value("elapsed", elapsed);
         }
     }
 }

@@ -24,8 +24,8 @@ namespace our {
 
     enum class OctopusAnimation : int {
         ATTACK = 0,
-        FINISH = 1,
-        ENRAGE_DANCE = 2,             // Mon_PiratesKing_skill01
+        ATTACK02 = 1,                  // Mon_PiratesKing_Attack02
+        ENRAGE_DANCE = 2,              // Mon_PiratesKing_skill01
         RUN_FORWARD = 3,
         DEATH = 4,
         IDLE = 5,
@@ -38,8 +38,7 @@ namespace our {
         SKILL_SPAWN = 12,
         MOVE_LEFT = 13,
         MOVE_RIGHT = 14,
-        COMBAT_IDLE = 15,
-        ATTACK02 = 1                 // Mon_PiratesKing_Attack02
+        COMBAT_IDLE = 15
     };
 
     class OctopusComponent : public Component {

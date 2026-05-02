@@ -1,0 +1,43 @@
+{
+  "phase": "MARINES",
+  "number": 9,
+  "maxConcurrent": 4,
+  "duration": 300.0,
+  "spawnInterval": 10.0,
+  "boat": {
+    "scale": [0.05, 0.05, 0.05],
+    "rotationY": 45.0,
+    "material": "lit_boat",
+    "model": "marine_boat",
+    "modelName": "marine_boat",
+    "speed": 2.0,
+    "attackRange": 40.0,
+    "approachDistance": 30.0,
+    "health": 200.0,
+    "maxHealth": 200.0,
+    "attackDamage": 0.0,
+    "attackCooldown": 0.0,
+    "attackAnimationIndex": 0,
+    "primaryTarget": "RAFT",
+    "enemyType": "marine_boat",
+    "startZ": 50.0,
+    "startZIncrement": 20.0,
+    "startX": [-50.0, 50.0]
+  },
+  "musket": {
+    "localPositions": [[20.0, 10.0, -50.0], [-20.0, 10.0, 50.0]],
+    "localScales": [[50.0, 50.0, 50.0], [100.0, 50.0, 50.0]],
+    "material": "lit_musket",
+    "model": "marine_musket",
+    "modelName": "marine_musket",
+    "damage": 10.0,
+    "fireRate": 10.0,
+    "health": 100.0,
+    "maxHealth": 100.0,
+    "attackDamage": 10.0,
+    "attackCooldown": 0.0,
+    "attackAnimationIndex": 0,
+    "primaryTarget": "PLAYER",
+    "enemyType": "musket"
+  }
+}

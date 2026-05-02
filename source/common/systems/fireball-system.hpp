@@ -22,12 +22,16 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/euler_angles.hpp>
+#include <miniaudio.h>
 #include <iostream>
 
 namespace our {
 
     class FireballSystem {
         Application* app = nullptr;
+
+        // Sound engine for fire sound
+        ma_engine* fireSoundEngine = nullptr;
 
         // Track the hand entity and fire-in-hand entity so we can toggle visibility
         Entity* handEntity = nullptr;
@@ -191,7 +195,8 @@ namespace our {
                 handEntity->localTransform.scale = isSlot5 ? glm::vec3(0.5f) : glm::vec3(0.0f);
             }
             if (weaponEntity) {
-                weaponEntity->localTransform.scale = isSlot5 ? glm::vec3(0.0f) : glm::vec3(0.1f, 0.1f, 1.0f);
+                if (isSlot5) weaponEntity->localTransform.scale = glm::vec3(0.0f);
+                // When not slot 5, survival system manages the weapon scale via ToolConfig
             }
 
             // Get the Animator on the hand so we can control the throw animation
@@ -263,6 +268,18 @@ namespace our {
                     // Hide fire in hand and AOE indicator
                     if (fireInHandEntity) fireInHandEntity->localTransform.scale = glm::vec3(0.0f);
                     if (aoeIndicatorEntity) aoeIndicatorEntity->localTransform.scale = glm::vec3(0.0f);
+
+                    // Play fire sound
+                    if (!fireSoundEngine) {
+                        fireSoundEngine = new ma_engine();
+                        if (ma_engine_init(nullptr, fireSoundEngine) != MA_SUCCESS) {
+                            std::cerr << "[Fireball] Sound engine init failed" << std::endl;
+                            delete fireSoundEngine; fireSoundEngine = nullptr;
+                        }
+                    }
+                    if (fireSoundEngine) {
+                        ma_engine_play_sound(fireSoundEngine, "assets/audios/fire.mp3", nullptr);
+                    }
                 }
                 break;
             }

@@ -5,6 +5,15 @@ project(GFX-LAB VERSION 0.1.0 LANGUAGES C CXX)
 if(UNIX AND NOT APPLE)
         set(OpenGL_GL_PREFERENCE GLVND)
         find_package(OpenGL REQUIRED)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
+                libavcodec libavformat libswscale libswresample libavutil)
+endif()
+
+# Windows (MSYS2 UCRT64) FFmpeg
+if(WIN32)
+        set(FFMPEG_INCLUDE_DIR "C:/msys64/ucrt64/include")
+        set(FFMPEG_LIB_DIR "C:/msys64/ucrt64/lib")
 endif()
 
 # These are the options we select for building GLFW as a library
@@ -22,6 +31,7 @@ set(ASSIMP_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
 set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
 set(INJECT_DEBUG_POSTFIX OFF CACHE BOOL "" FORCE) # Prevent Assimp from adding 'd' to the lib name in debug mode
 set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_MINIZIP ON CACHE BOOL "" FORCE)
 add_subdirectory(vendor/assimp)
 
 # A variable with all the source files of GLAD
@@ -37,7 +47,8 @@ set(IMGUI_SOURCES
         )
 
 # Combine all vendor source files together into a single variable
-set(VENDOR_SOURCES ${GLAD_SOURCE} ${IMGUI_SOURCES})
+set(MINIAUDIO_SOURCE vendor/miniaudio/miniaudio.cpp)
+set(VENDOR_SOURCES ${GLAD_SOURCE} ${IMGUI_SOURCES} ${MINIAUDIO_SOURCE})
 
 # A variable with all our source files that are common between executable targets (examples)
 set(COMMON_SOURCES
@@ -67,6 +78,9 @@ set(COMMON_SOURCES
         source/common/texture/texture-utils.cpp
         source/common/texture/screenshot.hpp
         source/common/texture/screenshot.cpp
+
+        source/common/video/video-player.hpp
+        source/common/video/video-player.cpp
 
         source/common/material/pipeline-state.hpp
         source/common/material/pipeline-state.cpp
@@ -150,6 +164,7 @@ set(COMMON_SOURCES
 set(STATES_SOURCES
         source/states/play-state.hpp
         source/states/menu-state.hpp
+        source/states/intro-state.hpp
         source/states/shader-test-state.hpp
         source/states/mesh-test-state.hpp
         source/states/transform-test-state.hpp
@@ -191,10 +206,20 @@ target_include_directories(GAME_APPLICATION PRIVATE
         vendor/imgui
         vendor/utils
         vendor/assimp/include
+        vendor/miniaudio
+        ${FFMPEG_INCLUDE_DIR}
 )
 
 target_link_libraries(GAME_APPLICATION PRIVATE glfw assimp)
 
 if(UNIX AND NOT APPLE)
-        target_link_libraries(GAME_APPLICATION PRIVATE OpenGL::GL)
+        target_link_libraries(GAME_APPLICATION PRIVATE OpenGL::GL PkgConfig::FFMPEG)
+        target_link_libraries(GAME_APPLICATION PRIVATE pthread m asound)
+endif()
+
+if(WIN32)
+        target_link_directories(GAME_APPLICATION PRIVATE ${FFMPEG_LIB_DIR})
+        target_link_libraries(GAME_APPLICATION PRIVATE
+                avcodec avformat swscale swresample avutil
+                secur32 bcrypt ntdll)
 endif()

@@ -12,6 +12,8 @@
 
 #include "../components/health.hpp"
 #include "../components/inventory.hpp"
+#include "../components/resource.hpp"
+#include "../components/enemy.hpp"
 #include "../components/burn-component.hpp"
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -68,10 +70,17 @@ namespace our
                 this->skyMaterial->shader = skyShader;
                 this->skyMaterial->pipelineState = skyPipelineState;
                 this->skyMaterial->transparent = false;
-            }
-            else
-            {
-                Texture2D *skyTexture = texture_utils::loadImage(skyTextureFile, false);
+
+                ShaderProgram* waterShader = new ShaderProgram();
+                waterShader->attach("assets/shaders/water.vert", GL_VERTEX_SHADER);
+                waterShader->attach("assets/shaders/water.frag", GL_FRAGMENT_SHADER);
+                waterShader->link();
+                this->waterMaterial = new Material();
+                this->waterMaterial->shader = waterShader;
+                this->waterMaterial->pipelineState = skyPipelineState;
+                this->waterMaterial->transparent = false;
+            } else {
+                Texture2D* skyTexture = texture_utils::loadImage(skyTextureFile, false);
 
                 // Setup a sampler for the sky
                 Sampler *skySampler = new Sampler();
@@ -136,6 +145,37 @@ namespace our
             // so it is more performant to disable the depth mask
             postprocessMaterial->pipelineState.depthMask = false;
         }
+
+        // Initialize shadow map
+        glGenFramebuffers(1, &shadowMapFBO);
+        shadowMap = texture_utils::empty(GL_DEPTH_COMPONENT24, glm::ivec2(2048, 2048));
+        glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowMap->getOpenGLName(), 0);
+        glDrawBuffer(GL_NONE);
+        glReadBuffer(GL_NONE);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        ShaderProgram* shadowShader = new ShaderProgram();
+        shadowShader->attach("assets/shaders/shadow.vert", GL_VERTEX_SHADER);
+        shadowShader->attach("assets/shaders/shadow.frag", GL_FRAGMENT_SHADER);
+        shadowShader->link();
+        shadowMaterial = new Material();
+        shadowMaterial->shader = shadowShader;
+        shadowMaterial->pipelineState.depthTesting.enabled = true;
+        shadowMaterial->pipelineState.faceCulling.enabled = true;
+        shadowMaterial->pipelineState.faceCulling.culledFace = GL_FRONT; // prevent peter panning
+
+        // Reflection mapping objects
+        glGenFramebuffers(1, &reflectionFBO);
+        reflectionColor = texture_utils::empty(GL_RGBA8, windowSize);
+        glBindFramebuffer(GL_FRAMEBUFFER, reflectionFBO);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, reflectionColor->getOpenGLName(), 0);
+        GLuint reflectionDepth;
+        glGenRenderbuffers(1, &reflectionDepth);
+        glBindRenderbuffer(GL_RENDERBUFFER, reflectionDepth);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, windowSize.x, windowSize.y);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, reflectionDepth);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
         
         // --- Radar Skull Marker Initialization ---
         // 1. Load texture using stb_image
@@ -378,6 +418,10 @@ namespace our
             }
             delete skyMaterial;
         }
+        if(waterMaterial){
+            delete waterMaterial->shader;
+            delete waterMaterial;
+        }
         // Delete all objects related to post processing
         if (postprocessMaterial)
         {
@@ -389,6 +433,11 @@ namespace our
             delete postprocessMaterial->shader;
             delete postprocessMaterial;
         }
+        
+        glDeleteFramebuffers(1, &shadowMapFBO);
+        delete shadowMap;
+        delete shadowMaterial->shader;
+        delete shadowMaterial;
 
         // Cleanup radar skull
         if (skullTexture) glDeleteTextures(1, &skullTexture);
@@ -487,8 +536,77 @@ namespace our
         glm::ivec2 viewportStart(0, 0);
         glm::ivec2 viewportSize = windowSize;
         glm::mat4 VP = camera->getProjectionMatrix(viewportSize) * camera->getViewMatrix();
+        
+        // Shadow Pass
+        glm::mat4 lightProjection = glm::ortho(-25.0f, 25.0f, -25.0f, 25.0f, 1.0f, 100.0f);
+        float shadow_u_time = (float)glfwGetTime();
+        float shadow_skyTime = shadow_u_time * 0.05f;
+        glm::vec3 sun_dir_shadow = glm::normalize(glm::vec3(0.0f, std::sin(shadow_skyTime), -std::cos(shadow_skyTime)));
+        glm::mat4 lightView = glm::lookAt(cameraPosition + sun_dir_shadow * 40.0f, cameraPosition, glm::vec3(0.0, 1.0, 0.0));
+        glm::mat4 lightSpaceMatrix = lightProjection * lightView;
 
-        // TODO: (Req 9) Set the OpenGL viewport using viewportStart and viewportSize
+        // Unified Sun calculation for all passes
+        float u_time = (float)glfwGetTime();
+        float dayNightSpeed = 0.05f;
+        float skyTime = u_time * dayNightSpeed;
+        glm::vec3 sun_dir = glm::normalize(glm::vec3(0.0f, std::sin(skyTime), -std::cos(skyTime)));
+        float sun_height = std::max(sun_dir.y, 0.0f);
+        glm::vec3 sun_col_day = glm::vec3(1.0f, 0.9f, 0.8f);
+        glm::vec3 sun_col_sunset = glm::vec3(1.0f, 0.4f, 0.2f);
+        glm::vec3 sun_color = glm::mix(sun_col_sunset, sun_col_day, sun_height);
+        float sun_intensity = 3.0f * glm::smoothstep(-0.1f, 0.1f, sun_dir.y);
+
+        glViewport(0, 0, 2048, 2048);
+        glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
+        glClear(GL_DEPTH_BUFFER_BIT);
+
+        for (const auto& command : opaqueCommands) {
+            shadowMaterial->setup();
+            shadowMaterial->shader->set("lightSpaceMatrix", lightSpaceMatrix);
+            shadowMaterial->shader->set("M", command.localToWorld);
+            if (auto tex_mat = dynamic_cast<TexturedMaterial*>(command.material)) {
+                shadowMaterial->shader->set("has_albedo", true);
+                glActiveTexture(GL_TEXTURE0);
+                tex_mat->texture->bind();
+                shadowMaterial->shader->set("albedo", 0);
+                shadowMaterial->shader->set("alphaThreshold", tex_mat->alphaThreshold);
+            } else {
+                shadowMaterial->shader->set("has_albedo", false);
+            }
+            command.mesh->draw();
+            shadowMaterial->teardown();
+        }
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        // Reflection Pass (Mirror horizontally)
+        glBindFramebuffer(GL_FRAMEBUFFER, reflectionFBO);
+        glViewport(0, 0, windowSize.x, windowSize.y);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glm::mat4 reflectionView = camera->getViewMatrix();
+        glm::vec3 cameraPositionOriginal = cameraPosition;
+        glm::vec3 reflectCamPos = cameraPosition; reflectCamPos.y = -reflectCamPos.y;
+        reflectionView = glm::lookAt(reflectCamPos, reflectCamPos + glm::normalize(glm::vec3(camera->getOwner()->getLocalToWorldMatrix() * glm::vec4(0, 0, -1, 0))), glm::vec3(0,1,0));
+        
+        glm::mat4 reflectionVP = camera->getProjectionMatrix(windowSize) * reflectionView;
+
+        for (const auto& command : opaqueCommands) {
+            command.material->setup();
+            if (auto lit_material = dynamic_cast<LitMaterial*>(command.material)) {
+                lit_material->shader->set("VP", reflectionVP);
+                lit_material->shader->set("M", command.localToWorld);
+                lit_material->shader->set("M_IT", glm::transpose(glm::inverse(command.localToWorld)));
+                lit_material->shader->set("camera_position", reflectCamPos);
+            }
+            command.material->shader->set("transform", reflectionVP * command.localToWorld);
+            command.mesh->draw();
+            command.material->teardown();
+        }
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+        //TODO: (Req 9) Set the OpenGL viewport using viewportStart and viewportSize
         glViewport(viewportStart.x, viewportStart.y, viewportSize.x, viewportSize.y);
 
         // TODO: (Req 9) Set the clear color to black and the clear depth to 1
@@ -516,36 +634,15 @@ namespace our
             command.material->setup();
 
             // Set lighting uniforms if applicable
-            if (auto lit_material = dynamic_cast<LitMaterial *>(command.material); lit_material != nullptr)
-            {
-                // Determine camera position from the 'camera' component's view matrix directly as it might be easier
-                glm::mat4 V = camera->getViewMatrix();
-                glm::vec3 eye = glm::vec3(glm::inverse(V)[3]);
-
-                float u_time = (float)glfwGetTime();
-
-                // Keep the exact same day/night speed and vector as the shader
-                float dayNightSpeed = 0.05f;
-                float skyTime = u_time * dayNightSpeed;
-
-                // Sun rotates
-                glm::vec3 sun_dir = glm::normalize(glm::vec3(0.0f, std::sin(skyTime), -std::cos(skyTime)));
-
-                // Color fades when going below the horizon
-                float height = std::max(sun_dir.y, 0.0f);
-                glm::vec3 sun_col_day = glm::vec3(1.0f, 0.9f, 0.8f);
-                glm::vec3 sun_col_sunset = glm::vec3(1.0f, 0.4f, 0.2f);
-                glm::vec3 sun_color = glm::mix(sun_col_sunset, sun_col_day, height);
-                // Ramp intensity down gently at the horizon
-                float intensity = 3.0f * glm::smoothstep(-0.1f, 0.1f, sun_dir.y);
-
-                lit_material->shader->set("camera_position", eye);
+            if (auto lit_material = dynamic_cast<LitMaterial*>(command.material); lit_material != nullptr) {
+                lit_material->shader->set("camera_position", cameraPosition);
+                lit_material->shader->set("u_time", u_time); // Required for wave animation
                 lit_material->shader->set("light_count", (int)lights.size() + 1);
 
                 // Add the sun as the first light
                 lit_material->shader->set("lights[0].type", 0);
                 lit_material->shader->set("lights[0].color", sun_color);
-                lit_material->shader->set("lights[0].intensity", intensity);
+                lit_material->shader->set("lights[0].intensity", sun_intensity); 
                 lit_material->shader->set("lights[0].position", -sun_dir);
 
                 for (size_t i = 0; i < lights.size(); ++i)
@@ -553,18 +650,30 @@ namespace our
                     auto *light = lights[i].first;
                     glm::mat4 lightTrans = lights[i].second;
                     std::string lightStr = "lights[" + std::to_string(i + 1) + "]";
-
-                    lit_material->shader->set(lightStr + ".type", light->type == LightType::POINT ? 1 : 0);
+                    
+                    int type_val = 0;
+                    if (light->type == LightType::POINT) type_val = 1;
+                    else if (light->type == LightType::SPOT) type_val = 2;
+                    
+                    lit_material->shader->set(lightStr + ".type", type_val);
                     lit_material->shader->set(lightStr + ".color", light->color);
-                    lit_material->shader->set(lightStr + ".intensity", light->intensity);
-
-                    if (light->type == LightType::POINT)
-                    {
-                        lit_material->shader->set(lightStr + ".position", glm::vec3(lightTrans[3]));
+                    
+                    float active_intensity = light->intensity;
+                    if(light->type == LightType::SPOT) {
+                        glm::vec3 direction = glm::normalize(glm::vec3(lightTrans * glm::vec4(light->direction, 0.0f)));
+                        lit_material->shader->set(lightStr + ".direction", direction);
+                        lit_material->shader->set(lightStr + ".cone_angles", light->cone_angles);
+                        
+                        // Turn player spot on at night only
+                        if(light->getOwner()->name == "player" || light->getOwner()->getComponent<CameraComponent>()) {
+                           active_intensity *= glm::smoothstep(0.1f, -0.4f, sun_dir.y); 
+                        }
                     }
-                    else
-                    {
-                        // For directional lights, position acts as the direction vector
+                    lit_material->shader->set(lightStr + ".intensity", active_intensity);
+                    
+                    if (light->type == LightType::POINT || light->type == LightType::SPOT) {
+                        lit_material->shader->set(lightStr + ".position", glm::vec3(lightTrans[3]));
+                    } else { 
                         glm::vec3 direction = glm::normalize(glm::vec3(lightTrans * glm::vec4(0, 0, -1, 0)));
                         lit_material->shader->set(lightStr + ".position", direction);
                     }
@@ -573,9 +682,10 @@ namespace our
                 lit_material->shader->set("M", command.localToWorld);
                 lit_material->shader->set("M_IT", glm::transpose(glm::inverse(command.localToWorld)));
                 lit_material->shader->set("VP", VP);
-                lit_material->shader->set("u_time", (float)glfwGetTime());
-                
-                float current_wetness = 0.0f;
+                lit_material->shader->set("lightSpaceMatrix", lightSpaceMatrix);
+                glActiveTexture(GL_TEXTURE0 + 5);
+                shadowMap->bind();
+                lit_material->shader->set("shadow_map", 5);
 
                 // Set bone matrices from AnimatorComponent (single source of truth)
                 // If no animator, reset to identity to prevent stale matrices from previous draw calls
@@ -599,6 +709,9 @@ namespace our
                     }
                 }
 
+                // Compute wetness: entities near/below water (Y=0) get wet
+                float entityY = command.localToWorld[3][1];
+                float current_wetness = glm::smoothstep(2.0f, -1.0f, entityY);
                 lit_material->shader->set("u_wetness", current_wetness);
 
                 // Clip plane for octopus: discard fragments below water Y
@@ -654,41 +767,84 @@ namespace our
             skySphere->draw();
             skyMaterial->teardown();
         }
-        // TODO: (Req 9) Draw all the transparent commands
-        //  Don't forget to set the "transform" uniform to be equal the model-view-projection matrix for each render command
-        for (const auto &command : transparentCommands)
-        {
+        if(this->waterMaterial){
+            waterMaterial->setup();
+            glm::vec3 cameraPosition = glm::vec3(cameraLocalToWorld * glm::vec4(0, 0, 0, 1));
+            glm::mat4 skyModel = glm::translate(glm::mat4(1.0f), cameraPosition);
+            glm::mat4 alwaysBehindTransform = glm::mat4(
+                1.0f, 0.0f, 0.0f, 0.0f,
+                0.0f, 1.0f, 0.0f, 0.0f,
+                0.0f, 0.0f, 0.0f, 0.0f,
+                0.0f, 0.0f, 1.0f, 1.0f
+            );
+            waterMaterial->shader->set("transform", alwaysBehindTransform * VP * skyModel);
+            waterMaterial->shader->set("camera_position", cameraPosition);
+            waterMaterial->shader->set("u_time", (float)glfwGetTime());
+            waterMaterial->shader->set("resolution", glm::vec2((float)windowSize.x, (float)windowSize.y));
+            
+            glActiveTexture(GL_TEXTURE0 + 6);
+            reflectionColor->bind();
+            waterMaterial->shader->set("reflection_map", 6);
+
+            // Set lighting uniforms for water
+            waterMaterial->shader->set("camera_position", cameraPosition);
+            waterMaterial->shader->set("light_count", (int)lights.size() + 1);
+            
+            // Add the sun as the first light
+            waterMaterial->shader->set("lights[0].type", 0);
+            waterMaterial->shader->set("lights[0].color", sun_color);
+            waterMaterial->shader->set("lights[0].intensity", sun_intensity); 
+            waterMaterial->shader->set("lights[0].position", -sun_dir);
+
+            for(size_t i = 0; i < lights.size(); ++i) {
+                auto* light = lights[i].first;
+                glm::mat4 lightTrans = lights[i].second;
+                std::string lightStr = "lights[" + std::to_string(i + 1) + "]";
+                
+                int type_val = 0;
+                if (light->type == LightType::POINT) type_val = 1;
+                else if (light->type == LightType::SPOT) type_val = 2;
+                
+                waterMaterial->shader->set(lightStr + ".type", type_val);
+                waterMaterial->shader->set(lightStr + ".color", light->color);
+                
+                float active_intensity = light->intensity;
+                if(light->type == LightType::SPOT) {
+                    glm::vec3 direction = glm::normalize(glm::vec3(lightTrans * glm::vec4(light->direction, 0.0f)));
+                    waterMaterial->shader->set(lightStr + ".direction", direction);
+                    waterMaterial->shader->set(lightStr + ".cone_angles", light->cone_angles);
+                    
+                    if(light->getOwner()->name == "player" || light->getOwner()->getComponent<CameraComponent>()) {
+                        active_intensity *= glm::smoothstep(0.1f, -0.4f, sun_dir.y); 
+                    }
+                }
+                waterMaterial->shader->set(lightStr + ".intensity", active_intensity);
+                
+                if (light->type == LightType::POINT || light->type == LightType::SPOT) {
+                    waterMaterial->shader->set(lightStr + ".position", glm::vec3(lightTrans[3]));
+                } else { 
+                    glm::vec3 direction = glm::normalize(glm::vec3(lightTrans * glm::vec4(0, 0, -1, 0)));
+                    waterMaterial->shader->set(lightStr + ".position", direction);
+                }
+            }
+
+            skySphere->draw();
+            waterMaterial->teardown();
+        }
+        //TODO: (Req 9) Draw all the transparent commands
+        // Don't forget to set the "transform" uniform to be equal the model-view-projection matrix for each render command
+        for(const auto& command : transparentCommands){
             command.material->setup();
-
-            if (auto lit_material = dynamic_cast<LitMaterial *>(command.material); lit_material != nullptr)
-            {
-                glm::mat4 V = camera->getViewMatrix();
-                glm::vec3 eye = glm::vec3(glm::inverse(V)[3]);
-
-                float u_time = (float)glfwGetTime();
-
-                // Keep the exact same day/night speed and vector as the shader
-                float dayNightSpeed = 0.05f;
-                float skyTime = u_time * dayNightSpeed;
-
-                // Sun rotates
-                glm::vec3 sun_dir = glm::normalize(glm::vec3(0.0f, std::sin(skyTime), -std::cos(skyTime)));
-
-                // Color fades when going below the horizon
-                float height = std::max(sun_dir.y, 0.0f);
-                glm::vec3 sun_col_day = glm::vec3(1.0f, 0.9f, 0.8f);
-                glm::vec3 sun_col_sunset = glm::vec3(1.0f, 0.4f, 0.2f);
-                glm::vec3 sun_color = glm::mix(sun_col_sunset, sun_col_day, height);
-                // Ramp intensity down gently at the horizon
-                float intensity = 3.0f * glm::smoothstep(-0.1f, 0.1f, sun_dir.y);
-
-                lit_material->shader->set("camera_position", eye);
+            
+            if (auto lit_material = dynamic_cast<LitMaterial*>(command.material); lit_material != nullptr) {
+                lit_material->shader->set("camera_position", cameraPosition);
+                lit_material->shader->set("u_time", u_time); // Required for wave animation
                 lit_material->shader->set("light_count", (int)lights.size() + 1);
 
                 // Add the sun as the first light
                 lit_material->shader->set("lights[0].type", 0);
                 lit_material->shader->set("lights[0].color", sun_color);
-                lit_material->shader->set("lights[0].intensity", intensity);
+                lit_material->shader->set("lights[0].intensity", sun_intensity); 
                 lit_material->shader->set("lights[0].position", -sun_dir);
 
                 for (size_t i = 0; i < lights.size(); ++i)
@@ -696,17 +852,30 @@ namespace our
                     auto *light = lights[i].first;
                     glm::mat4 lightTrans = lights[i].second;
                     std::string lightStr = "lights[" + std::to_string(i + 1) + "]";
-
-                    lit_material->shader->set(lightStr + ".type", light->type == LightType::POINT ? 1 : 0);
+                    
+                    int type_val = 0;
+                    if (light->type == LightType::POINT) type_val = 1;
+                    else if (light->type == LightType::SPOT) type_val = 2;
+                    
+                    lit_material->shader->set(lightStr + ".type", type_val);
                     lit_material->shader->set(lightStr + ".color", light->color);
-                    lit_material->shader->set(lightStr + ".intensity", light->intensity);
-
-                    if (light->type == LightType::POINT)
-                    {
-                        lit_material->shader->set(lightStr + ".position", glm::vec3(lightTrans[3]));
+                    
+                    float active_intensity = light->intensity;
+                    if(light->type == LightType::SPOT) {
+                        glm::vec3 direction = glm::normalize(glm::vec3(lightTrans * glm::vec4(light->direction, 0.0f)));
+                        lit_material->shader->set(lightStr + ".direction", direction);
+                        lit_material->shader->set(lightStr + ".cone_angles", light->cone_angles);
+                        
+                        // Turn player spot on at night only
+                        if(light->getOwner()->name == "player" || light->getOwner()->getComponent<CameraComponent>()) {
+                           active_intensity *= glm::smoothstep(0.1f, -0.4f, sun_dir.y); 
+                        }
                     }
-                    else
-                    {
+                    lit_material->shader->set(lightStr + ".intensity", active_intensity);
+                    
+                    if (light->type == LightType::POINT || light->type == LightType::SPOT) {
+                        lit_material->shader->set(lightStr + ".position", glm::vec3(lightTrans[3]));
+                    } else { 
                         glm::vec3 direction = glm::normalize(glm::vec3(lightTrans * glm::vec4(0, 0, -1, 0)));
                         lit_material->shader->set(lightStr + ".position", direction);
                     }
@@ -715,6 +884,10 @@ namespace our
                 lit_material->shader->set("M", command.localToWorld);
                 lit_material->shader->set("M_IT", glm::transpose(glm::inverse(command.localToWorld)));
                 lit_material->shader->set("VP", VP);
+                lit_material->shader->set("lightSpaceMatrix", lightSpaceMatrix);
+                glActiveTexture(GL_TEXTURE0 + 5);
+                shadowMap->bind();
+                lit_material->shader->set("shadow_map", 5);
 
                 // Set bone matrices from AnimatorComponent, reset to identity for non-animated
                 if (auto animator = command.entity->getComponent<AnimatorComponent>(); animator && !animator->finalBonesMatrices.empty())
@@ -1080,8 +1253,12 @@ namespace our
                     minimapMat->setup();
                     minimapMat->shader->set("time", (float)glfwGetTime());
 
-                    // Get positions
+                    // Get positions and player yaw for radar rotation
                     glm::vec3 pPos = playerEntity->localTransform.position;
+                    float playerYaw = playerEntity->localTransform.rotation.y;
+                    float cosYaw = cosf(playerYaw);
+                    float sinYaw = sinf(playerYaw);
+                    const float radarScale = 0.004f; // Covers ~250 world units
 
                     int entityCount = 0;
                     for (auto entity : world->getEntities())
@@ -1091,12 +1268,32 @@ namespace our
                         if (entity->name == "ocean" || entity->name == "water" || entity->name == "sky" || entity->name == "moon" || entity->name.empty())
                             continue;
 
+                        // Determine radar blip type
+                        int typeIndex = -1;
+                        if (entity->getComponent<EnemyComponent>()) {
+                            typeIndex = 0; // enemy/shark = red
+                        } else {
+                            auto res = entity->getComponent<ResourceComponent>();
+                            if (res) {
+                                if (res->type == "fish") typeIndex = 1; // fish = blue
+                                else if (res->type == "wood") typeIndex = 2; // wood = brown
+                            }
+                        }
+                        if (typeIndex < 0)
+                            continue; // Skip non-radar entities (raft, weapons, etc.)
+
                         glm::vec3 ePos = entity->localTransform.position;
-                        glm::vec2 relativePos = glm::vec2(ePos.x - pPos.x, ePos.z - pPos.z) * 0.05f;
+                        float dx = ePos.x - pPos.x;
+                        float dz = ePos.z - pPos.z;
+                        // Rotate so player's forward = radar up
+                        float rx = dx * cosYaw - dz * sinYaw;
+                        float ry = -dx * sinYaw - dz * cosYaw;
+                        glm::vec2 relativePos = glm::vec2(rx, ry) * radarScale;
 
                         if (glm::length(relativePos) < 1.0f)
                         {
                             minimapMat->shader->set("entities_pos[" + std::to_string(entityCount) + "]", relativePos);
+                            minimapMat->shader->set("entities_type[" + std::to_string(entityCount) + "]", (float)typeIndex);
                             entityCount++;
                             if (entityCount >= 32)
                                 break;

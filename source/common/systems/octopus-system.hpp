@@ -28,13 +28,8 @@ namespace our {
     class OctopusSystem {
     public:
 
-        // ------------------------------------------------------------------
-        // setAnimation: maps a clip name to the model's animation index.
-        // You may override this body later; the mapping below is a stub.
-        // ------------------------------------------------------------------
-        static void setAnimation(AnimatorComponent* animator, const std::string& clipName, bool loop) {
-            if (!animator) return;
-
+        // Shared clip name → animation index mapping
+        static const std::unordered_map<std::string, int>& getClipMap() {
             static const std::unordered_map<std::string, int> clipMap = {
                 {"Mon_PiratesKing_Attack01",    (int)OctopusAnimation::ATTACK},
                 {"Mon_PiratesKing_Walk01",      (int)OctopusAnimation::RUN_FORWARD},
@@ -53,7 +48,16 @@ namespace our {
                 {"Mon_PiratesKing_Death",       (int)OctopusAnimation::DEATH},
                 {"Mon_PiratesKing_skill03",     (int)OctopusAnimation::SKILL_VICTORY},
             };
+            return clipMap;
+        }
 
+        // ------------------------------------------------------------------
+        // setAnimation: maps a clip name to the model's animation index.
+        // ------------------------------------------------------------------
+        static void setAnimation(AnimatorComponent* animator, const std::string& clipName, bool loop) {
+            if (!animator) return;
+
+            const auto& clipMap = getClipMap();
             auto it = clipMap.find(clipName);
             if (it != clipMap.end()) {
                 animator->currentAnimIndex = it->second;
@@ -72,25 +76,7 @@ namespace our {
         static float queryAnimDuration(AnimatorComponent* animator, const std::string& clipName) {
             if (!animator || animator->modelName.empty()) return 1.0f;
 
-            static const std::unordered_map<std::string, int> clipMap = {
-                {"Mon_PiratesKing_Attack01",    (int)OctopusAnimation::ATTACK},
-                {"Mon_PiratesKing_Walk01",      (int)OctopusAnimation::RUN_FORWARD},
-                {"Mon_PiratesKing_Turn_L01",    (int)OctopusAnimation::MOVE_LEFT},
-                {"Mon_PiratesKing_Turn_R01",    (int)OctopusAnimation::MOVE_RIGHT},
-                {"Mon_PiratesKing_Cidle01",     (int)OctopusAnimation::COMBAT_IDLE},
-                {"Mon_PiratesKing_Idle01",      (int)OctopusAnimation::IDLE},
-                {"Mon_PiratesKing_Skill_Spawn", (int)OctopusAnimation::SKILL_SPAWN},
-                {"Mon_PiratesKing_Skill_Dance", (int)OctopusAnimation::SKILL_DANCE_START},
-                {"Mon_PiratesKing_Skill_Dance_Half", (int)OctopusAnimation::SKILL_DANCE_HALF_HEALTH},
-                {"Mon_PiratesKing_skill01",     (int)OctopusAnimation::ENRAGE_DANCE},
-                {"Mon_PiratesKing_Skill04_Start", (int)OctopusAnimation::SKILL04_START},
-                {"Mon_PiratesKing_Skill04_Loop", (int)OctopusAnimation::SKILL04_LOOP},
-                {"Mon_PiratesKing_Skill04_End", (int)OctopusAnimation::SKILL04_END},
-                {"Mon_PiratesKing_Attack02",    (int)OctopusAnimation::ATTACK02},
-                {"Mon_PiratesKing_Death",       (int)OctopusAnimation::DEATH},
-                {"Mon_PiratesKing_skill03",     (int)OctopusAnimation::SKILL_VICTORY},
-            };
-
+            const auto& clipMap = getClipMap();
             int idx = (int)OctopusAnimation::IDLE;
             auto it = clipMap.find(clipName);
             if (it != clipMap.end()) idx = it->second;
