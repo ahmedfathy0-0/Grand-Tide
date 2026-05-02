@@ -131,10 +131,8 @@ namespace our
             {
                 glm::vec3 boatPos = boat->localTransform.position;
                 float boatDist = glm::distance(glm::vec3(sharkPos.x, 0.0f, sharkPos.z), glm::vec3(boatPos.x, 0.0f, boatPos.z));
-                std::cout << "[Shark] boatDist=" << boatDist << " sharkPos=(" << sharkPos.x << "," << sharkPos.z << ") boatPos=(" << boatPos.x << "," << boatPos.z << ")\n";
                 if (boatDist < 18.0f) // Avoidance radius
                 {
-                    std::cout << "[Shark] Avoiding boat! Submerging.\n";
                     shark->state = SharkState::SUBMERGED;
                     shark->stateTimer = 0.0f;
                     if (animator)
@@ -173,7 +171,6 @@ namespace our
                 if (raftHealth)
                 {
                     raftHealth->takeDamage(enemy->attackDamage);
-                    std::cout << "Shark attacked! Dealt " << enemy->attackDamage << " damage." << std::endl;
                 }
             }
             if (shark->stateTimer > 1.5f)
@@ -432,7 +429,6 @@ namespace our
                 if (auto *playerHealth = player->getComponent<HealthComponent>())
                 {
                     playerHealth->takeDamage(musket->damage);
-                    std::cout << "[Musket] musket " << musket->musketIndex+musket->boatIndex << "     Fire! Dealt " << musket->damage << " damage.\n";
                     // Play shotgun sound (lower volume)
                     playSound("assets/audios/shotgun.mp3", 0.4f);
                 }
