@@ -359,6 +359,9 @@ class Playstate : public our::State
         escPrev = false;
         hiddenEntityScales.clear();
 
+        oceanAudio.stop();
+        oceanAudio.start();
+
         cameraController.enter(getApp());
         fireballSystem.enter(getApp());
 
@@ -658,6 +661,16 @@ class Playstate : public our::State
                 }
                 elgembelliasSystem.activate(&world, octopusDeathPos);
                 elgembelliasSpawned = true;
+            }
+            // Check if elgembellias is dead -> transition to end state (victory)
+            for (auto entity : world.getEntities()) {
+                auto elgemComp = entity->getComponent<our::ElgembelliasComponent>();
+                if (elgemComp && elgemComp->state == our::ElgembelliasState::DEATH && !phaseTransitioning) {
+                    phaseTransitioning = true;
+                    oceanAudio.stop();
+                    getApp()->changeState("end");
+                    return;
+                }
             }
         }
 

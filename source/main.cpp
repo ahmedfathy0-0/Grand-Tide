@@ -8,6 +8,7 @@
 #include "states/menu-state.hpp"
 #include "states/play-state.hpp"
 #include "states/intro-state.hpp"
+#include "states/end-state.hpp"
 
 int main(int argc, char **argv)
 {
@@ -32,6 +33,7 @@ int main(int argc, char **argv)
     app.registerState<Introstate>("intro");
     app.registerState<Menustate>("menu");
     app.registerState<Playstate>("play");
+    app.registerState<Endstate>("end");
     // Then choose the state to run based on the option "start-scene" in the config
     if (app_config.contains(std::string{"start-scene"}))
     {
