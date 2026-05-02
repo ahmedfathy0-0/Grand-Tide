@@ -162,6 +162,7 @@ set(STATES_SOURCES
         source/states/play-state.hpp
         source/states/menu-state.hpp
         source/states/intro-state.hpp
+        source/states/end-state.hpp
         source/states/shader-test-state.hpp
         source/states/mesh-test-state.hpp
         source/states/transform-test-state.hpp
