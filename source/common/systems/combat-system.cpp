@@ -44,6 +44,8 @@ namespace our
                 raft = entity;
             if (entity->name == "player")
                 player = entity;
+            if (entity->name == "boat")
+                boat = entity;
         }
 
         for (auto entity : world->getEntities())
