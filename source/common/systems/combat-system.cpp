@@ -36,6 +36,7 @@ namespace our
     {
         Entity *raft = nullptr;
         Entity *player = nullptr;
+        Entity *boat = nullptr;
 
         for (auto entity : world->getEntities())
         {
@@ -77,7 +78,7 @@ namespace our
             switch (enemy->type)
             {
             case EnemyType::SHARK:
-                updateShark(world, entity, enemy, raft, deltaTime);
+                updateShark(world, entity, enemy, raft, boat, deltaTime);
                 break;
             }
 
@@ -94,7 +95,7 @@ namespace our
         }
     }
 
-    void CombatSystem::updateShark(World *world, Entity *entity, EnemyComponent *enemy, Entity *raft, float deltaTime)
+    void CombatSystem::updateShark(World *world, Entity *entity, EnemyComponent *enemy, Entity *raft, Entity *boat, float deltaTime)
     {
         if (!raft)
             return;
@@ -117,6 +118,22 @@ namespace our
         {
             if (animator)
                 animator->currentAnimIndex = 4; // Swim
+
+            // ── Boat avoidance: if too close to the boat, submerge and respawn ──
+            if (boat)
+            {
+                glm::vec3 boatPos = boat->localTransform.position;
+                float boatDist = glm::distance(glm::vec3(sharkPos.x, 0.0f, sharkPos.z), glm::vec3(boatPos.x, 0.0f, boatPos.z));
+                if (boatDist < 18.0f) // Avoidance radius
+                {
+                    shark->state = SharkState::SUBMERGED;
+                    shark->stateTimer = 0.0f;
+                    if (animator)
+                        animator->currentAnimIndex = 4; // Swim anim while submerging
+                    break;
+                }
+            }
+
             glm::vec3 dir = glm::vec3(raftPos.x, 0.0f, raftPos.z) - glm::vec3(sharkPos.x, 0.0f, sharkPos.z);
             if (glm::length(dir) > 0.0001f)
             {
@@ -138,7 +155,8 @@ namespace our
         }
         case SharkState::ATTACKING:
         { // ATTACKING
-            entity->localTransform.rotation.x = glm::radians(-15.0f);
+            float attackAngle = shark->hasAttackedBefore ? -8.0f : -15.0f;
+            entity->localTransform.rotation.x = glm::radians(attackAngle);
             shark->stateTimer += deltaTime;
             if (shark->stateTimer >= 0.5f && (shark->stateTimer - deltaTime) < 0.5f)
             {
@@ -146,11 +164,11 @@ namespace our
                 if (raftHealth)
                 {
                     raftHealth->takeDamage(enemy->attackDamage);
-                    std::cout << "Shark attacked! Dealt " << enemy->attackDamage << " damage." << std::endl;
                 }
             }
             if (shark->stateTimer > 1.5f)
             {
+                shark->hasAttackedBefore = true;
                 shark->state = SharkState::SUBMERGED;
                 shark->stateTimer = 0.0f;
             }
@@ -404,7 +422,6 @@ namespace our
                 if (auto *playerHealth = player->getComponent<HealthComponent>())
                 {
                     playerHealth->takeDamage(musket->damage);
-                    std::cout << "[Musket] musket " << musket->musketIndex+musket->boatIndex << "     Fire! Dealt " << musket->damage << " damage.\n";
                     // Play shotgun sound (lower volume)
                     playSound("assets/audios/shotgun.mp3", 0.4f);
                 }
