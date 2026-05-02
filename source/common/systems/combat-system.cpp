@@ -9,29 +9,6 @@
 
 namespace our
 {
-    void CombatSystem::ensureSoundEngine() {
-        if (!soundEngine) {
-            soundEngine = new ma_engine();
-            if (ma_engine_init(nullptr, soundEngine) != MA_SUCCESS) {
-                std::cerr << "[Combat] Sound engine init failed" << std::endl;
-                delete soundEngine;
-                soundEngine = nullptr;
-            }
-        }
-    }
-
-    void CombatSystem::playSound(const char* path, float volume) {
-        ensureSoundEngine();
-        if (!soundEngine) return;
-        ma_sound* snd = new ma_sound();
-        if (ma_sound_init_from_file(soundEngine, path, MA_SOUND_FLAG_DECODE, nullptr, nullptr, snd) == MA_SUCCESS) {
-            ma_sound_set_volume(snd, volume);
-            ma_sound_start(snd);
-        } else {
-            delete snd;
-        }
-    }
-
     void CombatSystem::update(World *world, float deltaTime)
     {
         Entity *raft = nullptr;

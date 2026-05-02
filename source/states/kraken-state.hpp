@@ -3,6 +3,7 @@
 #include <ecs/world.hpp>
 #include <systems/octopus-system.hpp>
 #include <systems/boss-health-bar.hpp>
+#include <systems/audio-player.hpp>
 #include <components/octopus-component.hpp>
 #include <components/health.hpp>
 #include <components/mesh-renderer.hpp>
@@ -21,12 +22,17 @@ namespace our
         nlohmann::json config;
         OctopusSystem octopusSystem;
         Entity *octopusEntity = nullptr;
+        AudioPlayer ambientAudio;
+        AudioPlayer deathAudio;
+        bool playedDeathAudio = false;
 
     public:
         void enter(World *world, const nlohmann::json &cfg)
         {
             config = cfg;
             spawnOctopus(world);
+            ambientAudio.play("assets/audios/octopus.mp3", true);
+            playedDeathAudio = false;
         }
 
         // Returns true when octopus is permanently dead
@@ -38,8 +44,14 @@ namespace our
             // Check if octopus is permanently dead
             if (octopusEntity) {
                 auto *oct = octopusEntity->getComponent<OctopusComponent>();
-                if (oct && oct->permanentlyDead)
+                if (oct && oct->permanentlyDead) {
+                    if (!playedDeathAudio) {
+                        ambientAudio.stop();
+                        deathAudio.play("assets/audios/octopus_die.mp3", false);
+                        playedDeathAudio = true;
+                    }
                     return true;
+                }
             }
             return false;
         }
@@ -61,6 +73,7 @@ namespace our
 
         void exit()
         {
+            ambientAudio.stop();
             std::cout << "[KrakenPhase] Exit: kraken defeated" << std::endl;
         }
 
@@ -93,7 +106,7 @@ namespace our
             mr->mesh = nullptr;
             mr->material = AssetLoader<Material>::get(material);
 
-            auto *octComp = octopus->addComponent<OctopusComponent>();
+            auto *octComp = octopus->addComponent<OctopusComponent>();d
             octComp->deserialize(octCfg);
 
             auto *anim = octopus->addComponent<AnimatorComponent>();

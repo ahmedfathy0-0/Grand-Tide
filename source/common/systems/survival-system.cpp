@@ -237,16 +237,7 @@ namespace our
     }
 
     void SurvivalSystem::playPainSound() {
-        if (!painSoundEngine) {
-            painSoundEngine = new ma_engine();
-            if (ma_engine_init(nullptr, painSoundEngine) != MA_SUCCESS) {
-                std::cerr << "[Survival] Pain sound engine init failed" << std::endl;
-                delete painSoundEngine;
-                painSoundEngine = nullptr;
-                return;
-            }
-        }
-        ma_engine_play_sound(painSoundEngine, "assets/audios/pain.mp3", nullptr);
+        painSoundPlayer.play("assets/audios/pain.mp3", false);
     }
 
     void SurvivalSystem::update()
