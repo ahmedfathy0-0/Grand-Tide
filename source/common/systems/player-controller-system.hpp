@@ -125,6 +125,13 @@ namespace our
             this->app = app;
         }
 
+        void reset() {
+            isDrivingBoat = false;
+            mouse_locked = false;
+            jumpBufferTimer = 0.0f;
+            coyoteTimer = 0.0f;
+        }
+
         void update(World* world, float deltaTime) {
             PlayerControllerComponent* player = nullptr;
             Entity* playerEntity = nullptr;

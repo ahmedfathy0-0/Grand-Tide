@@ -51,6 +51,36 @@ namespace our {
             this->app = app;
         }
 
+        void reset() {
+            devilFruitSpawned = false;
+            devilFruitEntity = nullptr;
+            devilFruitVelocityY = 0.0f;
+            devilFruitMessageTimer = 0.0f;
+            showDevilFruitMessage = false;
+            handEntity = nullptr;
+            fireInHandEntity = nullptr;
+            aoeIndicatorEntity = nullptr;
+            weaponEntity = nullptr;
+        }
+
+        // Give the player the devil fruit immediately (used when starting from phase 2/3)
+        void grantDevilFruit(World* world) {
+            if (devilFruitSpawned) return;
+            devilFruitSpawned = true;
+            Entity* playerEntity = nullptr;
+            for (auto entity : world->getEntities()) {
+                if (entity->name == "player") { playerEntity = entity; break; }
+            }
+            if (playerEntity) {
+                auto inventory = playerEntity->getComponent<InventoryComponent>();
+                if (inventory) {
+                    inventory->hasDevilFruit = true;
+                    showDevilFruitMessage = true;
+                    devilFruitMessageTimer = 5.0f;
+                }
+            }
+        }
+
         bool shouldShowDevilFruitMessage() const { return showDevilFruitMessage; }
         bool isDevilFruitSpawned() const { return devilFruitSpawned; }
 
@@ -509,17 +539,24 @@ namespace our {
                                 burn->damagePerSecond = proj->burnDamagePerSecond;
                                 burn->burnIntensity = 1.0f;
                             } else {
-                                // Refresh burn duration
-                                existingBurn->remainingTime = proj->burnDuration;
-                                existingBurn->burnIntensity = 1.0f;
+                                // Don't refresh burn — let existing burn run its course
+                                // This prevents permanent burn-lock from repeated fireball hits
                             }
 
                             // Stun the octopus if this is an octopus entity
                             auto octopusComp = target->getComponent<OctopusComponent>();
                             if (octopusComp && !octopusComp->permanentlyDead) {
-                                octopusComp->stunTimer = octopusComp->stunDuration;
-                                std::cout << "[Fireball] Octopus STUNNED for "
-                                          << octopusComp->stunDuration << " seconds!" << std::endl;
+                                octopusComp->wasJustStunned = true;
+                                // Only apply stun if not immune (HP > 50% and not revived)
+                                auto targetHealth = target->getComponent<HealthComponent>();
+                                bool stunImmune = (targetHealth && targetHealth->currentHealth <= targetHealth->maxHealth * 0.5f) || octopusComp->hasRevived;
+                                if (!stunImmune) {
+                                    octopusComp->stunTimer = octopusComp->stunDuration;
+                                    std::cout << "[Fireball] Octopus STUNNED for "
+                                              << octopusComp->stunDuration << " seconds!" << std::endl;
+                                } else {
+                                    std::cout << "[Fireball] Octopus hit but STUN-IMMUNE (enraged/revived)" << std::endl;
+                                }
                             }
                         }
                     }

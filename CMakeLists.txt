@@ -119,7 +119,6 @@ set(COMMON_SOURCES
         source/common/components/animator.cpp
         source/common/components/enemy.hpp
         source/common/components/enemy.cpp
-        source/common/components/component-deserializer.hpp
         source/common/components/musket-component.hpp
         source/common/components/musket-component.cpp
         source/common/components/marine-boat-component.hpp
@@ -127,6 +126,8 @@ set(COMMON_SOURCES
         source/common/components/shark-component.cpp
         source/common/components/octopus-component.hpp
         source/common/components/octopus-component.cpp
+        source/common/components/elgembellias-component.hpp
+        source/common/components/elgembellias-component.cpp
         source/common/components/component-deserializer.hpp
         source/common/components/fireball-component.hpp
         source/common/components/fireball-component.cpp
@@ -189,6 +190,7 @@ set_source_files_properties(vendor/imgui/imgui_impl/imgui_impl_opengl3.cpp PROPE
 )
 
 target_compile_features(GAME_APPLICATION PRIVATE cxx_std_17)
+target_compile_definitions(GAME_APPLICATION PRIVATE USE_FFMPEG)
 set_target_properties(GAME_APPLICATION PROPERTIES
         CXX_EXTENSIONS OFF
         RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin"

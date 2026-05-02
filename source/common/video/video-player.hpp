@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#ifdef USE_FFMPEG
+
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -64,4 +66,27 @@ private:
     bool decodeAllAudio();
 };
 
-}
+} // namespace our
+
+#else // USE_FFMPEG not defined — stub implementation
+
+namespace our {
+
+// Stub VideoPlayer when FFmpeg is not available
+class VideoPlayer {
+public:
+    VideoPlayer() = default;
+    ~VideoPlayer() = default;
+    bool load(const std::string&) { return false; }
+    bool update(double) { return false; }
+    GLuint getTexture() const { return 0; }
+    int getWidth() const { return 0; }
+    int getHeight() const { return 0; }
+    double getDuration() const { return 0; }
+    bool isLoaded() const { return false; }
+    void stopAudio() {}
+};
+
+} // namespace our
+
+#endif // USE_FFMPEG

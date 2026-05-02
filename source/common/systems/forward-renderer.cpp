@@ -693,9 +693,9 @@ namespace our
                     for(int b = 0; b < (int)animator->finalBonesMatrices.size() && b < 200; b++) {
                         lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", animator->finalBonesMatrices[b]);
                     }
-                     glm::vec3 tint = lit_material->albedo_tint;
+                    glm::vec3 tint = lit_material->albedo_tint;
                     if (auto shark = command.entity->getComponent<SharkComponent>(); shark) {
-                        if (shark->damageFlashTimer > 0.0f) tint = glm::vec3(1.0f, 0.0f, 0.0f); // Flash Red
+                        if (shark->damageFlashTimer > 0.0f) tint = glm::vec3(1.0f, 0.0f, 0.0f);
                     }
                     lit_material->shader->set("albedo_tint", tint);
                     // Clear any remaining bones beyond what this animator has
@@ -704,6 +704,11 @@ namespace our
                     }
                 } else {
                     // No animator: reset all bone matrices to identity so previous entity's bones don't deform this one
+                    glm::vec3 tint = lit_material->albedo_tint;
+                    if (auto shark = command.entity->getComponent<SharkComponent>(); shark) {
+                        if (shark->damageFlashTimer > 0.0f) tint = glm::vec3(1.0f, 0.0f, 0.0f);
+                    }
+                    lit_material->shader->set("albedo_tint", tint);
                     for(int b = 0; b < 200; b++) {
                         lit_material->shader->set("finalBonesMatrices[" + std::to_string(b) + "]", glm::mat4(1.0f));
                     }

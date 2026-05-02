@@ -46,11 +46,6 @@ namespace our
                 player = entity;
             if (entity->name == "boat")
                 boat = entity;
-            // Tick down damage flash timer
-            if (auto hp = entity->getComponent<HealthComponent>(); hp) {
-                if (hp->damageFlashTimer > 0.0f)
-                    hp->damageFlashTimer -= deltaTime;
-            }
         }
 
         for (auto entity : world->getEntities())
@@ -216,6 +211,16 @@ namespace our
         // --- Sinking when dead ---
         if (health && health->currentHealth <= 0.0f)
         {
+            // Mark musket children as DEAD immediately so phase completion detects it
+            for (auto child : world->getEntities()) {
+                if (child->parent == entity) {
+                    auto childEnemy = child->getComponent<EnemyComponent>();
+                    if (childEnemy && childEnemy->state != EnemyState::DEAD) {
+                        childEnemy->state = EnemyState::DEAD;
+                    }
+                }
+            }
+
             entity->localTransform.position.y -= 1.5f * deltaTime; // sink slowly
             // After fully submerged, remove boat and its muskets
             if (entity->localTransform.position.y < -5.0f)
