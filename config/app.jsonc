@@ -69,6 +69,8 @@
         "glass": "assets/textures/glass-panels.png",
         "monkey": "assets/textures/monkey.png",
         "wood_albedo": "assets/textures/wood_planks_12_2k/wood_planks_12_color_2k.png",
+        "wood_albedo_corrupted": "assets/textures/wood_planks_12_2k/wood_planks_12_color_corrupted1_2k.png",
+        "wood_albedo_corrupted2": "assets/textures/wood_planks_12_2k/wood_planks_12_color_corrupted2_2k.png",
         "wood_roughness": "assets/textures/wood_planks_12_2k/wood_planks_12_roughness_2k.png",
         "wood_specular": "assets/textures/wood_planks_12_2k/wood_planks_12_ambient_occlusion_2k.png",
         "hammer_icon": "assets/icons/hammer.png",
@@ -222,6 +224,44 @@
             },
           },
           "albedo": "wood_albedo",
+          "specular": "wood_specular",
+          "roughness": "wood_roughness",
+          "albedo_tint": [1, 1, 1],
+          "specular_tint": [0.05, 0.05, 0.05],
+          "roughness_multiplier": 1.0,
+          "sampler": "default",
+        },
+        "raft_corrupted_mat": {
+          "type": "lit",
+          "shader": "lit",
+          "pipelineState": {
+            "faceCulling": {
+              "enabled": false,
+            },
+            "depthTesting": {
+              "enabled": true,
+            },
+          },
+          "albedo": "wood_albedo_corrupted",
+          "specular": "wood_specular",
+          "roughness": "wood_roughness",
+          "albedo_tint": [1, 1, 1],
+          "specular_tint": [0.05, 0.05, 0.05],
+          "roughness_multiplier": 1.0,
+          "sampler": "default",
+        },
+        "raft_corrupted2_mat": {
+          "type": "lit",
+          "shader": "lit",
+          "pipelineState": {
+            "faceCulling": {
+              "enabled": false,
+            },
+            "depthTesting": {
+              "enabled": true,
+            },
+          },
+          "albedo": "wood_albedo_corrupted2",
           "specular": "wood_specular",
           "roughness": "wood_roughness",
           "albedo_tint": [1, 1, 1],
