@@ -10,11 +10,10 @@ if(UNIX AND NOT APPLE)
                 libavcodec libavformat libswscale libswresample libavutil)
 endif()
 
-# Windows FFmpeg: we use local copies of headers and MSVC-compatible .lib files
-# generated from the MSYS2 UCRT64 DLLs. This avoids the UCRT64/MSVC header conflict.
+# Windows (MSYS2 UCRT64) FFmpeg
 if(WIN32)
-        set(FFMPEG_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/vendor/ffmpeg/include")
-        set(FFMPEG_LIB_DIR "${CMAKE_SOURCE_DIR}/vendor/ffmpeg/lib")
+        set(FFMPEG_INCLUDE_DIR "C:/msys64/ucrt64/include")
+        set(FFMPEG_LIB_DIR "C:/msys64/ucrt64/lib")
 endif()
 
 # These are the options we select for building GLFW as a library
@@ -120,7 +119,6 @@ set(COMMON_SOURCES
         source/common/components/animator.cpp
         source/common/components/enemy.hpp
         source/common/components/enemy.cpp
-        source/common/components/component-deserializer.hpp
         source/common/components/musket-component.hpp
         source/common/components/musket-component.cpp
         source/common/components/marine-boat-component.hpp
@@ -153,7 +151,6 @@ set(COMMON_SOURCES
         source/common/systems/animation-system.cpp
         source/common/systems/octopus-system.hpp
         source/common/systems/octopus-system.cpp
-        source/common/systems/elgembellias-system.hpp
         source/common/systems/combat-system.hpp
         source/common/systems/combat-system.cpp
         source/common/systems/boss-health-bar.hpp
@@ -192,22 +189,13 @@ set_source_files_properties(vendor/imgui/imgui_impl/imgui_impl_opengl3.cpp PROPE
 )
 
 target_compile_features(GAME_APPLICATION PRIVATE cxx_std_17)
+target_compile_definitions(GAME_APPLICATION PRIVATE USE_FFMPEG)
 set_target_properties(GAME_APPLICATION PROPERTIES
         CXX_EXTENSIONS OFF
         RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin"
         RUNTIME_OUTPUT_DIRECTORY_DEBUG "${PROJECT_SOURCE_DIR}/bin"
         RUNTIME_OUTPUT_DIRECTORY_RELEASE "${PROJECT_SOURCE_DIR}/bin"
 )
-
-# FFmpeg detection: check for local MSVC-compatible .lib files
-set(FFMPEG_AVAILABLE FALSE)
-if(WIN32)
-        if(EXISTS "${FFMPEG_LIB_DIR}/avcodec-61.lib")
-                set(FFMPEG_AVAILABLE TRUE)
-        endif()
-elseif(UNIX AND NOT APPLE)
-        set(FFMPEG_AVAILABLE TRUE)
-endif()
 
 target_include_directories(GAME_APPLICATION PRIVATE
         source/common
@@ -218,30 +206,19 @@ target_include_directories(GAME_APPLICATION PRIVATE
         vendor/utils
         vendor/assimp/include
         vendor/miniaudio
+        ${FFMPEG_INCLUDE_DIR}
 )
-if(FFMPEG_AVAILABLE AND WIN32)
-        target_include_directories(GAME_APPLICATION PRIVATE ${FFMPEG_INCLUDE_DIR})
-elseif(FFMPEG_AVAILABLE AND UNIX)
-        target_include_directories(GAME_APPLICATION PRIVATE ${FFMPEG_INCLUDE_DIR})
-endif()
 
 target_link_libraries(GAME_APPLICATION PRIVATE glfw assimp)
 
 if(UNIX AND NOT APPLE)
         target_link_libraries(GAME_APPLICATION PRIVATE OpenGL::GL PkgConfig::FFMPEG)
         target_link_libraries(GAME_APPLICATION PRIVATE pthread m asound)
-        target_compile_definitions(GAME_APPLICATION PRIVATE USE_FFMPEG)
 endif()
 
 if(WIN32)
-        if(FFMPEG_AVAILABLE)
-                target_link_directories(GAME_APPLICATION PRIVATE ${FFMPEG_LIB_DIR})
-                target_link_libraries(GAME_APPLICATION PRIVATE
-                        avcodec-61 avformat-61 swscale-8 swresample-5 avutil-59
-                        secur32 bcrypt ntdll)
-                target_compile_definitions(GAME_APPLICATION PRIVATE USE_FFMPEG)
-        else()
-                message(STATUS "FFmpeg not found at ${FFMPEG_LIB_DIR} — building without video support")
-                target_link_libraries(GAME_APPLICATION PRIVATE secur32 bcrypt ntdll)
-        endif()
+        target_link_directories(GAME_APPLICATION PRIVATE ${FFMPEG_LIB_DIR})
+        target_link_libraries(GAME_APPLICATION PRIVATE
+                avcodec avformat swscale swresample avutil
+                secur32 bcrypt ntdll)
 endif()

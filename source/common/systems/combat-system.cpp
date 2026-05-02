@@ -43,11 +43,6 @@ namespace our
                 raft = entity;
             if (entity->name == "player")
                 player = entity;
-            // Tick down damage flash timer
-            if (auto hp = entity->getComponent<HealthComponent>(); hp) {
-                if (hp->damageFlashTimer > 0.0f)
-                    hp->damageFlashTimer -= deltaTime;
-            }
         }
 
         for (auto entity : world->getEntities())
@@ -106,10 +101,10 @@ namespace our
         auto shark = entity->getComponent<SharkComponent>();
         if (!shark)
             return;
-        
+
         if (shark->damageFlashTimer > 0.0f)
             shark->damageFlashTimer -= deltaTime;
-        
+
         auto animator = entity->getComponent<AnimatorComponent>();
 
         glm::vec3 sharkPos = entity->localTransform.position;
